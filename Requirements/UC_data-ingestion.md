@@ -1,13 +1,16 @@
 # UC1: Data Ingestion
 
-**Primary Actor:** System (Automated Pipeline)
+**Primary Actor:** Data Scientist / Developer
+**Seondry Actor:** System (Automated Pipeline)
 
-**Scope/Goal:** The data ingestion layer of the Climate-Driven Energy Demand Analytics System.The goal is to retrieve electricity demand data from ENTSO-E and climate data from ERA5. The ingestion process must be reproducible and executable through code, not manual steps.
+**Scope/Goal:** The data ingestion layer of the Climate-Driven Energy Demand Analytics System.The goal is to retrieve electricity demand data from "ENTSO-E" dataset found at [https://transparency.entsoe.eu/]  and climate data from "ERA5
+Land Hourly data from 1950 to present" dataset found at [https://cds.climate.copernicus.eu/datasets/reanalysis-era5-land?tab=overview]. The ingestion process must be reproducible and executable through code, not manual steps.
 
-**Level:** Subfunction / System Goal
+**Level:** Sub-function – Fish level
 
 **Stakeholders and Interests:**
 
+* **Client:** Wants to ensure that the system successfully leverages the required stable, publicly available international datasets (ENTSO-E and ERA5) to meet the project's core research objectives
 * **Developer / Data Scientist:** Needs the system to retrieve data automatically and ensure that raw data is stored in a dedicated raw-data directory without manual modification.
 * **Security Administrator:** Needs assurance that no credentials or API keys may be hardcoded in the repository.
 
