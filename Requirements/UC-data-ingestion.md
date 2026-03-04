@@ -24,7 +24,7 @@ Land Hourly data from 1950 to present" dataset found at [https://cds.climate.cop
 
 1. The Developer / Data Scientist executes the data ingestion script via the command line.
 2. The system begins measuring the execution time for the data ingestion component.
-3. The system connects to the ENTSO-E Transparency Platform and retrieves at least one full year of hourly electricity load data. The primary target variable retrieved is total electricity load, expressed in megawatts (MW)
+3. The system connects to the ENTSO-E Transparency Platform and retrieves at least one full year of once-every-15-minutes load data. The primary target variable retrieved is total electricity load, expressed in megawatts (MW)
 4. The system connects to the Copernicus Climate Data Store (ERA5 dataset) and retrieves meteorological data. Specifically, it extracts:
 * 2-meter air temperature (in Kelvin)
 * solar radiation (in J/m²)
