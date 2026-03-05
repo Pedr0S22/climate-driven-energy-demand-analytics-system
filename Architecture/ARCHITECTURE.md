@@ -1,4 +1,4 @@
-# Architecture: Climate-Driven Energy Demand Analytics System | V1.0
+# Architecture: Climate-Driven Energy Demand Analytics System | V1.1
 
 
 This document outlines the high-level system architecture, data flow, security boundaries, and quality attributes of the Climate-Responsive Energy Systems project.
@@ -7,7 +7,6 @@ This document outlines the high-level system architecture, data flow, security b
 
 The following diagram illustrates the modular components of the system and their interactions.
 
-(Corrections ????)
 ```mermaid
 flowchart TD
     %% External Sources
@@ -28,13 +27,13 @@ flowchart TD
 
     %% Machine Learning Core
     subgraph Modeling Component
-        Trainer[Training Module <br>??? MODEL A & MODEL B ???]
+        Trainer[Training Module]
         Models[(Trained Models)]
     end
 
     %% User Interaction & Security
     subgraph Application Interface
-        UI[Prediction Interface <br> ???PyQt6??? / REST API]
+        UI[Prediction Interface]
         Auth[Authentication Layer]
         UserDB[(User Database <br> Credentials & Logs)]
     end
@@ -56,7 +55,7 @@ flowchart TD
     Auth -- Grants Access --> UI
     
     UI -- Requests Prediction --> Models
-    Models -- Returns < 1s --> UI
+    Models -- Returns < 5s --> UI
 ```
 
 ## 2. Data Flow
