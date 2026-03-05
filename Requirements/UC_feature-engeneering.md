@@ -1,25 +1,25 @@
-# UC5: Feature Engeneering - V1.1
+# UC3: Feature Engeneering - V1.1
 
-### **Primary actor**: 
+**Primary actor**:
 Data Scientist/Developer
 
-### **Scope/Goal**:
+**Scope/Goal**:
 Transform the clean and sincronized data into relevant predictive features (temporal, lagging, rolling, and advanced) to feed the modeling component, from which:
 
 
-**Mandatorty**:
+**1. Mandatorty**:
 - **Temporal features**: hour, day, season;
-- Al least one **rolling climate feature**;
+- At least one **rolling climate feature**;
 - At least one **lagged demand feature**.
 
 
-**Opcional**:
+**2. Optional**:
 - Derived features.
 
-### **Level**:
+**Level**:
 User goal.
 
-### **Stakeholders and Interests**:
+**Stakeholders and Interests**:
 
 * **Data cientist**: Expects to obtain relevant features that capture trends, seasonality, and complex climate-energy relationships to improve model performance.
 
@@ -27,42 +27,42 @@ User goal.
 
 * **Validator**: Aims to ensure that errors such as data leakage do not occur and that temporal integrity is maintained.
 
-### **Preconditions**:
+**Preconditions**:
 1. The Data Cleaning and Alignment stage has been successfully completed.
 
-2. Synchronized data is available in the /data/processed/ directory.
+2. Synchronized data is available in the `/data/processed/ `directory.
 
 3. The system has validated that all required columns and timestamps are present and reliable.
 
-### **Main Success Scenario**: 
+**Main Success Scenario**:
 1. The use case starts when the feature engineering module is activated, which occurs once the data cleaning stage is completed;
 
-2. The system loads the data available in the /data/processed/ directory;
+2. The system loads the data available in the `/data/processed/` directory;
 
 3. The system extracts temporal features, including hour of the day, day of the week, and seasonal indicators.
 
 4. The developer defines the window size and the overlap, constrained by the dataset timestamps, to ensure the rolling windows are physically meaningful;
 
-5. The system extracts rolling climate features, such as: 
-- mean; 
-- median; 
-- standard deviation; 
-- variance; 
-- root mean square;
-- average derivatives;
-- skewness, kurtosis, IQR, zero crossing rate, mean crossing rate, and pairwise correlation;
+5. The system extracts rolling climate features, such as:
+    - mean;
+    - median;
+    - standard deviation;
+    - variance;
+    - root mean square;
+    - average derivatives;
+    - skewness, kurtosis, IQR, zero crossing rate, mean crossing rate, and pairwise correlation;
 
 6. The system extracts lagged demand features, such as:
-- L1 Load: Electrical load one hour ago;
-- L24 Load: Load one day ago;
-- L168 Load: Load one week ago;
+    - L1 Load: Electrical load one hour ago;
+    - L24 Load: Load one day ago;
+    - L168 Load: Load one week ago;
 
-7. The system derives new features from the data to provide additional analytical depth, such as: 
-- Temperature Anomalies: Deviation from seasonal/monthly means;
-- Climatic Indicators: Heating Degree Days (HDD) or Cooling Degree Days (CDD);
-- Heatwave/Coldwave Flags: Binary indicators based on persistent extreme temperatures.
+7. The system derives new features from the data to provide additional analytical depth, such as:
+    - Temperature Anomalies: Deviation from seasonal/monthly means;
+    - Climatic Indicators: Heating Degree Days (HDD) or Cooling Degree Days (CDD);
+    - Heatwave/Coldwave Flags: Binary indicators based on persistent extreme temperatures.
 
-8. The system validates that the features obtained don´t include invalid values generated during the feature extraction process.
+8. The system validates that the features obtained don't include invalid values generated during the feature extraction process.
 
 9. The system measures and logs the execution time.
 
@@ -70,16 +70,18 @@ User goal.
 
 11. The system saves the full feature set as the primary dataset for the predictive model, ensuring the output format is compatible with the model training pipeline.
 
-### **Extensions**:
+**Extensions**:
+
 8. a) There are few invalid values:
     * 8a1. The system handles them by dropping or imputing the affected rows.
 
-    b)There are lots of invalid values:
+    b) There are lots of invalid values:
     * 8b1. The system logs a "Invalid value detected error" and the process terminates to avoid biased model traning.
 
     * 8b2. The previous steps have to be reviewed to find where the mistake happened.
 
-10. a) High dimensionality detected:
+10) a) High dimensionality detected:
+
     * 10a1. The system performs feature selection (e.g., Fisher Score, ReliefF) to identify the most predictive variables.
 
     * 10a2. The system performs dimensionality reduction (e.g., PCA) to compress information.
