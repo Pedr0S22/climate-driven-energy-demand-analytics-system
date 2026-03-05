@@ -1,4 +1,4 @@
-# UC6: User Registration - V1.0
+# UC6: User Registration - V1.1
 
 **Primary Actor:** User
 
@@ -10,7 +10,7 @@
 
 * **Unregistered User:** Needs a straightforward way to create an account to access model training, prediction, and evaluation functionalities.
 
-* **Security Administrator:** Needs assurance that the chosen password enforces a minimum length of eight characters and maximum of ten characters; is never stored in plaintext and is securely hashed using an appropriate cryptographic hash function before being saved.
+* **Security Administrator:** Needs assurance that the chosen password enforces a minimum length of eight characters and maximum of twenty characters; is never stored in plaintext and is securely hashed using an appropriate cryptographic hash function before being saved.
 
 **Preconditions:**
 
