@@ -23,11 +23,7 @@
 2. The system loads raw data from /data/raw/weather/ and /data/raw/energy/.
 3. The system converts timestamps to the UTC standard and checks for any timezone inconsistencies.
 4. The system handles missing values in the following variables: temperature, wind speed, solar radiation, electricity load, and precipitation.
-5. The system detects outliers using the IQR method for all variables except electricity load. For each detected value, the system verifies whether it is plausible according to the following limits:
-    - Temperature must be between -40°C and 55°C;
-    - Wind speed must be ≥ 0 and ≤ 250 km/h;
-    - Solar radiation cannot be negative during daytime;
-    - Precipitation must be ≥ 0 and ≤ 55 mm per 15 minutes.
+5. The system detects outliers using the IQR method for all variables except electricity load. For each detected value, the system verifies whether it is plausible according to the predefined limits.
 6. The system aggregates data every hour, averaging temperature, wind, radiation, and precipitation; for electrical charge, we use the maximum value for that interval.
 7. The system merges both datasets into a single dataset and saves the processed data in the /data/processed/ folder.
 
@@ -39,16 +35,13 @@
     1.  If there is 1 isolated missing value per hour:
         - The system applies linear interpolation between the previous and the next value.
     2. If there is more than 1 missing value within a 1-hour interval:
-        - emperature: average of the last 4 to 8 valid observations;
-        - Wind: average of the last 3 valid observations;
-        - Solar radiation: if it is during the night, the value remains as 0; if it is during the day, the average of the neighboring observations is used;
-        - Electrical charge: average of the last 8 observations;
-        - Precipitation: if surrounded by zeros, we replace it with 0; otherwise, the average of the 3 closest valid observations is used.
+        - The system estimates missing values using statistical methods based on nearby valid observations.
+        - For solar radiation, the system considers whether the timestamp corresponds to daytime or nighttime when estimating the value.
+        - For precipitation, the system evaluates surrounding observations to determine whether the value should remain zero or be estimated from nearby valid data.
 
 5. a) Outlier detected by IQR
     1. If the value is outside the limits:
-        - Temperature and wind: replaced by the average of the last 8 periods of 15 minutes;
-        - Solar radiation and precipitation: replaced by the average of the 2 closest valid observations;
+        - The system replaces the value using statistical estimates based on nearby valid observations, taking into account the characteristics of each variable;
     2. If the value is outside the IQR but within plausible limits:
         - The system retains the value, considering it a possible outlier.
     
