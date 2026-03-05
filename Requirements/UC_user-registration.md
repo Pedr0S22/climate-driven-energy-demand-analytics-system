@@ -1,8 +1,8 @@
-# UC6: User Registration - V1.1
+# UC6: User Registration - V1.2
 
 **Primary Actor:** User
 
-**Scope/Goal:** The user management module of the Climate-Driven Energy Demand Analytics System. The goal is to allow new users to register an account with a name, email and password so they can later authenticate and access the system's protected capabilities.
+**Scope/Goal:** The user management module of the Climate-Driven Energy Demand Analytics System. The goal is to allow new users to register an account with a username, email and password so they can later authenticate and access the system's protected capabilities.
 
 **Level:** User Goal
 
@@ -24,9 +24,9 @@
 
 1. The user accesses the registration section of the application.
 
-2. The system prompts the user to provide a desired name, email and a password.
+2. The system prompts the user to provide a desired username, email and a password.
 
-3. The user inputs a name, email and a password.
+3. The user inputs a username, email and a password.
 
 4. The system performs input validation to ensure the password meets the length requirements and to prevent trivial misuse.
 
@@ -34,9 +34,11 @@
 
 6. The system securely hashes the password using an appropriate cryptographic hash function.
 
-7. The system stores the new email and the hashed password in the database.
+7. The system stores the new email, username, and the hashed password in the database.
 
-8. The system informs the user of a successful registration and redirects them to the authentication/login flow.
+8. The system logs the successful account creation, recording the timestamp and the new user's email and username.
+
+9. The system informs the user of a successful registration and redirects them to the authentication/login flow.
 
 **Extensions:**
 
@@ -48,7 +50,7 @@
 
     * 4a3. The system informs the user of the password and email requirements and prompts them to try again.
 
-5. a) email already exists:
+5. a) Email already exists:
 
     * 5a1. The system determines the requested email is already registered in the database.
 
