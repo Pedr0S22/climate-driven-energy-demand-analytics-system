@@ -1,4 +1,4 @@
-# UC5: User Authentication - V1.2
+# UC5: User Authentication - V1.3
 
 
 **Primary Actor:** User or Admin
@@ -11,12 +11,13 @@
 
 * **Standard User:** Needs to seamlessly authenticate to execute models, generate predictions, and access evaluation results.
 * **Admin:** Needs to seamlessly authenticate to access all system features, including triggering model training.
+* **Security Administrator:** Needs assurance that all authentication attempts are reliably logged.
 
 **Preconditions:**
 
 1. The system (frontend + backend + database) is online and accessible.
 
-2. The user must have previously registered an account with a name, an email and a password.
+2. The user must have previously registered an account with a username, an email and a password.
 
 
 **Main Success Scenario:**
@@ -31,7 +32,9 @@
 
 5. The system queries the database to validate the user, hashing the provided password and comparing it against the stored cryptographic hash.
 
-6. The system grants the user access to the app's protected functionalities based on their role.
+6. The system logs the successful authentication attempt, recording the timestamp and the user's email and username.
+
+7. The system grants the user access to the app's protected functionalities based on their role.
 
 **Extensions:**
 
@@ -45,6 +48,8 @@
 
     * 4a1. The system catches the invalid input during validation.
 
+    * 4a2. The system logs the failed authentication attempt due to invalid input, recording the timestamp and the attempted email.
+
     * 4a3. The system denies access and prompts the user again for their credentials.
 
 5. a) Invalid login attempt (incorrect password or unrecognized email):
@@ -53,4 +58,6 @@
 
     * 5a2. The system gracefully rejects the request, ensuring no stack traces or internal implementation details are exposed to the user.
 
-    * 5a3. The system prompts the user again for their credentials.
+    * 5a3. The system logs the failed authentication attempt, recording the timestamp, the attempted email, and the username (if the email was found in the database).
+    
+    * 5a4. The system denies access and prompts the user again for their credentials.
