@@ -7,13 +7,13 @@ Data Scientist/Developer
 Transform the clean and sincronized data into relevant predictive features (temporal, lagging, rolling, and advanced) to feed the modeling component, from which:
 
 
-Mandatorty:
-- Temporal features: hour, day, season;
-- Al least one rolling climate feature;
-- At least onde lagged demand feature.
+**Mandatorty**:
+- **Temporal features**: hour, day, season;
+- Al least one **rolling climate feature**;
+- At least one **lagged demand feature**.
 
 
-Opcional:
+**Opcional**:
 - Derived features.
 
 ### **Level**:
@@ -21,11 +21,11 @@ User goal.
 
 ### **Stakeholders and Interests**:
 
-Data cientist: Expects to obtain relevant features that capture trends, seasonality, and complex climate-energy relationships to improve model performance.
+* **Data cientist**: Expects to obtain relevant features that capture trends, seasonality, and complex climate-energy relationships to improve model performance.
 
-Data Engineer: Expects an efficient, modular transformation process that is well-integrated into the system's pipeline.
+* **Data Engineer**: Expects an efficient, modular transformation process that is well-integrated into the system's pipeline.
 
-Validator: Aims to ensure that errors such as data leakage do not occur and that temporal integrity is maintained.
+* **Validator**: Aims to ensure that errors such as data leakage do not occur and that temporal integrity is maintained.
 
 ### **Preconditions**:
 1. The Data Cleaning and Alignment stage has been successfully completed.
