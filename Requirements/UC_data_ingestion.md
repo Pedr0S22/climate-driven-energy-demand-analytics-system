@@ -32,7 +32,7 @@ Land Hourly data from 1950 to present" dataset found at [https://cds.climate.cop
 * 2-meter air temperature (in Kelvin)
 * 2-meter dewpoint temperature (in Kelvin)
 * soil temperature level1 (in kelvin)
-* solar radiation (in J/m²)
+* Surface solar radiation downwards (in J/m²)
 * Surface latent heat flux (in J/m²)
 * Surface pressure (in Pa)
 * Total evaporation (m of water equivalent )
