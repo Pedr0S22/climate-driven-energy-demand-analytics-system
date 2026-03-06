@@ -1,4 +1,4 @@
-# UC-03: Modeling & Evaluation
+# UC: Modeling & Evaluation
 
 **Primary Actor:** Data Scientist with Admin privileges
 
