@@ -17,7 +17,7 @@
 
 ---
 
-### Main Success Scenario (Basic Flow)
+### Main Success Scenario 
 1.  The authenticated Administrator triggers the modeling and selection pipeline.
 2.  The system loads the available datasets in the `/data/processed/` directory, which contain the different dimensionality reduction variants.
 3.  The system applies a **TVT (Train-Validation-Test)** temporal splitting strategy:
@@ -40,10 +40,3 @@
 * **6a. Failure in statistical tests (e.g., insufficient variance):**
     * 6a1. The system uses the $R^{2}$ metric as a tie-breaker and notifies the Administrator in the report.
 
----
-
-### Acceptance Criteria
-* **Security:** Access to the training and model selection function is restricted to Administrators.
-* **Integrity:** The data split strictly respects chronology (**no random shuffling**).
-* **Performance:** Training execution time must be measured, and the final prediction response must be **< 1s**.
-* **Quality:** MAE, RMSE, and $R^{2}$ metrics must be reported, and a **residual analysis** must be performed.
