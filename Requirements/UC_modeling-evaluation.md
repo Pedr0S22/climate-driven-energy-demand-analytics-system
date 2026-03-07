@@ -17,17 +17,17 @@
 
 ---
 
-### Main Success Scenario 
-1.  The authenticated Administrator triggers the modeling and selection pipeline.
-2.  The system loads the available datasets in the `/data/processed/` directory, which contain the different dimensionality reduction variants.
-3.  The system applies a **TVT (Train-Validation-Test)** temporal splitting strategy:
-    * **Train (5 years) and Validation (1 year):** Used for model adjustment and selection through temporal K-fold Cross-Validation (in blocks such as seasonal, semi-annual, or annual).
-    * **Test (1 year):** Final isolated block for real-world performance evaluation.
-4.  For each reduced dataset, the system executes the training for **Linear Regression** and **Random Forest**.
-5.  The system calculates the mandatory metrics: **MAE**, **RMSE**, and **$R^{2}$**.
-6.  The system applies statistical tests to validate if the error differences between models and reductions are significant.
-7.  The system automatically selects the best model and validates it against the final test block.
-8.  The system persists the winning model and records a detailed log.
+## Main Success Scenario
+1.  The authenticated Administrator triggers the modeling pipeline.
+2.  The system loads the processed electricity load and climate data from the `/data/processed/` directory.
+3.  The system applies a **temporal train/test split** to maintain the chronological order of the data; 
+4.  For both **Daily** and **Hourly** resolutions, the system executes the training for:
+    * **Linear Regression** 
+    * **Random Forest** 
+5.  The system calculates mandatory performance metrics ($MAE$, $RMSE$, and $R^{2}$) for each model at each resolution. **Additional metrics may be computed as needed for further diagnostic purposes.**
+6.  The system performs **residual analysis** to identify potential overfitting.
+7.  The system automatically selects the best-performing models (one for daily and one for hourly) based on the validation metrics.
+8.  The system persists the winning models and logs the training event, including the username and a timestamp.
 
 ---
 
