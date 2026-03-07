@@ -34,8 +34,8 @@
 5.  **Future Projection:** The system generates hourly predictions for the next $X$ consecutive hours.
 
 
-7.  The system logs the action, including the username, timestamp, and input parameters.
-8.  The result is delivered to the user in under 1 second.
+6.  The system logs the action, including the username, timestamp, and input parameters.
+7.  The result is delivered to the user in under 1 second.
 
 ---
 
@@ -43,7 +43,7 @@
 * **1a. Unauthenticated User:**
     * 1a1. The system denies access to the prediction interface.
     * 1a2. The system logs the unauthorized attempt.
-* **2a. Missing Meteorological Data:**
+* **2a. Missing Data:**
     * 2a1. The system identifies the missing input and notifies the user that the prediction cannot be generated.
     * 2a2. The system terminates the process gracefully without exposing internal implementation details.
 * **3a. Input Validation Failure:**

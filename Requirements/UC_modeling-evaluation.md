@@ -13,7 +13,7 @@
 ### Preconditions
 1.  **Authentication:** The Administrator is authenticated in the system.
 2.  **Feature Engineering Success:** Datasets with different reduction techniques are available in the `/data/processed/` directory.
-3.  **Data History:** Availability of a 7-year data history to allow for the 5-1-1 split.
+3.  **Data History:** Availability of a x-year data history to allow for the x-x-x split.
 
 ---
 
@@ -37,6 +37,6 @@
 * **2a. Inconsistency in data within `/data/processed/`:**
     * 2a1. The system detects a failure in the presence of mandatory columns.
     * 2a2. The system terminates the process gracefully, reporting the error in the log.
-* **6a. Failure in statistical tests (e.g., insufficient variance):**
-    * 6a1. The system uses the $R^{2}$ metric as a tie-breaker and notifies the Administrator in the report.
+* **7a. Failure in statistical tests (e.g., insufficient variance):**
+    * 7a1. The system uses the $R^{2}$ metric as a tie-breaker and notifies the Administrator in the report.
 
