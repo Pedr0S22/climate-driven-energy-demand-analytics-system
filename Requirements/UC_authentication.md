@@ -1,4 +1,4 @@
-# UC7: User Authentication - V1.3
+# UC7: User Authentication - V1.4
 
 
 **Primary Actor:** User or Admin
@@ -58,6 +58,6 @@
 
     * 5a2. The system gracefully rejects the request, ensuring no stack traces or internal implementation details are exposed to the user.
 
-    * 5a3. The system logs the failed authentication attempt, recording the timestamp, the attempted email, and the username (if the email was found in the database).
+    * 5a3. The system logs the failed authentication attempt, recording the timestamp, the attempted email, and the username (considering the email was found in the database).
     
     * 5a4. The system denies access and prompts the user again for their credentials.
