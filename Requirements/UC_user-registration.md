@@ -8,7 +8,7 @@
 
 **Stakeholders and Interests:**
 
-* **Unregistered User:** Needs a straightforward way to create an account to access model training, prediction, and evaluation functionalities.
+* **Unregistered User:** Needs a straightforward way to create an account to access prediction (user accounts).
 
 * **Security Administrator:** Needs assurance that the chosen password enforces a minimum length of eight characters and maximum of twenty characters; is never stored in plaintext and is securely hashed using an appropriate cryptographic hash function before being saved.
 
