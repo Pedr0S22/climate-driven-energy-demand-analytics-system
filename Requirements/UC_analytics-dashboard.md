@@ -1,8 +1,8 @@
-# UC: analytics dashboard - V1.1
+# UC8: analytics dashboard - V1.2
 **Primary Actor**:
 Developer
 
-**Scope/Goal**: The goal is to present a dashboard to an authorized user, consolidating results from multiple background processes (e.g: prediction) into a single location to facilitate data queries and the visualization of key interests.
+**Scope/Goal**: The goal is to present a dashboard to an admin user, consolidating results from multiple background processes (e.g: prediction) into a single location to facilitate data queries and the visualization of key interests.
 
 **Level**:
 User Goal
@@ -10,7 +10,7 @@ User Goal
 **Stakeholders and Interests**:
 **Data cientist/engineer**: Wants to quickly consult information through a simple and intuitive interface, without running manual scripts.
 
-**Security administrator**: Needs to ensure that only users who passed the authentication (UC5) can view the data.
+**Security administrator**: Needs to ensure that only users who passed the authentication (UC7) can view the data.
 
 **Developer**: Wants to ensure that the complex logic of the backend is presented clearly and correctly to the end-user.
 
