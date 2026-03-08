@@ -1,4 +1,4 @@
-# UC8: analytics dashboard - V1.2
+# UC8: analytics dashboard - V1.3
 **Primary Actor**:
 Developer
 
@@ -50,8 +50,8 @@ Extensions:
     
     * 2b1. The system informs the user that the pipeline needs to be executed before results can be shown.
 
-    * 2b2. The system may provide a button to trigger the data update process if the user has the required permissions.
+    * 2b2. The system may provide a button to trigger the data update process considering the user has the required permissions.
 
 3.  a) Incompatibility with current data:
 
-    * 3a1. If the last query used a date range that isn´t available in the memory or cache, the system notifies the user and suggests the nearest available period.
+    * 3a1. The last query used a date range that isn´t available in the memory or cache: the system notifies the user and suggests the nearest available period.
