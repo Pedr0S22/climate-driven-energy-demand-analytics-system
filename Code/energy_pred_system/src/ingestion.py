@@ -81,7 +81,7 @@ def fetch_entsoe_data(year: str, country_code: str = 'ES'):
     env_path = os.path.join(SCRIPT_DIR, ".env")
     load_dotenv(env_path)
     api_key = os.getenv("ENTSOE_API_KEY")
-    
+
     if not api_key:
         print(f"    [Error] ENTSOE_API_KEY not found! Looked in: {env_path}")
         return
