@@ -9,14 +9,16 @@ from entsoe import EntsoePandasClient
 
 def fetch_copernicus_data(year: str):
     print(f"Fetching Copernicus ERA5-Land data for {year}...")
-    raw_weather_dir = os.path.join("data", "raw", "weather")
+    SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
+    PROJECT_ROOT = os.path.abspath(os.path.join(SCRIPT_DIR, ".."))
+    raw_weather_dir = os.path.join(PROJECT_ROOT, "data", "raw", "weather", year)
     os.makedirs(raw_weather_dir, exist_ok=True)
     dataset = "reanalysis-era5-land"
     client = cdsapi.Client()
 
     variables = [
         "2m_dewpoint_temperature",
-        "2m_temperature"
+        "2m_temperature",
         "soil_temperature_level_1",
         "lake_total_layer_temperature",
         "surface_net_solar_radiation",
@@ -66,27 +68,23 @@ def fetch_copernicus_data(year: str):
 
 def fetch_entsoe_data(year: str, country_code: str = 'ES'):
     print(f"\nFetching ENTSO-E load data for {country_code} in {year}...")
-    
     SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
-    PROJECT_ROOT = os.path.abspath(os.path.join(SCRIPT_DIR, "..", ".."))
+    PROJECT_ROOT = os.path.abspath(os.path.join(SCRIPT_DIR, ".."))
     raw_energy_dir = os.path.join(PROJECT_ROOT, "data", "raw", "energy")
     os.makedirs(raw_energy_dir, exist_ok=True)
-    
     output_path = os.path.join(raw_energy_dir, f"entsoe_{country_code}_load_{year}.csv")
     
-    # Skip if already downloaded
     if os.path.exists(output_path):
         print(f"    [Skipping] File already exists: {output_path}")
         return
 
-    # load API Key from .env
-    load_dotenv(os.path.join(PROJECT_ROOT, ".env"))
+    env_path = os.path.join(SCRIPT_DIR, ".env")
+    load_dotenv(env_path)
     api_key = os.getenv("ENTSOE_API_KEY")
     
     if not api_key:
-        print("    [Error] ENTSOE_API_KEY not found in .env file! Please add it.")
+        print(f"    [Error] ENTSOE_API_KEY not found! Looked in: {env_path}")
         return
-
     try:
         client = EntsoePandasClient(api_key=api_key)
         start = pd.Timestamp(f"{year}-01-01", tz='Europe/Madrid')
@@ -102,4 +100,4 @@ def fetch_entsoe_data(year: str, country_code: str = 'ES'):
 if __name__ == "__main__":
     targetyear = "2024"
     fetch_entsoe_data(targetyear , country_code='ES')
-    fetch_copernicus_data(targetyear)
+    #fetch_copernicus_data(targetyear)
