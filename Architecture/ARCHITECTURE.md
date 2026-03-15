@@ -1,4 +1,4 @@
-# Architecture: Climate-Driven Energy Demand Analytics System | V1.3
+# Architecture: Climate-Driven Energy Demand Analytics System | V1.4
 
 
 This document outlines the high-level system architecture, data flow, security boundaries, and quality attributes of the Climate-Driven Energy Demand Analytics System project.
@@ -9,13 +9,51 @@ The following diagram illustrates the modular components of the system and their
 
 ```mermaid
 flowchart TD
+    %% Client-Server / Layered Architecture
+
+    subgraph UserLayer[User Layer]
+        direction RL
+        User[User or Admin]
+    end
+
+    subgraph InterfaceLayer[Interface Layer]
+        direction RL
+        InterfaceService[Interface Service]
+    end
+    
+    subgraph BackendLayer [Backend Services Layer]
+        direction RL
+        PredictionService[Prediction Service]
+        AuthService[Authentication Service]
+    end
+    
+    %% Database
+    subgraph DatabaseLayer [Databases]
+        direction RL
+        PredDB[(Prediction DB)]
+        ModelDB[(Model Params & Specs DB)]
+        UserDB[(User DB)]
+    end
+
+    %% Connections
+    UserLayer --> InterfaceLayer
+    InterfaceLayer -- API Calls --> BackendLayer
+    BackendLayer -- HTTP Response --> InterfaceLayer
+    
+    %% Backend to Database Connections
+    PredictionService -->|Saves/Reads| PredDB
+    AuthService <-->|Register/validation| UserDB
+    ModelDB -->|Loads Model| PredictionService
+    PredictionService -->|ADMIN Model Choice| ModelDB
+    
+    %% Data Science Pipe-Filter Architecture
+
     %% External Sources
     subgraph External Sources
         ENTSOE[ENTSO-E API <br> Electricity Demand]
         ERA5[Copernicus ERA5 API <br> Climate Data]
     end
-
-    %% Data Ingestion & Storage
+    
     subgraph Data Pipeline
         Ingestion[Data Ingestion Layer]
         RawEnergy[(Raw Energy Data <br> /data/raw/energy/)]
@@ -24,22 +62,10 @@ flowchart TD
         ProcStorage[(Processed Storage <br> /data/processed/)]
         FeatEng[Feature Engineering Module]
         FeatStorage[(Feat. Engineering Storage <br> /data/feat-engineering/)]
-    end
-
-    %% Machine Learning Core
-    subgraph Modeling Component
         Trainer[Training Module]
-        Models[(Trained Models)]
     end
-
-    %% User Interaction & Security
-    subgraph Application Interface
-        UI[Prediction Interface]
-        Auth[Authentication Layer]
-        UserDB[(User Database <br> Credentials & Logs)]
-    end
-
-    %% Connections
+    
+    %% Connection from Data Science Pipeline to App
     ENTSOE --> Ingestion
     ERA5 --> Ingestion
     Ingestion --> RawEnergy
@@ -50,14 +76,7 @@ flowchart TD
     ProcStorage --> FeatEng
     FeatEng --> FeatStorage
     FeatStorage --> Trainer
-    Trainer --> Models
-
-    UI -- Login Request --> Auth
-    Auth -- Validate & Log --> UserDB
-    Auth -- Grants Access --> UI
-    
-    UI -- Requests Prediction --> Models
-    Models -- Returns < 1s --> UI
+    Trainer --> ModelDB
 ```
 
 ## 2. Architectural Design Patterns
@@ -66,13 +85,15 @@ The system is designed around two primary architectural patterns to ensure modul
 
 **Pipe-filter Architecture:** The machine learning backend relies on a linear data flow pipeline. Data moves sequentially from ingestion, to cleaning, to feature engineering, and finally to modeling. This ensures reproducibility and strict separation between raw and processed data states.
 
-**Client-Server Architecture:** The application interface relies on a client-server approach where a frontend UI communicates with a backend REST API. An Authentication Layer sits between the client requests and the core application logic, acting as a strict gateway.
+**Layer Architecture:** The live application is sliced into four isolated tiers: User, Interface, Backend Services, and Databases. A layer can only talk to the one right next to it. For example, the Interface cannot bypass the Backend to grab data directly from the Database. This forces all traffic to go through the Authentication Service , keeping the system secure.
+
+**Client-Server Architecture:** The frontend UI communicates with the backend server using standard API calls. The client asks for something - like a prediction - and the server does the heavy lifting. Then the server sends the results back via an HTTP response. For each request, the user is logged through a bearer token.
 
 ## 3. Data Flow
 
 The data pipeline is designed to be fully reproducible and executable via code, avoiding any manual steps. The workflow consists of the following stages:
 
-* **Data Ingestion:** The system pulls electricity load data from the ENTSO-E Transparency Platform and meteorological variables from the Copernicus Climate Data Store .
+* **Data Ingestion:** The system pulls electricity load data from the ENTSO-E Transparency Platform and meteorological variables from the Copernicus Climate Data Store.
 
 
 * **Raw Storage:** This ingested data is saved directly, without manual modification, into `/data/raw/energy/` and `/data/raw/weather/`.
