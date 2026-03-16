@@ -3,12 +3,10 @@ import sys  #to be able to read the command line arguments
 #each operation must be provided using an external file from a distinct subgroup originating from their branch.
 from our_add import our_add
 
-#from our_sub import our_subtract
-#from our_mul import our_multiply
+from our_sub import our_sub
+from our_mult import our_mult
 #from our_div import our_divide
-#from our_rem import div-remainder # integer remainder of division
-#from our_pow import our_power # n to the power of m
-#if needed (because there may be more than five subgroups), create more operations
+from our_mod import our_mod
 
 def main():
     # Check number of  command line arguments
@@ -29,18 +27,19 @@ def main():
 
         if operation == '+':
             print(f"{num1} + {num2} = {our_add(num1, num2)}")
+            
+        elif operation == '-':
+            print(f"{num1} - {num2} = {our_sub(num1, num2)}")
 
-            #add more operations as they are integrated into the main branch
-            '''
-                elif operation == '-':
-                    print(f"{num1} - {num2} = {our_subtract(num1, num2)}")
-                elif operation == '*':
-                    print(f"{num1} * {num2} = {our_multiply(num1, num2)}")
-                elif operation == '/':
-                    print(f"{num1} / {num2} = {our_divide(num1, num2)}")
+        elif operation == '*':
+            print(f"{num1} * {num2} = {our_mult(num1, num2)}")
 
-                # add more operations, as they are merged into the main trunk
-            '''
+        #elif operation == '/':
+        #    print(f"{num1} / {num2} = {our_divide(num1, num2)}")
+
+        elif operation == '|':
+            print(f"{num1} and {num2} with | operation = {our_mod(num1)}, {our_mod(num2)}")
+
         else:
             print(f"Invalid operation: {operation}")
 
