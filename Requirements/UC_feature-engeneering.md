@@ -1,4 +1,4 @@
-# UC3: Feature Engeneering - V1.4
+# UC3: Feature Engeneering - V1.5
 
 **Primary actor**:
 Data Scientist/Developer
@@ -72,13 +72,13 @@ User goal.
 
 **Extensions**:
 
-8. a) There are few invalid values:
-    * 8a1. The system handles them by dropping or imputing the affected rows.
+8. a) Minor domain inconsistencies detected (e.g., a few records with values that do not align with physical constraints):
+    * 8a1. The system handles them by dropping or imputing the affected rows to maintain dataset quality.
 
-    b) There are lots of invalid values:
-    * 8b1. The system logs a "Invalid value detected error" and the process terminates to avoid biased model traning.
+    b) Critical domain-context errors detected (e.g., widespread anomalies where feature values are physically implausible):
+    * 8b1. The system logs a domain consistency error and the process terminates to prevent training a model on nonsensical data.
 
-    * 8b2. The previous steps have to be reviewed to find where the mistake happened.
+    * 8b2. The developer must review the previous extraction logic or source data to identify the source of the contextual mistake.
 
 10) a) High dimensionality detected:
 
