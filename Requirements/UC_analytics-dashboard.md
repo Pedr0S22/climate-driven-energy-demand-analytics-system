@@ -1,4 +1,4 @@
-# UC8: analytics dashboard - V1.3
+# UC8: analytics dashboard - V1.4
 **Primary Actor**:
 Developer
 
@@ -27,8 +27,6 @@ User Goal
     - Climate-Energy correlations and relevant features: Visualizations of how weather variables impacted past demand.
 
     - Forecast summaries: Expected energy peaks and trends for the upcoming period.
-
-    - Pipeline status: Information on the last successful data ingestion and model training.
 
     - Last query/request history: a dedicated visualization/section showing the parameters (date range,variables) of the most recent query performed by the user.
 
