@@ -1,4 +1,4 @@
-# UC5: Prediction Generation
+# UC9: Prediction Generation
 
 **Primary Actor:** Authenticated User
 
@@ -12,30 +12,18 @@
 
 ### Preconditions
 1.  **Authentication:** The user must be successfully authenticated in the system.
-2.  **Model Availability:** Two distinct sets of models must be trained and persisted: one optimized for **daily** evaluation and another for **hourly** evaluation.
+2.  **Model Availability:** Two distinct sets of models must be trained and persisted: one optimized for **hourly** evaluation.
 3.  **Data Infrastructure:** The `/data/processed/` directory must contain the necessary climate and energy features to support lag and rolling calculations.
 
 ---
 
 ### Main Success Scenario
 
-#### Scenario A: Daily Prediction
-1.  The authenticated user provides a specific date (e.g., `YYYY-MM-DD`).
-2.  The system validates the input and retrieves the corresponding meteorological features.
-3.  The system utilizes the **daily-optimized model** to calculate the demand.
-4.  **Visualization:** The system displays a visual indicator with the specific daily prediction.
-5.  **Future Projection:** The system automatically generates a forecast for the next $X$ days.
-
-#### Scenario B: Hourly and Daily Prediction
 1.  The authenticated user provides a specific date and hour (e.g., `YYYY-MM-DD HH:00`).
 2.  The system validates the input format.
 3.  The system utilizes the **hourly-optimized model** to generate a point prediction in Megawatts (MW).
-4.  **Visualization:** The system displays a visual indicator with the specific hourly prediction.
-5.  **Future Projection:** The system generates hourly predictions for the next $X$ consecutive hours.
-
-
-6.  The system logs the action, including the username, timestamp, and input parameters.
-7.  The result is delivered to the user in under 1 second.
+4.  The system logs the action, including the username, timestamp, and input parameters.
+5.  The result is delivered to the user in under 1 second.
 
 ---
 
