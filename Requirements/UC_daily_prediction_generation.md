@@ -1,4 +1,4 @@
-# UC5: Prediction Generation
+# UC5: Daily Prediction Generation
 
 **Primary Actor:** Authenticated User
 
