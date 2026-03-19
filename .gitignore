@@ -215,6 +215,9 @@ __marimo__/
 # Streamlit
 .streamlit/secrets.toml
 
-#Data
+# Data
 Code/energy_pred_system/data/raw/weather/**/*.nc
 Code/energy_pred_system/data/raw/energy/**/*.csv
+
+# Management Data
+Management/milestone-progress/data-gitlab/**/*.csv
