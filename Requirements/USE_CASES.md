@@ -1,4 +1,4 @@
-# USE CASE DEFINITIONS - V1.3
+# USE CASE DEFINITIONS - V1.4
 
 This file contains all UCs for the development of this project.
 
@@ -400,15 +400,7 @@ User goal.
 
 
 
-
-
-
-
-
-
-
-
-# UC5: Prediction Generation
+## UC7: Daily Prediction Generation
 
 **Primary Actor:** Authenticated User
 
@@ -416,37 +408,25 @@ User goal.
 
 **Level:** User Goal Level (Sea Level)
 
-**Stakeholders and Interests:**
-
+**Stakeholders and Interests**
 * **User:** Seeks fast, accurate predictions to plan consumption or analyze trends.
 * **System Administrator:** Ensures only registered and authenticated users access prediction functionality.
 
-**Preconditions:**
+**Preconditions**
 1.  **Authentication:** The user must be successfully authenticated in the system.
-2.  **Model Availability:** Two distinct sets of models must be trained and persisted: one optimized for **daily** evaluation and another for **hourly** evaluation.
+2.  **Model Availability:** Two distinct sets of models must be trained and persisted: one optimized for **daily** evaluation.
 3.  **Data Infrastructure:** The `/data/processed/` directory must contain the necessary climate and energy features to support lag and rolling calculations.
 
-**Main Success Scenario:**
 
-#### Scenario A: Daily Prediction
+**Main Success Scenario**
+
 1.  The authenticated user provides a specific date (e.g., `YYYY-MM-DD`).
 2.  The system validates the input and retrieves the corresponding meteorological features.
 3.  The system utilizes the **daily-optimized model** to calculate the demand.
-4.  **Visualization:** The system displays a visual indicator with the specific daily prediction.
-5.  **Future Projection:** The system automatically generates a forecast for the next $X$ days.
+4.  The system logs the action, including the username, timestamp, and input parameters.
+5.  The result is delivered to the user in under 1 second.
 
-#### Scenario B: Hourly and Daily Prediction
-1.  The authenticated user provides a specific date and hour (e.g., `YYYY-MM-DD HH:00`).
-2.  The system validates the input format.
-3.  The system utilizes the **hourly-optimized model** to generate a point prediction in Megawatts (MW).
-4.  **Visualization:** The system displays a visual indicator with the specific hourly prediction.
-5.  **Future Projection:** The system generates hourly predictions for the next $X$ consecutive hours.
-
-
-6.  The system logs the action, including the username, timestamp, and input parameters.
-7.  The result is delivered to the user in under 1 second.
-
-**Extensions:**
+**Extensions**
 
 * **1a. Unauthenticated User:**
     * 1a1. The system denies access to the prediction interface.
@@ -460,70 +440,39 @@ User goal.
 
 
 
+## UC8: Hourly Prediction Generation
 
+**Primary Actor:** Authenticated User
 
+**Scope/Goal:** Allow the user to obtain electricity demand predictions (in MW) for a specific period (day or hour) using trained models, accompanied by graphical visualizations and future projections.
 
+**Level:** User Goal Level (Sea Level)
 
+**Stakeholders and Interests**
+* **User:** Seeks fast, accurate predictions to plan consumption or analyze trends.
+* **System Administrator:** Ensures only registered and authenticated users access prediction functionality.
 
+**Preconditions**
+1.  **Authentication:** The user must be successfully authenticated in the system.
+2.  **Model Availability:** Two distinct sets of models must be trained and persisted: one optimized for **hourly** evaluation.
+3.  **Data Infrastructure:** The `/data/processed/` directory must contain the necessary climate and energy features to support lag and rolling calculations.
 
+**Main Success Scenario**
 
+1.  The authenticated user provides a specific date and hour (e.g., `YYYY-MM-DD HH:00`).
+2.  The system validates the input format.
+3.  The system utilizes the **hourly-optimized model** to generate a point prediction in Megawatts (MW).
+4.  The system logs the action, including the username, timestamp, and input parameters.
+5.  The result is delivered to the user in under 1 second.
 
-# UC8: Analytics Dashboard
+**Extensions**
 
-**Primary Actor**:
-Developer
-
-**Scope/Goal**: The goal is to present a dashboard to an admin user, consolidating results from multiple background processes (e.g: prediction) into a single location to facilitate data queries and the visualization of key interests.
-
-**Level**:
-User Goal
-
-**Stakeholders and Interests**:
-
-* **Data cientist/engineer**: Wants to quickly consult information through a simple and intuitive interface, without running manual scripts.
-
-* **Security administrator**: Needs to ensure that only users who passed the authentication (UC7) can view the data.
-
-* **Developer**: Wants to ensure that the complex logic of the backend is presented clearly and correctly to the end-user.
-
-**Preconditions**:
-1. The user has successfully logged into the system.
-
-2. The entire data pipeline, from automated ingestion and cleaning to the predictive model execution, is fully functional.
-
-**Main Success Scenario**:
-1. The use case starts when the authorized user accesses the Dashboard section.
-
-2. The system presents a unified view containing information about the data and system status, such as:
-
-    - Climate-Energy correlations and relevant features: Visualizations of how weather variables impacted past demand.
-
-    - Forecast summaries: Expected energy peaks and trends for the upcoming period.
-
-    - Pipeline status: Information on the last successful data ingestion and model training.
-
-    - Last query/request history: a dedicated visualization/section showing the parameters (date range,variables) of the most recent query performed by the user.
-
-3. The system provides filtering and query tools, allowing the user to isolate specific dates or climate conditions.
-
-4. The user reviews the integrated information to gain insights into the energy-climate relationship.
-
-5. The system logs the execution time for the operation chosen by the user.
-
-**Extensions:**
-
-2.  a) No previous query history found:
-
-    * 2a1. The system displays a "no history found" message. 
-
-    * 2a2. The system suggests a default visualization (e.g., the last 24 hours).
-
-    b) No data available to display:
-    
-    * 2b1. The system informs the user that the pipeline needs to be executed before results can be shown.
-
-    * 2b2. The system may provide a button to trigger the data update process considering the user has the required permissions.
-
-3.  a) Incompatibility with current data:
-
-    * 3a1. The last query used a date range that isn´t available in the memory or cache: the system notifies the user and suggests the nearest available period.
+* **1a. Unauthenticated User:**
+    * 1a1. The system denies access to the prediction interface.
+    * 1a2. The system logs the unauthorized attempt.
+* **2a. Missing Data:**
+    * 2a1. The system identifies the missing input and notifies the user that the prediction cannot be generated.
+    * 2a2. The system terminates the process gracefully without exposing internal implementation details.
+* **3a. Input Validation Failure:**
+    * 3a1. The system detects an incorrect date format or invalid characters.
+    * 3a2. The system returns a clear error message and prompts for corrected input.
