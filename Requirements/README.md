@@ -4,9 +4,24 @@ In this readme you can find all information related to the project requirements,
 
 # Use Cases
 
-Below there is a short presentation on what are the UCs, their numeration and how their packed.
+Below there is a short presentation on what are the UCs, their numeration and how their related:
 
-TODO
+### Data Pipeline
+- UC1 - Data Ingestion from exterior sources
+- UC2 - Data cleaning, tranformation and alignment
+- UC3 - Feature Engineering
+- UC4 - Modeling and Evalutation
+
+### Application
+- UC5 - User registration
+- UC6 - User authentication
+- UC7 - Daily prediction generation
+- UC8 - Hourly prediction generation
+
+    ### Dashboards
+    - UC9 - Admin dashboard
+    - UC10 - Daily dashboard prediction
+    - UC11 - Hourly dashboard prediction
 
 # Quality Attribure
 
