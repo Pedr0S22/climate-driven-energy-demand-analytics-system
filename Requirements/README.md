@@ -19,9 +19,9 @@ Below there is a short presentation on what are the UCs, their numeration and ho
 - UC8 - Hourly prediction generation
 
     ### Dashboards
-    - UC9 - Admin dashboard
-    - UC10 - Daily dashboard prediction
-    - UC11 - Hourly dashboard prediction
+    - UC9 - Admin analytics dashboard
+    - UC10 - Daily prediction dashboard
+    - UC11 - Hourly prediction dashboard
 
 # Quality Attribure
 
