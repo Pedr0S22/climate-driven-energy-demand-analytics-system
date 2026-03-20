@@ -1,8 +1,10 @@
-# USE CASE DEFINITIONS - V1.2
+# USE CASE DEFINITIONS - V1.3
 
 This file contains all UCs for the development of this project.
 
-# UC1: Data Ingestion
+# DATA PIPELINE UCS
+
+## UC1: Data Ingestion
 
 **Primary Actor:** Data Scientist / Developer
 
@@ -85,7 +87,7 @@ Land Hourly data from 1950 to present" dataset found at [https://cds.climate.cop
 
     * 4b4. The system logs the anomaly and terminates cleanly.
 
-# UC2: Data Cleaning and Alignment
+## UC2: Data Cleaning and Alignment
 
 **Primary Actor:** Developer
 
@@ -136,7 +138,7 @@ Land Hourly data from 1950 to present" dataset found at [https://cds.climate.cop
     * There exists timestamps that do not exactly match xx:00, xx:15, xx:30, or xx:45:
         - The system adjusts them to the nearest 15-minute interval before time aggregation.
     
-# UC3: Feature Engeneering
+## UC3: Feature Engeneering
 
 **Primary actor**:
 Data Scientist/Developer
@@ -232,7 +234,7 @@ User goal.
 
 
 
-# UC4: Modeling & Evaluation
+## UC4: Modeling & Evaluation
 
 **Primary Actor:** Data Scientist with Admin privileges
 
@@ -268,60 +270,10 @@ User goal.
     * 6a1. The system uses the $R^{2}$ metric as a tie-breaker and notifies the Administrator in the report.
 
 
+# APPLICATION UCS
 
 
-# UC5: Prediction Generation
-
-**Primary Actor:** Authenticated User
-
-**Scope/Goal:** Allow the user to obtain electricity demand predictions (in MW) for a specific period (day or hour) using trained models, accompanied by graphical visualizations and future projections.
-
-**Level:** User Goal Level (Sea Level)
-
-**Stakeholders and Interests:**
-
-* **User:** Seeks fast, accurate predictions to plan consumption or analyze trends.
-* **System Administrator:** Ensures only registered and authenticated users access prediction functionality.
-
-**Preconditions:**
-1.  **Authentication:** The user must be successfully authenticated in the system.
-2.  **Model Availability:** Two distinct sets of models must be trained and persisted: one optimized for **daily** evaluation and another for **hourly** evaluation.
-3.  **Data Infrastructure:** The `/data/processed/` directory must contain the necessary climate and energy features to support lag and rolling calculations.
-
-**Main Success Scenario:**
-
-#### Scenario A: Daily Prediction
-1.  The authenticated user provides a specific date (e.g., `YYYY-MM-DD`).
-2.  The system validates the input and retrieves the corresponding meteorological features.
-3.  The system utilizes the **daily-optimized model** to calculate the demand.
-4.  **Visualization:** The system displays a visual indicator with the specific daily prediction.
-5.  **Future Projection:** The system automatically generates a forecast for the next $X$ days.
-
-#### Scenario B: Hourly and Daily Prediction
-1.  The authenticated user provides a specific date and hour (e.g., `YYYY-MM-DD HH:00`).
-2.  The system validates the input format.
-3.  The system utilizes the **hourly-optimized model** to generate a point prediction in Megawatts (MW).
-4.  **Visualization:** The system displays a visual indicator with the specific hourly prediction.
-5.  **Future Projection:** The system generates hourly predictions for the next $X$ consecutive hours.
-
-
-6.  The system logs the action, including the username, timestamp, and input parameters.
-7.  The result is delivered to the user in under 1 second.
-
-**Extensions:**
-
-* **1a. Unauthenticated User:**
-    * 1a1. The system denies access to the prediction interface.
-    * 1a2. The system logs the unauthorized attempt.
-* **2a. Missing Data:**
-    * 2a1. The system identifies the missing input and notifies the user that the prediction cannot be generated.
-    * 2a2. The system terminates the process gracefully without exposing internal implementation details.
-* **3a. Input Validation Failure:**
-    * 3a1. The system detects an incorrect date format or invalid characters.
-    * 3a2. The system returns a clear error message and prompts for corrected input.
-
-
-# UC6: User Registration
+## UC5: User Registration
 
 **Primary Actor:** User
 
@@ -383,7 +335,7 @@ User goal.
 
 
 
-# UC7: User Authentication
+## UC6: User Authentication
 
 **Primary Actor:** User or Admin
 
@@ -445,6 +397,74 @@ User goal.
     * 5a3. The system logs the failed authentication attempt, recording the timestamp, the attempted email, and the username (considering the email was found in the database).
     
     * 5a4. The system denies access and prompts the user again for their credentials.
+
+
+
+
+
+
+
+
+
+
+
+# UC5: Prediction Generation
+
+**Primary Actor:** Authenticated User
+
+**Scope/Goal:** Allow the user to obtain electricity demand predictions (in MW) for a specific period (day or hour) using trained models, accompanied by graphical visualizations and future projections.
+
+**Level:** User Goal Level (Sea Level)
+
+**Stakeholders and Interests:**
+
+* **User:** Seeks fast, accurate predictions to plan consumption or analyze trends.
+* **System Administrator:** Ensures only registered and authenticated users access prediction functionality.
+
+**Preconditions:**
+1.  **Authentication:** The user must be successfully authenticated in the system.
+2.  **Model Availability:** Two distinct sets of models must be trained and persisted: one optimized for **daily** evaluation and another for **hourly** evaluation.
+3.  **Data Infrastructure:** The `/data/processed/` directory must contain the necessary climate and energy features to support lag and rolling calculations.
+
+**Main Success Scenario:**
+
+#### Scenario A: Daily Prediction
+1.  The authenticated user provides a specific date (e.g., `YYYY-MM-DD`).
+2.  The system validates the input and retrieves the corresponding meteorological features.
+3.  The system utilizes the **daily-optimized model** to calculate the demand.
+4.  **Visualization:** The system displays a visual indicator with the specific daily prediction.
+5.  **Future Projection:** The system automatically generates a forecast for the next $X$ days.
+
+#### Scenario B: Hourly and Daily Prediction
+1.  The authenticated user provides a specific date and hour (e.g., `YYYY-MM-DD HH:00`).
+2.  The system validates the input format.
+3.  The system utilizes the **hourly-optimized model** to generate a point prediction in Megawatts (MW).
+4.  **Visualization:** The system displays a visual indicator with the specific hourly prediction.
+5.  **Future Projection:** The system generates hourly predictions for the next $X$ consecutive hours.
+
+
+6.  The system logs the action, including the username, timestamp, and input parameters.
+7.  The result is delivered to the user in under 1 second.
+
+**Extensions:**
+
+* **1a. Unauthenticated User:**
+    * 1a1. The system denies access to the prediction interface.
+    * 1a2. The system logs the unauthorized attempt.
+* **2a. Missing Data:**
+    * 2a1. The system identifies the missing input and notifies the user that the prediction cannot be generated.
+    * 2a2. The system terminates the process gracefully without exposing internal implementation details.
+* **3a. Input Validation Failure:**
+    * 3a1. The system detects an incorrect date format or invalid characters.
+    * 3a2. The system returns a clear error message and prompts for corrected input.
+
+
+
+
+
+
+
+
 
 
 
