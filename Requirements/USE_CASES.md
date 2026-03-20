@@ -1,4 +1,4 @@
-# USE CASE DEFINITIONS - V1.0
+# USE CASE DEFINITIONS - V1.1
 
 This file contains all UCs for the development of this project.
 
@@ -145,14 +145,14 @@ Data Scientist/Developer
 Transform the clean and sincronized data into relevant predictive features (temporal, lagging, rolling, and advanced) to feed the modeling component, from which:
 
 
-**1. Mandatorty**:
-- **Temporal features**: hour, day, season;
+* **Mandatorty**:
+    - **Temporal features**: hour, day, season;
     - At least one **rolling climate feature**;
     - At least one **lagged demand feature**.
 
 
-**2. Optional**:
-- Derived features.
+* **Optional**:
+    - Derived features.
 
 **Level**:
 User goal.
@@ -168,7 +168,7 @@ User goal.
 **Preconditions**:
 1. The Data Cleaning and Alignment stage has been successfully completed.
 
-2. Synchronized data is available in the `/data/processed/` directory.
+2. Synchronized data is available in the `/data/processed/ `directory.
 
 3. The system has validated that all required columns and timestamps are present and reliable.
 
@@ -210,13 +210,13 @@ User goal.
 
 **Extensions**:
 
-8. a) There are few invalid values:
-    * 8a1. The system handles them by dropping or imputing the affected rows.
+8. a) Minor domain inconsistencies detected (e.g., a few records with values that do not align with physical constraints):
+    * 8a1. The system handles them by dropping or imputing the affected rows to maintain dataset quality.
 
-    b) There are lots of invalid values:
-    * 8b1. The system logs a "Invalid value detected error" and the process terminates to avoid biased model traning.
+    b) Critical domain-context errors detected (e.g., widespread anomalies where feature values are physically implausible):
+    * 8b1. The system logs a domain consistency error and the process terminates to prevent training a model on nonsensical data.
 
-    * 8b2. The previous steps have to be reviewed to find where the mistake happened.
+    * 8b2. The developer must review the previous extraction logic or source data to identify the source of the contextual mistake.
 
 10) a) High dimensionality detected:
 
