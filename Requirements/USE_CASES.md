@@ -1,4 +1,4 @@
-# USE CASE DEFINITIONS - V1.4
+# USE CASE DEFINITIONS - V1.5
 
 This file contains all UCs for the development of this project.
 
@@ -476,3 +476,158 @@ User goal.
 * **3a. Input Validation Failure:**
     * 3a1. The system detects an incorrect date format or invalid characters.
     * 3a2. The system returns a clear error message and prompts for corrected input.
+
+
+# APPLICATION DASHBOARDS
+
+
+# UC9: Admin Analytics Dashboard
+**Primary Actor**:
+Admin
+
+**Scope/Goal**: The goal is to present a dashboard to an admin user, consolidating results from multiple background processes (e.g: prediction) into a single location to facilitate data queries and the visualization of key interests.
+
+**Level**:
+User Goal
+
+**Stakeholders and Interests**:
+* **Data cientist/engineer**: Wants to quickly consult information through a simple and intuitive interface, without running manual scripts.
+
+* **Security administrator**: Needs to ensure that only users who passed the authentication can view the data.
+
+* **Admin**: Wants to ensure that the complex logic of the backend is presented clearly and correctly to the end-user.
+
+**Preconditions**:
+1. The admin has successfully logged into the system.
+
+2. The entire data pipeline, from automated ingestion and cleaning to the predictive model execution, is fully functional.
+
+**Main Success Scenario**:
+1. The use case starts when the authorized admin accesses the Dashboard section.
+
+2. The system presents a unified view containing information about the data and system status, such as:
+
+    - Climate-Energy correlations and relevant features: Visualizations of how weather variables impacted past demand.
+
+    - Forecast summaries: Expected energy peaks and trends for the upcoming period.
+
+    - Last query/request history: a dedicated visualization/section showing the parameters (date range,variables) of the most recent query performed by the user.
+
+3. The system provides filtering and query tools, allowing the admin to isolate specific dates or climate conditions.
+
+4. The admin reviews the integrated information to gain insights into the energy-climate relationship.
+
+5. The system logs the execution time for the operation chosen by the admin.
+
+**Extensions:**
+
+2.  a) No previous query history found:
+
+    * 2a1. The system displays a "no history found" message.
+
+    * 2a2. The system suggests a default visualization (e.g., the last 24 hours).
+
+    b) No data available to display:
+    
+    * 2b1. The system informs the admin that the pipeline needs to be executed before results can be shown.
+
+    * 2b2. The system may provide a button to trigger the data update process considering the admin has the required permissions.
+
+3.  a) Incompatibility with current data:
+
+    * 3a1. The last query used a date range that isn´t available in the memory or cache: the system notifies the admin and suggests the nearest available period.
+
+
+
+## UC10: Daily Prediction Dashboard
+
+**Primary Actor:** User
+
+
+**Scope/Goal:**
+Allow the user to select a specific date to obtain the forecast of total electricity demand for that day, as well as view the demand projection for the following days and the main factors associated with the forecast.
+
+
+**Level:** User Goal
+
+**Stakeholders and Interests:**
+- User: Wants to check the electricity demand forecast for a specific day and the following days, for planning or analysis purposes.
+- Administrador: Wants to ensure that the system correctly calculates the daily forecast and future projections.
+
+
+**Preconditions:**
+1. The user must already be authenticated.
+2. The daily regression model is trained and available.
+3. The dashboard is accessible.
+
+
+**Main Success Scenario:**
+1. The user accesses the daily dashboard page.
+2. The system has a component that allows the user to select a date.
+3. The user selects the desired date.
+4. The system updates the dashboard and displays the projected value prominently.
+5. The system displays visual indicators with the main variables associated with the forecast for that day.
+6. The system displays a graph with future projections, showing the demand forecast for the next X days from the selected date.
+7. The user can interact with the projection chart to view detailed values ​​for each day.
+
+
+**Extensions:**
+
+3.  a) Selecting a date:
+    
+    * 3a1. The user selects a past date, the system informs them that there are actual values ​​available for that day.
+
+4.  a) Data Visualization:
+    
+    * 4a1.When the selected date is earlier than the current date, the dashboard displays both the actual value and the projected value for comparison.
+
+6)  a) Future Projection Failure:
+    
+    * 6a1. The system is able to calculate the forecast for the selected day but cannot generate the projection for the following days; the system displays a message on the graph indicating that it was not possible to load the future projection.
+
+    * 6a2. The system detects potentially anomalous or unrealistic projection values ​​and displays a warning indicating that the projection may be uncertain for that period.
+
+
+
+## UC11: Hourly Prediction Dashboard
+
+**Primary Actor:** User
+
+
+**Scope/Goal:**
+Allow the user to select a specific date and time to obtain the electricity demand forecast for that period, as well as generate projections for the following hours, presenting the results visually on the dashboard.
+
+
+**Level:** User Goal
+
+**Stakeholders and Interests:**
+- User: Wants to get forecasts for the selected specific time as well as for the following hours, and view the results clearly.
+- Administrador: Wants to ensure that the hourly forecast model works correctly and that the generated predictions are reliable.
+
+
+**Preconditions:**
+1. The user must already be authenticated.
+2. The hourly forecast model is trained and available.
+3. The dashboard is accessible.
+
+
+**Main Success Scenario:**
+1. The user accesses the hourly dashboard.
+2. The system presents a component to select date and time.
+3. The user selects the desired date and time.
+4. The system displays the predicted value as a visual indicator on the dashboard.
+5. The system shows the projection for the next X hours in a chart
+6. The user can interact with the projection chart to view detailed values ​​for each hour.
+
+**Extensions:**
+
+3. a) Selected Hour:
+    * 3a1. The user selected a time prior to the current time, and the system indicates that actual values are available for that time/day.
+
+4. a) Data visualization:
+    * 4a1. The user selects a time prior to the current time, the system displays both the actual value and the forecast for that time.
+
+5)  a) Future Projection Failure:
+    * 5a1. The system is unable to display the forecast for the following hours and shows a message indicating that the future projection cannot be loaded.
+    
+    * 5a2. If the projected values ​​for the next few hours appear anomalous, the system displays a warning indicating that the forecast may be uncertain for that period.
