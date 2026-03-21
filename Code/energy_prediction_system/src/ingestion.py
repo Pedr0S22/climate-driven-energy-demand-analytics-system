@@ -11,8 +11,10 @@ def fetch_copernicus_data(year: str):
     print(f"Fetching Copernicus ERA5-Land data for {year}...")
     SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
     PROJECT_ROOT = os.path.abspath(os.path.join(SCRIPT_DIR, ".."))
+
     raw_weather_dir = os.path.join(PROJECT_ROOT, "data", "raw", "weather", year)
     os.makedirs(raw_weather_dir, exist_ok=True)
+
     dataset = "reanalysis-era5-land"
     client = cdsapi.Client()
 
@@ -70,6 +72,7 @@ def fetch_entsoe_data(year: str, country_code: str = 'ES'):
     print(f"\nFetching ENTSO-E load data for {country_code} in {year}...")
     SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
     PROJECT_ROOT = os.path.abspath(os.path.join(SCRIPT_DIR, ".."))
+
     raw_energy_dir = os.path.join(PROJECT_ROOT, "data", "raw", "energy")
     os.makedirs(raw_energy_dir, exist_ok=True)
     output_path = os.path.join(raw_energy_dir, f"entsoe_{country_code}_load_{year}.csv")
@@ -98,6 +101,10 @@ def fetch_entsoe_data(year: str, country_code: str = 'ES'):
         print(f"    [Error] Failed to fetch ENTSO-E data: {e}")
 
 if __name__ == "__main__":
-    targetyear = "2024"
-    fetch_entsoe_data(targetyear , country_code='ES')
-    #fetch_copernicus_data(targetyear)
+    # Define the range of years needed
+    target_years = ["2020", "2021", "2022", "2023", "2024", "2025"]
+    
+    # Loop through each year and fetch both datasets
+    for targetyear in target_years:
+        fetch_entsoe_data(targetyear, country_code='ES')
+        fetch_copernicus_data(targetyear)
