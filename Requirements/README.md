@@ -16,13 +16,17 @@ Below there is a short presentation on what are the UCs, their numeration and ho
 - UC5 - User registration
 - UC6 - User authentication
 - UC12 - Navigate Application Hub
-- UC7 - Daily prediction generation
-- UC8 - Hourly prediction generation
 
-    ### Dashboards
-    - UC9 - Admin analytics dashboard
+    ### Options
+
+- UC7 - Daily prediction generation
     - UC10 - Daily prediction dashboard
+
+- UC8 - Hourly prediction generation
     - UC11 - Hourly prediction dashboard
+
+- UC9 - Admin analytics dashboard
+- UC13 - Admin Controls
 
 # Quality Attributes
 
