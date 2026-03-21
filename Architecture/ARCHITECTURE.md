@@ -128,7 +128,7 @@ The Authentication Layer acts as a strict gateway. It mediates all access to pre
 
 ## 5. Quality Attributes Implementation
 
-The system explicitly addresses performance, reliability, and security and others to ensure a robust engineering standard.
+The system explicitly addresses performance, reliability, and security and others to ensure a robust engineering standard. Below we consider some of the QAs of this system. Check [Quality Attributes Definition](../Requirements/QUALITY_ATTRIBUTES.md) to get the applied QAs.
 
 ### 5.1. Performance
 
