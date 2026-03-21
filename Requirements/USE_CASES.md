@@ -23,31 +23,33 @@ Land Hourly data from 1950 to present" dataset found at [https://cds.climate.cop
 **Preconditions:**
 
 1. API credentials for ENTSO-E and Copernicus are securely configured using environment variables.
-2. The system must be configured to target one selected European country and a timeframe of at least one full year.
+2. The system must be configured to target one selected European country and a timeframe of 5 years of data (from 2020 to 2025).
 
 
 **Main Success Scenario:**
 
-1. The Developer / Data Scientist executes the data ingestion script via the command line.
+1. The Developer / Data Scientist executes the data ingestion script via the command line, allowing it to run until all data for the specified 5-year range is retrieved.
 2. The system begins measuring the execution time for the data ingestion component.
 3. The system connects to the ENTSO-E Transparency Platform and retrives the primary target variable which is total electricity load, expressed in megawatts (MW)
 4. The system connects to the Copernicus Climate Data Store (ERA5 dataset) and retrieves meteorological data. Specifically, it extracts:
 
-**For further familirization and better explanation regarding the variables mentioend below proceed to the Copernicus Climate Data Store**
+    * Lake total layer temperature (in Kelvin)
+    * 2-meter air temperature (in Kelvin)
+    * 2-meter dewpoint temperature (in Kelvin)
+    * soil temperature level1 (in kelvin)
+    * Surface solar radiation downwards (in J/m²)
+    * Surface latent heat flux (in J/m²)
+    * Surface pressure (in Pa)
+    * Total evaporation (m of water equivalent )
+    * 10-meter wind speed (both Eastward and Northward) (in m/s)
+    * Total precipitation (in m)
 
-* Lake total layer temperature (in Kelvin)
-* 2-meter air temperature (in Kelvin)
-* 2-meter dewpoint temperature (in Kelvin)
-* soil temperature level1 (in kelvin)
-* Surface solar radiation downwards (in J/m²)
-* Surface latent heat flux (in J/m²)
-* Surface pressure (in Pa)
-* Total evaporation (m of water equivalent )
-* 10-meter wind speed (both Eastward and Northward) (in m/s)
-* Total precipitation (in m)
-5. The system stores the unmodified raw climate data into the `/data/raw/weather/` directory.
-6. The system stores the unmodified raw electricity data into the `/data/raw/energy/` directory.
-7. The system successfully logs the execution time so it can be summarized in the project documentation.
+    **For further familirization and better explanation regarding the variables mentioend below proceed to the Copernicus Climate Data Store**
+
+5. The system stores the unmodified raw climate data into the `Code\energy_prediction_system\data\raw\weather\` directory.
+6. The system stores the unmodified raw electricity data into the `Code\energy_prediction_system\data\raw\energy\` directory.
+7. The system automatically backs up and exports all retrieved raw data directories to a private Google Drive.
+8. The system successfully logs the execution time so it can be summarized in the project documentation.
 
 **Extensions:**
 
@@ -59,7 +61,7 @@ Land Hourly data from 1950 to present" dataset found at [https://cds.climate.cop
 
     * 3a3. The system results in a clean termination of the ingestion script.
 
-3. b) Missing or incomplete data returned from ENTSO-E:
+3) b) Missing or incomplete data returned from ENTSO-E:
 
     * 3b1. The ENTSO-E API returns gaps, timeouts, or missing records for the requested period.
 
@@ -77,7 +79,7 @@ Land Hourly data from 1950 to present" dataset found at [https://cds.climate.cop
 
     * 4a3. The system results in a clean termination of the ingestion script.
 
-4. b) Missing or incomplete data returned from Copernicus:
+4) b) Missing or incomplete data returned from Copernicus:
 
     * 4b1. The Copernicus API returns gaps or missing meteorological records.
 
