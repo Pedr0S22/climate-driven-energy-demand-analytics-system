@@ -1,4 +1,4 @@
-# USE CASE DEFINITIONS - V1.6
+# USE CASE DEFINITIONS - V1.7
 
 This file contains all UCs for the development of this project.
 
@@ -686,3 +686,56 @@ To provide a centralized landing page where authenticated users are routed based
     * 4c1. The system terminates the active session.
 
     * 4c2. The system redirects the user back to the login/authentication.
+
+## UC13: Administrative Controls
+
+**Primary Actor:** Administrator (admin)
+
+**Scope/Goal:** To allow the Administrator to view all available machine learning models in the database and select which specific models will be active and utilized by the system for generating daily and hourly predictions for all users.
+
+**Level:** User Goal
+
+**Stakeholders and Interests:**
+
+* **Administrator:** Wants a reliable and intuitive interface to manage, switch, and assign active models without requiring code changes or deployments.
+
+* **Data Scientists:** Want the models they train, evaluate, and push to the database to be visible and selectable for production use.
+
+* **Regular User:** Relies on the system to seamlessly use the most accurate, Admin-approved models when they request their predictions.
+
+**Preconditions:**
+
+1. The user has successfully authenticated into the application and has an "Admin" role.
+
+2. The user has navigated to the "Commands" section.
+
+3. Evaluated prediction models are stored and available in the database.
+
+**Main Success Scenario:**
+
+1. The system fetches and displays a list of all available daily and hourly prediction models from the database.
+
+2. The system visually indicates which models are currently set as "active" for daily and hourly predictions.
+
+3. The Administrator selects a newly desired model from the list to be the active model for daily or/and hourly predictions.
+
+4. The Administrator saves/submits the changes.
+
+5. The system updates the global configuration in the database.
+
+6. The system applies the selected models to all future prediction requests across the application.
+
+7. The system displays a success confirmation message to the Administrator.
+
+**Extensions:**
+
+3. a) The Administrator wants to update only the daily or hourly prediction model:
+
+    * 3a1. The Administrator changes the daily or hourly model, leaves the hourly or daily model selection unchanged, respectively, and proceeds to step 4.
+
+
+5) a) The system encounters an error connecting to the database or saving the configuration:
+
+    * 5a1. The system aborts the update to ensure no models are broken (roll-back).
+
+    * 5a2. The system displays an error message notifying the Administrator that the changes were not saved.
