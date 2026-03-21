@@ -1,4 +1,4 @@
-# QUALITY ATTRIBUTES DEFINITION - V1.2
+# QUALITY ATTRIBUTES DEFINITION - V1.3
 
 This file contains all QAs for the development of this project.
 
@@ -149,6 +149,9 @@ This file contains all QAs for the development of this project.
 
 * **Response measure:** 100% of invalid login attempts receive a generic HTTP 401 (Unauthorized) response, and automated security unit tests verify that zero stack traces or internal implementation details are ever leaked in the payload.
 
+
+
+
 ## QA10: Secrets Management
 
 * **Source of stimulus:** Developer and/or data scientist/engineer.
@@ -162,6 +165,9 @@ This file contains all QAs for the development of this project.
 * **Response:** The system relies exclusively on environment variables injected at runtime for all credentials, API keys, and database URIs. The version control system (via `.gitignore` and pre-commit hooks) rejects any `.env` files or hardcoded secrets.
 
 * **Response measure:** Automated secret scanning tools report 0 violations for hardcoded secrets on every repository commit, and the application successfully boots using 100% dynamically injected environment variables.
+
+
+
 
 ### QA11: Input Validation
 
@@ -177,6 +183,9 @@ This file contains all QAs for the development of this project.
 
 * **Response measure:** 100% of structurally invalid or malicious payloads are rejected with an HTTP 400 (Bad Request) status code in under 1 second, ensuring backend components only process clean data.
 
+
+
+
 ### QA12: Brute Force Protection & Auditing
 
 * **Source of stimulus:** Malicious Actor or Automated Bot.
@@ -191,6 +200,9 @@ This file contains all QAs for the development of this project.
 
 * **Response measure:** The Account lockout is enforced immediately upon breaching the threshold (e.g., on the 11th attempt), and the security alert is generated within 1.0 second, preventing further automated guessing.
 
+
+
+
 ### QA13: Strict Role-Based Access Control (Authorization)
 
 * **Source of stimulus:** Authenticated Standard User.
@@ -203,3 +215,54 @@ This file contains all QAs for the development of this project.
 * **Response:** The system verifies the user's token, identifies the lack of required permissions, immediately rejects the request, and logs an unauthorized access attempt.
 
 * **Response measure:** 100% of unauthorized privilege escalation attempts are blocked and return an HTTP 403 (Forbidden) status code in under 1 second, guaranteeing that standard users cannot alter system configurations.
+
+
+
+# Usability
+
+
+## QA14: Navigation Efficiency (3-Click Rule)
+
+* **Source of stimulus:** End User or Admin.
+
+* **Stimulus:** The user needs to access a core system function (e.g., viewing model evaluation metrics or triggering a new prediction).
+
+* **Environment:** Normal operation via the interface, starting from the main hub.
+
+* **Artifact:** The System User Interface (Navigation Menu and Routing).
+
+* **Response:** The interface provides a shallow navigation hierarchy that allows the user to reach any primary functional module without intermediate page loads or nested menus exceeding two levels.
+
+* **Response measure:** 100% of primary functional modules are reachable within 3 distinct clicks from the home dashboard, as verified by a manual UI walk-through test.
+
+
+
+## QA15: Interface Familiarity and Learnability
+
+* **Source of stimulus:** New User.
+
+* **Stimulus:** The user interacts with the system for the first times to interpret a climate-driven energy demand prediction.
+
+* **Environment:** Initial system onboarding without a formal training manual.
+
+* **Artifact:** The Frontend User Interface (Typography, Layout, and Icons).
+
+* **Response:** The system utilizes standard UI patterns (e.g., top/side navigation bars, industry-standard icons for "download" or "settings," and high-contrast readable typography) to reduce cognitive load.
+
+* **Response measure:** In a controlled usability test, a new user can successfully navigate to and trigger a prediction request within 90 seconds of their first login without external assistance.
+
+
+
+### QA16: Data Visualization Clarity
+
+* **Source of stimulus:** End User (Energy Analyst).
+
+* **Stimulus:** The user receives a prediction result and needs to interpret the results.
+
+* **Environment:** Post-prediction analysis phase.
+
+* **Artifact:** The Data Visualization Module.
+
+* **Response:** The system renders charts that allow users to hover over data points to see exact values and provides a clear legend/labeling system for all climate features used in the model.
+
+* **Response measure:** In a usability test, 90% of participants can correctly identify the primary climate driver for a specific prediction spike within 15 seconds of viewing the results chart.
