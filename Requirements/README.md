@@ -15,6 +15,7 @@ Below there is a short presentation on what are the UCs, their numeration and ho
 ### Application
 - UC5 - User registration
 - UC6 - User authentication
+- UC12 - Navigate Application Hub
 - UC7 - Daily prediction generation
 - UC8 - Hourly prediction generation
 
@@ -23,7 +24,7 @@ Below there is a short presentation on what are the UCs, their numeration and ho
     - UC10 - Daily prediction dashboard
     - UC11 - Hourly prediction dashboard
 
-# Quality Attribure
+# Quality Attributes
 
 TODO
 
