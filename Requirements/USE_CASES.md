@@ -1,4 +1,4 @@
-# USE CASE DEFINITIONS - V1.5
+# USE CASE DEFINITIONS - V1.6
 
 This file contains all UCs for the development of this project.
 
@@ -478,10 +478,9 @@ User goal.
     * 3a2. The system returns a clear error message and prompts for corrected input.
 
 
-# APPLICATION DASHBOARDS
 
 
-# UC9: Admin Analytics Dashboard
+## UC9: Admin Analytics Dashboard
 **Primary Actor**:
 Admin
 
@@ -631,3 +630,59 @@ Allow the user to select a specific date and time to obtain the electricity dema
     * 5a1. The system is unable to display the forecast for the following hours and shows a message indicating that the future projection cannot be loaded.
     
     * 5a2. If the projected values ​​for the next few hours appear anomalous, the system displays a warning indicating that the forecast may be uncertain for that period.
+
+
+
+## UC12: Navigate Application Hub
+
+**Primary Actor:**
+ Authenticated User (Regular User or Admin)
+
+**Scope/Goal:**
+To provide a centralized landing page where authenticated users are routed based on their permissions, allowing them to choose between viewing daily predictions, hourly predictions, or accessing administrative controls (admin only).
+
+**Level:** User Goal
+
+**Stakeholders and Interests:**
+
+- **Regular User:** Wants clear, immediate access to generate or view daily and hourly predictions.
+
+- **Administrator:** Wants access to all user features, plus exclusive access to the admin analytics and system commands.
+
+- **Security/System:** Ensure proper Role-Based Access Control (RBAC) is enforced so users only see and access the navigation paths they are authorized for.
+
+**Preconditions:**
+
+1. The user has successfully registered and authenticated into the application.
+
+**Main Success Scenario:**
+
+1. The system evaluates the user's account role.
+
+2. The system presents the Application Hub landing page immediately after successful login.
+
+3. The system displays the standard navigation options: "Daily Predictions" and "Hourly Predictions".
+
+4. The user selects one of the standard prediction options.
+
+5. The system redirects the user to the corresponding option.
+
+**Extensions:**
+
+3. a) The user is identified as having an "Admin" role:
+
+    - 3a1. The system displays the standard options (Daily/Hourly) plus additional options: "Analytics Dashboard" and "Commands".
+
+4. a) The user selects `Analytics Dashboard`:
+
+    * 4a1. The system redirects the user to "Analytics Dashboard".
+
+4) b) The user selects `Commands`:
+
+    * 4b1. The system redirects the user to "Commands".
+
+4. c) The user chooses to log out:
+
+    * 4c1. The system terminates the active session.
+
+    * 4c2. The system redirects the user back to the login/authentication.
