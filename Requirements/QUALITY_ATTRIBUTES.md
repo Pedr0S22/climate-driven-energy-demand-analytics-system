@@ -1,4 +1,4 @@
-# QUALITY ATTRIBUTES DEFINITION - V1.0
+# QUALITY ATTRIBUTES DEFINITION - V1.1
 
 This file contains all QAs for the development of this project.
 
@@ -49,3 +49,78 @@ This file contains all QAs for the development of this project.
 * **Response measure:** 95% of all prediction requests are processed and successfully returned to the requester within 1.0 seconds.
 
 
+# Reliability
+
+
+## QA4: Client Network Resilience
+
+* **Source of stimulus:** End User or Client Application.
+
+* **Stimulus:** A request is submitted for an energy demand prediction, but the network connection between the client and the backend server drops or times out.
+
+* **Environment:** Unstable network conditions on the user's end (e.g., poor Wi-Fi or cellular signal).
+
+* **Artifact:** The Client Application (Prediction Interface).
+
+* **Response:** The client app detects the unreachable server, prevents the user interface from freezing, and displays a user-friendly "network connection error" message.
+
+* **Response measure:** The network timeout is detected and the UI displays the error state within 3.0 seconds of the request, without crashing the application.
+
+## QA5: Request Rate Limiting
+* **Source of stimulus:** End Users or Client Applications.
+
+* **Stimulus:** A sudden massive spike of concurrent energy demand prediction requests arrives, exceeding the server's maximum processing capacity.
+
+* **Environment:** Production environment experiencing extreme user load.
+
+* **Artifact:** The Prediction API Gateway and Load Balancer.
+
+* **Response:** The system actively throttles incoming traffic by processing requests up to its safe threshold. For requests beyond that limit, it instantly returns an HTTP 429 (Too Many Requests) warning to the client to prevent the server's CPU/memory from maxing out and crashing.
+
+* **Response measure:** The server remains online without crashing, processes the accepted predictions within 1.5 seconds, and successfully issues HTTP 429 rejections for 100% of the excess requests in under 0.5 seconds.
+
+## QA6: Pipeline Source Failure
+
+* **Source of stimulus:** Automated Pipeline Scheduler / Data Ingestion Component.
+
+* **Stimulus:** The scheduled task attempts to fetch updated climate/energy data, but the external third-party API is offline or returns a server error.
+
+* **Environment:** Normal internal system operation, but with an unavailable external dependency.
+
+* **Artifact:** Ingestion Module.
+
+* **Response:** The ingestion module detects the API failure, logs the error, safely aborts the current fetch task to prevent system hanging, and triggers a retry mechanism (e.g., exponential backoff) while the rest of the system continues using the last successfully retrieved data.
+
+* **Response measure:** The pipeline gracefully times out the failed fetch attempt within 5.0 seconds, logging the error and queuing a retry without halting or crashing the overall analytics engine.
+
+
+
+## QA7: Graceful Data Degradation
+
+* **Source of stimulus:** Data Ingestion and Storage.
+
+* **Stimulus:** A dataset containing missing, null, or malformed climate/energy values is passed into the data cleaning pipeline.
+
+* **Environment:** Normal data processing and feature engineering phase.
+
+* **Artifact:** The Data Preprocessing and Cleaning Component.
+
+* **Response:** The system catches the data anomalies, applies predefined fallback rules (e.g., data imputation, or safely dropping unusable rows), logs a data quality warning, and continues the pipeline execution without throwing unhandled exceptions.
+
+* **Response measure:** 100% of batches with missing/malformed data are processed without causing pipeline crashes, and the system logs the exact number of modified/dropped rows per run.
+
+
+
+## QA8: Auto-Recovery from Internal Crash
+
+* **Source of stimulus:** Internal System Error (e.g., unhandled exception, Out of Memory error) or OS-level fault.
+
+* **Stimulus:** The main prediction backend or inference engine process crashes unexpectedly.
+
+* **Environment:** Normal production environment serving user requests.
+
+* **Artifact:** The Analytics Backend Service and its Process Manager (Docker restart policies).
+
+* **Response:** The process manager detects that the service has failed, automatically restarts the application container/process, and the system re-initializes by loading the most recently saved ML model and cached data from disk without requiring manual human intervention.
+
+* **Response measure:** The backend service is successfully restarted, re-loads its models, and is ready to serve new prediction requests within 1 minute of the initial crash detection.
