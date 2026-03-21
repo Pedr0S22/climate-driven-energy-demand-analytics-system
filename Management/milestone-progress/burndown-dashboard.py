@@ -4,17 +4,29 @@ import matplotlib.pyplot as plt
 import matplotlib.dates as mdates
 import seaborn as sns
 import plotly.graph_objects as go
+import plotly.io as pio
 from pathlib import Path
 import re
-import os
+
+"""
+README
+
+There is comments on this script. It specifically generates burndown charts for milestones and sprints based on GitLab data.
+The script is designed to be flexible, allowing users to select specific milestones or generate charts for all milestones in the dataset.
+
+Specifications:
+
+If you want to get charts in the browser, uncomment 'fig.show()'.
+If you want to save static PNGs, uncomment 'plt.savefig()' and 'plt.close()'.
+If you want to save interactive HTML files, uncomment 'fig.write_html()'.
+"""
 
 ROOT_MILESTONE_PROGESS = Path(__file__).resolve().parent
 DATA_GITLAB_FOLDER = "data-gitlab"
 
-
 # CONFIGURATION
+pio.renderers.default = "browser"
 SPRINT_KEYWORDS = ['sprint', 'week', 'iteration']
-FILE = "dei-uc-piacd2026-pl1g1_work_items_2026-03-18.csv"
 
 def parse_time(time_str):
     """Converts GitLab time estimates (e.g., '2h 30m') into decimal hours."""
@@ -120,7 +132,7 @@ def generate_burndown(m_df, title, is_sprint, y_axis_label):
     static_filename = f"burndown_static_{'sprint' if is_sprint else 'milestone'}_{safe_name}.png"
     #plt.savefig(static_filename)
     #plt.close()
-    plt.show()
+    plt.show(block=False) # Changed to non-blocking so the script continues
     
     # INTERACTIVE CHARTs
     fig = go.Figure()
@@ -140,23 +152,14 @@ def generate_burndown(m_df, title, is_sprint, y_axis_label):
     )
     
     interactive_filename = f"burndown_interactive_{'sprint' if is_sprint else 'milestone'}_{safe_name}.html"
-    plt.show()
+    #fig.show() # Plotly interactive show
     #fig.write_html(interactive_filename)
     
-    print(f"Generated successfully: {static_filename} & {interactive_filename}")
+    print(f"Generated successfully: {title}")
 
-def generate_dashboard(csv_path):
-    if not os.path.exists(csv_path):
-        print(f"Error: File '{csv_path}' not found.")
-        return
-
-    try:
-        df = pd.read_csv(csv_path)
-    except Exception as e:
-        print(f"Error reading CSV: {e}")
-        return
-
-    # Error checking logic...
+def process_milestones(df, target_milestones):
+    """Processes specific milestones from the loaded dataframe."""
+    # Sizing logic
     if 'Weight' in df.columns and df['Weight'].notna().any():
         df['Size'] = pd.to_numeric(df['Weight'], errors='coerce').fillna(0)
         y_axis_label = "Remaining Story Points"
@@ -164,24 +167,83 @@ def generate_dashboard(csv_path):
         df['Size'] = df['Time Estimate'].apply(parse_time)
         y_axis_label = "Remaining Hours"
     else:
-        print("Error: Missing Size metrics.")
+        print("Error: Missing Size metrics ('Weight' or 'Time Estimate').")
         return
 
     df['Created At (UTC)'] = pd.to_datetime(df['Created At (UTC)'], errors='coerce').dt.tz_localize(None)
     df['Closed At (UTC)'] = pd.to_datetime(df['Closed At (UTC)'], errors='coerce').dt.tz_localize(None)
 
-    milestones = df['Milestone'].dropna().unique()
-
-    for item in milestones:
+    for item in target_milestones:
         m_df = df[df['Milestone'] == item].copy()
         if m_df.empty or m_df['Created At (UTC)'].isna().all():
+            print(f"Skipping '{item}': No valid data.")
             continue
             
         # Differentiate between a Tactical Sprint and a Strategic Milestone based on Name
         is_sprint = any(keyword.lower() in str(item).lower() for keyword in SPRINT_KEYWORDS)
         
         generate_burndown(m_df, item, is_sprint, y_axis_label)
+        
+    # Keep matplotlib windows open until user closes them
+    plt.show()
+
+def main():
+    print("=== Burndown Chart Generator ===")
+    
+    # 1. File Input & Error Handling
+    df = None
+    while df is None:
+        filename = input("Enter the CSV file name and extension(e.g., data.csv): ").strip()
+        file_path = ROOT_MILESTONE_PROGESS / DATA_GITLAB_FOLDER / filename
+        
+        if not file_path.exists():
+            print(f"Error: File '{file_path}' not found. Please try again.\n")
+            continue
+            
+        try:
+            df = pd.read_csv(file_path)
+            print("File loaded successfully!\n")
+        except Exception as e:
+            print(f"Error reading CSV: {e}\n")
+            continue
+
+    # 2. Extract Milestones
+    if 'Milestone' not in df.columns:
+        print("Error: 'Milestone' column not found in the CSV.")
+        return
+        
+    milestones = df['Milestone'].dropna().unique()
+    if len(milestones) == 0:
+        print("No milestones found in the provided CSV.")
+        return
+
+    # 3. Interactive Menu Loop
+    while True:
+        print("\n--- Available Milestones ---")
+        for i, m in enumerate(milestones, 1):
+            print(f"{i}. {m}")
+        print("-" * 28)
+        print(f"{len(milestones) + 1}. Generate ALL Milestones")
+        print("0. Exit")
+        
+        choice = input("\nSelect an option (enter number): ").strip()
+        
+        try:
+            choice_idx = int(choice)
+            if choice_idx == 0:
+                print("Exiting generator. Goodbye!")
+                break
+            elif choice_idx == len(milestones) + 1:
+                print("\nGenerating charts for ALL milestones...")
+                process_milestones(df, milestones)
+            elif 1 <= choice_idx <= len(milestones):
+                selected = milestones[choice_idx - 1]
+                print(f"\nGenerating charts for: {selected}...")
+                process_milestones(df, [selected])
+            else:
+                print("Invalid choice. Please enter a valid menu number.")
+        except ValueError:
+            print("Invalid input. Please enter a number.")
 
 if __name__ == "__main__":
-    INPUT = ROOT_MILESTONE_PROGESS / DATA_GITLAB_FOLDER / FILE
-    generate_dashboard(INPUT)
+    main()
