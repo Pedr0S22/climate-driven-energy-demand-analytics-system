@@ -1,4 +1,4 @@
-# QUALITY ATTRIBUTES DEFINITION - V1.1
+# QUALITY ATTRIBUTES DEFINITION - V1.2
 
 This file contains all QAs for the development of this project.
 
@@ -66,6 +66,9 @@ This file contains all QAs for the development of this project.
 
 * **Response measure:** The network timeout is detected and the UI displays the error state within 3.0 seconds of the request, without crashing the application.
 
+
+
+
 ## QA5: Request Rate Limiting
 * **Source of stimulus:** End Users or Client Applications.
 
@@ -78,6 +81,8 @@ This file contains all QAs for the development of this project.
 * **Response:** The system actively throttles incoming traffic by processing requests up to its safe threshold. For requests beyond that limit, it instantly returns an HTTP 429 (Too Many Requests) warning to the client to prevent the server's CPU/memory from maxing out and crashing.
 
 * **Response measure:** The server remains online without crashing, processes the accepted predictions within 1.5 seconds, and successfully issues HTTP 429 rejections for 100% of the excess requests in under 0.5 seconds.
+
+
 
 ## QA6: Pipeline Source Failure
 
@@ -124,3 +129,77 @@ This file contains all QAs for the development of this project.
 * **Response:** The process manager detects that the service has failed, automatically restarts the application container/process, and the system re-initializes by loading the most recently saved ML model and cached data from disk without requiring manual human intervention.
 
 * **Response measure:** The backend service is successfully restarted, re-loads its models, and is ready to serve new prediction requests within 1 minute of the initial crash detection.
+
+
+
+# Security
+
+
+## QA9: Secure Error Handling
+
+* **Source of stimulus:** Unauthenticated User or Automated Scanner.
+
+* **Stimulus:** Submits invalid, malformed, or unauthorized login credentials to the system.
+
+* **Environment:** Public-facing production environment.
+
+* **Artifact:** The Authentication Module.
+
+* **Response:** The system catches the invalid input, rejects the request, logs the failed attempt internally for auditing, and returns a generic, standardized error message to the client, strictly avoiding the exposure of stack traces or system internals.
+
+* **Response measure:** 100% of invalid login attempts receive a generic HTTP 401 (Unauthorized) response, and automated security unit tests verify that zero stack traces or internal implementation details are ever leaked in the payload.
+
+## QA10: Secrets Management
+
+* **Source of stimulus:** Developer and/or data scientist/engineer.
+
+* **Stimulus:** Code is committed to the repository, or a new environment deployment is triggered.
+
+* **Environment:** Development and Production deployment environments.
+
+* **Artifact:** The Source Code Repository and Configuration Management Module.
+
+* **Response:** The system relies exclusively on environment variables injected at runtime for all credentials, API keys, and database URIs. The version control system (via `.gitignore` and pre-commit hooks) rejects any `.env` files or hardcoded secrets.
+
+* **Response measure:** Automated secret scanning tools report 0 violations for hardcoded secrets on every repository commit, and the application successfully boots using 100% dynamically injected environment variables.
+
+### QA11: Input Validation
+
+* **Source of stimulus:** End User, API Client, or Malicious Actor.
+
+* **Stimulus:** Submits a prediction request or authentication payload containing unexpected, out-of-bounds, or potentially malicious strings (e.g., SQL injection attempts, excessively large payloads).
+
+* **Environment:** Normal operational environment.
+
+* **Artifact:** The Prediction Interface and Authentication Layer.
+
+* **Response:** The system parses the input and strictly validates it against predefined schemas (expected data types, value ranges). If validation fails, the system immediately drops the request before it reaches the database or inference engine.
+
+* **Response measure:** 100% of structurally invalid or malicious payloads are rejected with an HTTP 400 (Bad Request) status code in under 1 second, ensuring backend components only process clean data.
+
+### QA12: Brute Force Protection & Auditing
+
+* **Source of stimulus:** Malicious Actor or Automated Bot.
+
+* **Stimulus:** Repeatedly submits invalid login credentials or validation-failing payloads (e.g., more than 10 failed attempts within 1 minute).
+
+* **Environment:** Public-facing production environment under active targeted attack.
+
+* **Artifact:** The Authentication Layer.
+
+* **Response:** The system detects the abnormal failure rate, temporarily locks the targeted account or blocks the offending IP address, and generates a high-priority security alert in the system logs.
+
+* **Response measure:** The Account lockout is enforced immediately upon breaching the threshold (e.g., on the 11th attempt), and the security alert is generated within 1.0 second, preventing further automated guessing.
+
+### QA13: Strict Role-Based Access Control (Authorization)
+
+* **Source of stimulus:** Authenticated Standard User.
+
+* **Stimulus:** Attempts to access a restricted API endpoint, trigger a manual pipeline rerun, or modify a trained ML model without possessing the required "Admin" or "System Operator" role.
+* **Environment:** Normal operational environment.
+
+* **Artifact:** The API Gateway and Role-Based Access Control (RBAC) Module.
+
+* **Response:** The system verifies the user's token, identifies the lack of required permissions, immediately rejects the request, and logs an unauthorized access attempt.
+
+* **Response measure:** 100% of unauthorized privilege escalation attempts are blocked and return an HTTP 403 (Forbidden) status code in under 1 second, guaranteeing that standard users cannot alter system configurations.
