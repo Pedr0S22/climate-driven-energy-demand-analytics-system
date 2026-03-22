@@ -25,6 +25,7 @@ Below there is a short presentation on what are the UCs, their numeration and ho
 - UC8 - Hourly prediction generation
     - UC11 - Hourly prediction dashboard
 
+    ### Admin Only Options
 - UC9 - Admin analytics dashboard
 - UC13 - Admin Controls
 
