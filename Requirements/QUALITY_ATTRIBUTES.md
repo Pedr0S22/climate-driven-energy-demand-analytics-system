@@ -1,4 +1,4 @@
-# QUALITY ATTRIBUTES DEFINITION - V1.4
+# QUALITY ATTRIBUTES DEFINITION - V1.5
 
 This file contains all QAs for the development of this project.
 
@@ -326,3 +326,16 @@ This file contains all QAs for the development of this project.
 # Functionality
 
 
+## QA20: Completeness
+
+* **Source of stimulus:** Developer or Data Scientist.
+
+* **Stimulus:** A new functional component (e.g., a new climate feature, a different ML algorithm, or a new API endpoint) is submitted for integration.
+
+* **Environment:** Integration testing environment / CI Pipeline.
+
+* **Artifact:** The entire Climate-Driven Energy Demand Analytics System (End-to-End).
+
+* **Response:** The system executes an end-to-end integration test suite that simulates a real-world user flow: ingesting raw data, performing transformations, generating a prediction, and verifying the output against a known ground-truth value.
+
+* **Response measure:** 100% of the defined "acceptance criteria" for the new feature are met, and the end-to-end test passes successfully without manual intervention before the code is permitted to merge into the `main` branch.
