@@ -1,4 +1,4 @@
-# QUALITY ATTRIBUTES DEFINITION - V1.3
+# QUALITY ATTRIBUTES DEFINITION - V1.4
 
 This file contains all QAs for the development of this project.
 
@@ -169,7 +169,7 @@ This file contains all QAs for the development of this project.
 
 
 
-### QA11: Input Validation
+## QA11: Input Validation
 
 * **Source of stimulus:** End User, API Client, or Malicious Actor.
 
@@ -186,7 +186,7 @@ This file contains all QAs for the development of this project.
 
 
 
-### QA12: Brute Force Protection & Auditing
+## QA12: Brute Force Protection & Auditing
 
 * **Source of stimulus:** Malicious Actor or Automated Bot.
 
@@ -203,7 +203,7 @@ This file contains all QAs for the development of this project.
 
 
 
-### QA13: Strict Role-Based Access Control (Authorization)
+## QA13: Strict Role-Based Access Control (Authorization)
 
 * **Source of stimulus:** Authenticated Standard User.
 
@@ -253,7 +253,7 @@ This file contains all QAs for the development of this project.
 
 
 
-### QA16: Data Visualization Clarity
+## QA16: Data Visualization Clarity
 
 * **Source of stimulus:** End User (Energy Analyst).
 
@@ -266,3 +266,63 @@ This file contains all QAs for the development of this project.
 * **Response:** The system renders charts that allow users to hover over data points to see exact values and provides a clear legend/labeling system for all climate features used in the model.
 
 * **Response measure:** In a usability test, 90% of participants can correctly identify the primary climate driver for a specific prediction spike within 15 seconds of viewing the results chart.
+
+
+
+# Maintainability
+
+
+
+## QA17: Automated Test Coverage and Regression
+
+* **Source of stimulus:** Developer or Data Scientist.
+
+* **Stimulus:** A new feature is added, or a bug fix is implemented in the core logic.
+
+* **Environment:** Local development or CI environment.
+
+* **Artifact:** The Source Code and Automated Test Suite (Unit & Integration).
+
+* **Response:** The system provides a comprehensive test suite that can be executed with a single command, verifying that the new code functions as expected and that existing features remain intact.
+
+* **Response measure:** Automated tests cover at least 70% of the codebase's core logic, and the full suite completes execution in under 5 minutes, providing immediate feedback on regression errors.
+
+
+
+
+## QA18: Continuous Integration Efficiency
+
+* **Source of stimulus:** Developer.
+
+* **Stimulus:** A code push or Merge Request is submitted to the GitLab repository.
+
+* **Environment:** GitLab CI/CD Pipeline.
+
+* **Artifact:** The CI Pipeline Configuration and Build Environment.
+
+* **Response:** The CI pipeline automatically triggers, installs all necessary dependencies, lint-checks the code, and runs the entire test suite to validate the integrity of the branch.
+
+* **Response measure:** 100% of code pushes to the main or develop branches trigger a CI run, and the pipeline provides a "Success" or "Failure" status within 10 minutes of the push.
+
+
+
+
+## QA19: Traceability and Code Review
+
+* **Source of stimulus:** System Maintainer.
+
+* **Stimulus:** A bug is discovered in production, or a specific change needs to be audited to understand why a certain model parameter was modified.
+
+* **Environment:** Git Repository (GitLab).
+
+* **Artifact:** The Git Commit History and Merge Request Documentation.
+
+* **Response:** The system's structured branching strategy and mandatory Merge Request (MR) process ensure that every change is documented, peer-reviewed, and linked to a specific issue or rationale.
+
+* **Response measure:** 100% of changes to the "main" branch are introduced via Merge Requests with at least one approval, and the commit history follows a consistent naming convention that allows a maintainer to trace any line of code to its origin within 5 minutes.
+
+
+
+# Functionality
+
+
