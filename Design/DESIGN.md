@@ -68,7 +68,7 @@ This section defines the RESTful endpoints the Interface Layer uses to communica
 
 ---
 
-## 4. Database Schemas
+## 4. Relational Database Schemas
 
 The system relies on three logical databases/tables: `UserDB`, `ModelDB`, and `PredDB`, as defined in the Architecture.
 
