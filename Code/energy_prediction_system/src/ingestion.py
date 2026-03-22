@@ -6,6 +6,8 @@ import cdsapi
 import pandas as pd
 from dotenv import load_dotenv
 from entsoe import EntsoePandasClient
+# for gdrive
+from gdrive_sync import backup_project_data
 
 def fetch_copernicus_data(year: str):
     print(f"Fetching Copernicus ERA5-Land data for {year}...")
@@ -108,3 +110,5 @@ if __name__ == "__main__":
     for targetyear in target_years:
         fetch_entsoe_data(targetyear, country_code='ES')
         fetch_copernicus_data(targetyear)
+        
+    backup_project_data()
