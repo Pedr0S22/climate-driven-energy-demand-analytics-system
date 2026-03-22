@@ -1,4 +1,4 @@
-# QUALITY ATTRIBUTES DEFINITION - V1.5
+# QUALITY ATTRIBUTES DEFINITION - V1.6
 
 This file contains all QAs for the development of this project.
 
@@ -21,7 +21,9 @@ This file contains all QAs for the development of this project.
 
 
 ## QA2: Starting App - Initial Data Sync
+
 * **Source of stimulus:** Application Launcher or System Initialization Process.
+
 * **Stimulus:** The application is launched for the first time (or after a cleared cache) and detects that required historical climate and energy data is missing from the local environment.
 
 * **Environment:** Normal operational environment with an active network connection.
@@ -42,7 +44,7 @@ This file contains all QAs for the development of this project.
 
 * **Environment:** Local execution environment under normal expected load.
 
-* **Artifact:** The Prediction Interface and underlying Inference Engine.
+* **Artifact:** The Prediction System and underlying Inference Engine.
 
 * **Response:** The system parses the request, processes the input through the trained machine learning models, and returns the predicted energy demand to the user/application.
 
@@ -60,7 +62,7 @@ This file contains all QAs for the development of this project.
 
 * **Environment:** Unstable network conditions on the user's end (e.g., poor Wi-Fi or cellular signal).
 
-* **Artifact:** The Client Application (Prediction Interface).
+* **Artifact:** The Client Application.
 
 * **Response:** The client app detects the unreachable server, prevents the user interface from freezing, and displays a user-friendly "network connection error" message.
 
@@ -70,6 +72,7 @@ This file contains all QAs for the development of this project.
 
 
 ## QA5: Request Rate Limiting
+
 * **Source of stimulus:** End Users or Client Applications.
 
 * **Stimulus:** A sudden massive spike of concurrent energy demand prediction requests arrives, exceeding the server's maximum processing capacity.
@@ -80,7 +83,7 @@ This file contains all QAs for the development of this project.
 
 * **Response:** The system actively throttles incoming traffic by processing requests up to its safe threshold. For requests beyond that limit, it instantly returns an HTTP 429 (Too Many Requests) warning to the client to prevent the server's CPU/memory from maxing out and crashing.
 
-* **Response measure:** The server remains online without crashing, processes the accepted predictions within 1.5 seconds, and successfully issues HTTP 429 rejections for 100% of the excess requests in under 0.5 seconds.
+* **Response measure:** The server remains online without crashing, processes the accepted predictions within 3 seconds, and successfully issues HTTP 429 rejections for 100% of the excess requests in under 1 second.
 
 
 
@@ -110,7 +113,7 @@ This file contains all QAs for the development of this project.
 
 * **Artifact:** The Data Preprocessing and Cleaning Component.
 
-* **Response:** The system catches the data anomalies, applies predefined fallback rules (e.g., data imputation, or safely dropping unusable rows), logs a data quality warning, and continues the pipeline execution without throwing unhandled exceptions.
+* **Response:** The system catches the data anomalies, applies predefined fallback rules, logs a data quality warning, and continues the pipeline execution without throwing unhandled exceptions.
 
 * **Response measure:** 100% of batches with missing/malformed data are processed without causing pipeline crashes, and the system logs the exact number of modified/dropped rows per run.
 
@@ -120,7 +123,7 @@ This file contains all QAs for the development of this project.
 
 * **Source of stimulus:** Internal System Error (e.g., unhandled exception, Out of Memory error) or OS-level fault.
 
-* **Stimulus:** The main prediction backend or inference engine process crashes unexpectedly.
+* **Stimulus:** The main prediction backend process crashes unexpectedly.
 
 * **Environment:** Normal production environment serving user requests.
 
@@ -190,7 +193,7 @@ This file contains all QAs for the development of this project.
 
 * **Source of stimulus:** Malicious Actor or Automated Bot.
 
-* **Stimulus:** Repeatedly submits invalid login credentials or validation-failing payloads (e.g., more than 10 failed attempts within 1 minute).
+* **Stimulus:** Repeatedly submits invalid login credentials or validation-failing payloads, that is, more than 3 failed attempts within 5 minute.
 
 * **Environment:** Public-facing production environment under active targeted attack.
 
@@ -198,12 +201,12 @@ This file contains all QAs for the development of this project.
 
 * **Response:** The system detects the abnormal failure rate, temporarily locks the targeted account or blocks the offending IP address, and generates a high-priority security alert in the system logs.
 
-* **Response measure:** The Account lockout is enforced immediately upon breaching the threshold (e.g., on the 11th attempt), and the security alert is generated within 1.0 second, preventing further automated guessing.
+* **Response measure:** The Account lockout is enforced immediately upon breaching the threshold on the 4th attempt, and the security alert is generated within 1.0 second, preventing further automated guessing.
 
 
 
 
-## QA13: Strict Role-Based Access Control (Authorization)
+## QA13: Strict Role-Based Access Control
 
 * **Source of stimulus:** Authenticated Standard User.
 
@@ -326,7 +329,7 @@ This file contains all QAs for the development of this project.
 # Functionality
 
 
-## QA20: Completeness
+## QA20: E2E Completeness
 
 * **Source of stimulus:** Developer or Data Scientist.
 
