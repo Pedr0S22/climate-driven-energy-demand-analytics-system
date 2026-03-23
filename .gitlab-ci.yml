@@ -47,7 +47,7 @@ integration:
     - cd $CI_PROJECT_DIR/Code/calculator/
     - pytest test_calculator.py
   only:
-    - naseixas   #this step only runs when the commit occurs in the miacouto branch
+    - Ramyad20-sub  #this step only runs when the commit occurs in the miacouto branch
   #  - main #this step only runs when the commit occurs in the main trunk
 
 test_coverage:
@@ -65,7 +65,7 @@ test_coverage:
     expire_in: 1 day  # (Optional) Specify how long to keep the artifact
     # (e.g., 1 week, 1 day, never).
   only:
-    - naseixas   #this step only runs when the commit occurs in the miacouto branch
+    - Ramyad20-sub  #this step only runs when the commit occurs in the miacouto branch
   #  - main #this step only runs when the commit occurs in the main trunk
 
 
