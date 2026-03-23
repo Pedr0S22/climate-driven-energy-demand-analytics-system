@@ -1,5 +1,5 @@
 import pytest
-from our_div import our_div
+from our_div.our_div import our_div
 
 def test_trivial_div():
     assert our_div(10, 2) == 5, "Should be 5"

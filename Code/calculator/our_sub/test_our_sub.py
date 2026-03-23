@@ -1,5 +1,5 @@
 import pytest
-from our_sub import our_sub
+from our_sub.our_sub import our_sub
 
 def test_trivial_sub():
     assert our_sub(5, 3) == 2, "Should be 2"
