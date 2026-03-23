@@ -1,10 +1,13 @@
 import os
 import shutil
+from dotenv import load_dotenv, find_dotenv
 from google.auth.transport.requests import Request
 from google.oauth2.credentials import Credentials
 from google_auth_oauthlib.flow import InstalledAppFlow
 from googleapiclient.discovery import build
 from googleapiclient.http import MediaFileUpload
+
+load_dotenv(find_dotenv())
 
 # Keep full access just to be safe
 SCOPES = ["https://www.googleapis.com/auth/drive"]
@@ -68,10 +71,13 @@ def upload_file_to_drive(service, file_path, drive_folder_id):
 def backup_project_data():
     print("\n--- Starting Google Drive Backup ---")
     service = authenticate_gdrive()
+    # drive folder ids
+    weather_drive_folder_id = os.getenv("WEATHER_DRIVE_FOLDER_ID")
+    energy_drive_folder_id = os.getenv("ENERGY_DRIVE_FOLDER_ID")
 
-    # YOUR EXACT FOLDER IDS (Bypassing the .env file entirely)
-    weather_drive_folder_id = "1RG5Fa0DcI2FkO9OgJUXS_fFhc4mXpnev"
-    energy_drive_folder_id = "1mUW_GgnkZZnRPihH_nsuuTxZF8WugYR2"
+    # Safety check: ensure the IDs were actually loaded
+    if not weather_drive_folder_id or not energy_drive_folder_id:
+        raise ValueError("Missing Drive Folder IDs! Check your .env file.")
 
     # 1. Backup Energy CSVs directly
     raw_energy_dir = os.path.join(PROJECT_ROOT, "data", "raw", "energy")
@@ -89,11 +95,11 @@ def backup_project_data():
         for item in os.listdir(raw_weather_dir):
             item_path = os.path.join(raw_weather_dir, item)
 
-            # If it's a directory (like "2024"), zip it up
+            # zip up directories like "2024"
             if os.path.isdir(item_path):
                 zip_output_path = os.path.join(raw_weather_dir, f"{item}")
 
-                # Check if we already zipped it locally to save time
+                # Check if already zipped locally to save time
                 if not os.path.exists(f"{zip_output_path}.zip"):
                     print(f"    Zipping {item} folder locally...")
                     shutil.make_archive(zip_output_path, "zip", item_path)
@@ -104,6 +110,7 @@ def backup_project_data():
     print("\n--- Backup Complete ---")
 
 
+# serves only for testing purposes
 # if __name__ == '__main__':
 # Run this directly to test the backup
 # backup_project_data()
