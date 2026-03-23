@@ -1,17 +1,17 @@
-import sys  #to be able to read the command line arguments
+import sys
 
-#each operation must be provided using an external file from a distinct subgroup originating from their branch.
 from our_add.our_add import our_add
 from our_sub.our_sub import our_sub
 from our_mult.our_mult import our_mult
 from our_div.our_div import our_div
 from our_mod.our_mod import our_mod
 
+
 def main():
-    # Check number of  command line arguments
     if len(sys.argv) != 4:
-        print("Number of arguments must be exactly three")  #'python' keyword can be ignored
+        print("Number of arguments must be exactly three")  # 'python' keyword can be ignored
     else:
+
         # Access and display individual arguments
         operation = sys.argv[1]
         first_arg = sys.argv[2]

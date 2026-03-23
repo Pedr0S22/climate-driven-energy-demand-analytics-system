@@ -57,7 +57,8 @@ code_complexity:
     - pip install xenon
   script:
     - echo "Checking code complexity... "
-    - echo $CI_COMMIT_BRANCH
+    - echo $CI_COMMIT_BRANCH~
+    - cd $CI_PROJECT_DIR/Code/calculator
     - xenon -b B -m B -a B --ignore='venv' . 
             # -b A : At least one block has a complexity rank higher than A (i.e. B, C, D, E or F)
             # -m A : At least one module has a complexity rank higher than A (i.e. B, C, D, E or F)
