@@ -58,7 +58,7 @@ code_complexity:
   script:
     - echo "Checking code complexity... "
     - echo $CI_COMMIT_BRANCH
-    - xenon -b A -m A -a A --ignore='venv' .
+    - xenon -a A --ignore='venv' .
             # -b A : At least one block has a complexity rank higher than A (i.e. B, C, D, E or F)
             # -m A : At least one module has a complexity rank higher than A (i.e. B, C, D, E or F)
             # -a A : Average complexity has rank higher than A (i.e. B , C, D, E or F)
