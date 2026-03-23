@@ -1,11 +1,12 @@
-import sys  #to be able to read the command line arguments
+import sys  # to be able to read the command line arguments
 
-#each operation must be provided using an external file from a distinct subgroup originating from their branch.
+# each operation must be provided using an external file from a distinct subgroup originating from their branch.
 from our_add.our_add import our_add
 from our_sub.our_sub import our_sub
 from our_mult.our_mult import our_mult
 from our_div.our_div import our_div
 from our_mod.our_mod import our_mod
+
 
 def main():
     # Check number of  command line arguments
@@ -26,7 +27,7 @@ def main():
 
         if operation == '+':
             print(f"{num1} + {num2} = {our_add(num1, num2)}")
-            
+
         elif operation == '-':
             print(f"{num1} - {num2} = {our_sub(num1, num2)}")
 
