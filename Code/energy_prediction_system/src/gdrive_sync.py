@@ -109,7 +109,8 @@ def backup_project_data():
 
     print("\n--- Backup Complete ---")
 
+
 # serves only for testing purposes
 # if __name__ == '__main__':
-    # Run this directly to test the backup
-    # backup_project_data()
+# Run this directly to test the backup
+# backup_project_data()
