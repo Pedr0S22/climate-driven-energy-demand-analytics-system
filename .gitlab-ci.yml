@@ -1,0 +1,24 @@
+# .gitlab_ci.yml (version 1)
+
+image: python:latest
+
+before_script:
+- python --version
+- pip install pytest
+- echo "Hello, $GITLAB_USER_LOGIN!"
+- echo $REPO_NAME
+
+stages: # List of stages for jobs, and their order of execution
+- unit_tests
+
+# **************** UNIT TESTING stage ****************************
+
+tests_add:
+stage: unit_tests
+script:
+- echo "Running unit tests for add... "
+- echo $CI_COMMIT_BRANCH
+- cd $CI_PROJECT_DIR/Code/calculator/our_add
+- pytest
+
+
