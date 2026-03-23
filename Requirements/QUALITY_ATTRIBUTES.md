@@ -288,7 +288,7 @@ This file contains all QAs for the development of this project.
 
 * **Response:** The system provides a comprehensive test suite that can be executed with a single command, verifying that the new code functions as expected and that existing features remain intact.
 
-* **Response measure:** Automated tests cover at least 70% of the codebase's core logic, and the full suite completes execution in under 5 minutes, providing immediate feedback on regression errors.
+* **Response measure:** Automated tests (unit and integration) cover at least 70% of the codebase's core logic, and the full suite completes execution in under 8 minutes, providing immediate feedback on regression errors.
 
 
 
