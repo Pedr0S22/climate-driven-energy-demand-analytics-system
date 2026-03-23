@@ -11,7 +11,7 @@ from our_mod.our_mod import our_mod
 def main():
     # Check number of  command line arguments
     if len(sys.argv) != 4:
-        print("Number of arguments must be exactly three")  #'python' keyword can be ignored
+        print("Number of arguments must be exactly three")  # 'python' keyword can be ignored
     else:
         # Access and display individual arguments
         operation = sys.argv[1]
