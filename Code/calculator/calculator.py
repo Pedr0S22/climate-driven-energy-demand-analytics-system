@@ -26,7 +26,7 @@ def main():
 
         if operation == '+':
             print(f"{num1} + {num2} = {our_add(num1, num2)}")
-            
+
         elif operation == '-':
             print(f"{num1} - {num2} = {our_sub(num1, num2)}")
 
