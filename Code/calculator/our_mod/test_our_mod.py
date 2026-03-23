@@ -1,5 +1,5 @@
 import pytest
-from our_mod import our_mod
+from our_mod.our_mod import our_mod
 
 
 def test_trivial_mod():

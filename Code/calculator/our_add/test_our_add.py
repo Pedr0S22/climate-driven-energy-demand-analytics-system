@@ -1,5 +1,5 @@
 import pytest
-from our_add import our_add
+from our_add.our_add import our_add
 
 
 def test_trivial_add():
