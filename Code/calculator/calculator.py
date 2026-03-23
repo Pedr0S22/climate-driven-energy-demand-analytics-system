@@ -25,19 +25,19 @@ def main():
         num1 = int(first_arg)
         num2 = int(second_arg)
 
-        if operation == '+':
+        if operation == "+":
             print(f"{num1} + {num2} = {our_add(num1, num2)}")
 
-        elif operation == '-':
+        elif operation == "-":
             print(f"{num1} - {num2} = {our_sub(num1, num2)}")
 
-        elif operation == '*':
+        elif operation == "*":
             print(f"{num1} * {num2} = {our_mult(num1, num2)}")
 
-        elif operation == '/':
+        elif operation == "/":
             print(f"{num1} / {num2} = {our_div(num1, num2)}")
 
-        elif operation == '%':
+        elif operation == "%":
             print(f"{num1} and {num2} with mod operation = {our_mod(num1)}, {our_mod(num2)}")
 
         else:

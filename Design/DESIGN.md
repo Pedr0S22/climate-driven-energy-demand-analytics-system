@@ -6,10 +6,11 @@ This document captures the low-level system design decisions, technical stack, d
 
 * **Backend Framework:** Python with FastAPI
 * **Data Manipulation & ML:** Pandas, NumPy, SciPy, Scikit-Learn, Optuna
-* **Database Engine:** `TODO` SQLite or PostgreSQL
+* **Database Engine:** PostgreSQL; [`TODO`] Files for ML models; ELK stack for logging.
 * **Authentication/Security:** JWT for sessions, bcrypt for password hashing.
 * **Testing Framework:** pytest framework.
 * **Frontend/UI:**  Python PyQt6.
+* **Dashboards:** D3.js integrated with PyQt6.
 
 ---
 
