@@ -1,4 +1,4 @@
-# .gitlab_ci.yml (version 2 -- added test coverage checks)
+# .gitlab_ci.yml (version 5 -- add security checks)
 
 image: python:latest
 
@@ -17,9 +17,10 @@ before_script:
 
 
 stages: # List of stages for jobs, and their order of execution
-  - unit_tests
-  - integration
-
+    - unit_tests
+    - quality
+    - integration
+    - security
 
 
 # **************** UNIT TESTING stage ****************************
@@ -35,7 +36,35 @@ tests_add:
 #    - 41-add   #this step only runs when the commit occurs in the 41-add branch
 
 
+# **************** QUALITY stage ****************************
 
+coding_style:
+  stage: quality
+  before_script:
+    - pip install flake8
+  script:
+    - echo "Checking coding style... "
+    - echo $CI_COMMIT_BRANCH
+    - cd $CI_PROJECT_DIR/Code/calculator
+    - flake8 --max-line-length=120 calculator.py
+  allow_failure: true #default is false;
+  only:
+    - Ramyad20-sub   #this step only runs when the commit occurs in the 41-add branch
+
+code_complexity:
+  stage: quality
+  before_script:
+    - pip install xenon
+  script:
+    - echo "Checking code complexity... "
+    - echo $CI_COMMIT_BRANCH
+    - xenon -b A -m A -a A --ignore='venv' .
+            # -b A : At least one block has a complexity rank higher than A (i.e. B, C, D, E or F)
+            # -m A : At least one module has a complexity rank higher than A (i.e. B, C, D, E or F)
+            # -a A : Average complexity has rank higher than A (i.e. B , C, D, E or F)
+  allow_failure: true #default is false;
+  only:
+    - Ramyad20-sub   #this step only runs when the commit occurs in the 41-add branch
 
 # **************** INTEGRATION stage ****************************
 
@@ -47,26 +76,42 @@ integration:
     - cd $CI_PROJECT_DIR/Code/calculator/
     - pytest test_calculator.py
   only:
-    - Ramyad20-sub  #this step only runs when the commit occurs in the miacouto branch
-  #  - main #this step only runs when the commit occurs in the main trunk
+  #  - 41-add   #this step only runs when the commit occurs in the 41-add branch
+    - Ramyad20-sub #this step only runs when the commit occurs in the main trunk
 
 test_coverage:
   stage: integration
   before_script:
     - pip install pytest pytest-cov
   script:
-    - echo "Assessing test coverage... "
-    - echo $CI_COMMIT_BRANCH
-    - cd $CI_PROJECT_DIR/Code/calculator/
-    - pytest --cov=. --cov-report=html --cov-report=term # report goes to terminal and htmlcov → open 'index.html' in a browser
+  - echo "Assessing test coverage... "
+  - echo $CI_COMMIT_BRANCH
+  - cd $CI_PROJECT_DIR/Code/calculator/
+  - pytest --cov=. --cov-report=html --cov-report=term # report goes to terminal and htmlcov → open 'index.html' in a browser
   artifacts:
     paths:
       - $CI_PROJECT_DIR/Code/calculator/htmlcov/ # Preserve the html coverage files as an artifact
     expire_in: 1 day  # (Optional) Specify how long to keep the artifact
     # (e.g., 1 week, 1 day, never).
   only:
-    - Ramyad20-sub  #this step only runs when the commit occurs in the miacouto branch
-  #  - main #this step only runs when the commit occurs in the main trunk
+  #  - 41-add   #this step only runs when the commit occurs in the 41-add branch
+    - Ramyad20-sub #this step only runs when the commit occurs in the main trunk
+
+
+# **************** SECURITY stage ****************************
+
+security:
+  stage: security
+  before_script:
+    - pip install bandit
+  script:
+    - echo "Running security tests at application level... "
+    - echo $CI_COMMIT_BRANCH
+    - cd $CI_PROJECT_DIR/Code/calculator/
+    - bandit ./calculator.py
+  only:
+    - Ramyad20-sub #this step only runs when the commit occurs in the main branch
+  allow_failure: false # set to false - security should NEVER be compromised
 
 
 
