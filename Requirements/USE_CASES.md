@@ -1,4 +1,4 @@
-# USE CASE DEFINITIONS - V1.7
+# USE CASE DEFINITIONS - V1.8
 
 This file contains all UCs for the development of this project.
 
@@ -635,59 +635,54 @@ Allow the user to select a specific date and time to obtain the electricity dema
 
 
 
-## UC12: Navigate Application Hub
+## UC12: App Logging
 
-**Primary Actor:**
- Authenticated User (Regular User or Admin)
+**Primary Actor:** Administrator
 
-**Scope/Goal:**
-To provide a centralized landing page where authenticated users are routed based on their permissions, allowing them to choose between viewing daily predictions, hourly predictions, or accessing administrative controls (admin only).
+**Scope/Goal**: To allow the Administrator to securely monitor, search, and analyze system and application logs through a centralized dashboard powered by the ELK (Elasticsearch, Logstash, Kibana) stack, enabling troubleshooting, auditing, and system health checks.
 
 **Level:** User Goal
 
 **Stakeholders and Interests:**
 
-- **Regular User:** Wants clear, immediate access to generate or view daily and hourly predictions.
+* **Administrator / DevOps:** Wants a powerful, searchable interface to debug errors, track user activity, and monitor system performance without needing direct server access.
 
-- **Administrator:** Wants access to all user features, plus exclusive access to the admin analytics and system commands.
-
-- **Security/System:** Ensure proper Role-Based Access Control (RBAC) is enforced so users only see and access the navigation paths they are authorized for.
+* **Security/System:** Requires reliable capture, indexing, and visualization of application events to maintain a secure and trackable audit trail.
 
 **Preconditions:**
 
-1. The user has successfully registered and authenticated into the application.
+1. The user has successfully authenticated into the application and has an "Admin" role.
+
+2. The ELK stack infrastructure is active, properly configured, and successfully ingesting logs from the application and backend data pipelines.
 
 **Main Success Scenario:**
 
-1. The system evaluates the user's account role.
+1. The Administrator requests access to the App Logging interface.
 
-2. The system presents the Application Hub landing page immediately after successful login.
+2. The system verifies the user's admin privileges.
 
-3. The system displays the standard navigation options: "Daily Predictions" and "Hourly Predictions".
+3. The system presents the logging dashboard (powered by Kibana/ELK).
 
-4. The user selects one of the standard prediction options.
+4. The Administrator inputs specific search queries, time ranges, or filters (e.g., filtering for "Error" severity or a specific User ID).
 
-5. The system redirects the user to the corresponding option.
+5. The system queries the Elasticsearch database.
+
+6. The system retrieves and displays the matching log entries and associated visualizations to the Administrator.
 
 **Extensions:**
 
-3. a) The user is identified as having an "Admin" role:
+5. a) The ELK stack service is unreachable or timing out:
 
-    - 3a1. The system displays the standard options (Daily/Hourly) plus additional options: "Analytics Dashboard" and "Commands".
+    - 5a1. The system aborts the query.
 
-4. a) The user selects `Analytics Dashboard`:
+    - 5a2. The system displays an error message notifying the Administrator that the logging service is temporarily unavailable.
 
-    * 4a1. The system redirects the user to "Analytics Dashboard".
+6. a) The Administrator's query returns no matching logs:
 
-4) b) The user selects `Commands`:
+    - 6a1. The system displays a standard "No logs found for the selected criteria" message.
 
-    * 4b1. The system redirects the user to "Commands".
 
-4. c) The user chooses to log out:
 
-    * 4c1. The system terminates the active session.
-
-    * 4c2. The system redirects the user back to the login/authentication.
 
 ## UC13: Administrative Controls
 

@@ -15,7 +15,6 @@ Below there is a short presentation on what are the UCs, their numeration and ho
 ### Application
 - UC5 - User registration
 - UC6 - User authentication
-- UC12 - Navigate Application Hub
 
     ### Options
 
@@ -27,6 +26,7 @@ Below there is a short presentation on what are the UCs, their numeration and ho
 
     ### Admin Only Options
 - UC9 - Admin analytics dashboard
+- UC12 - App Logging
 - UC13 - Admin Controls
 
 
