@@ -39,7 +39,7 @@ def upload_file_to_drive(service, file_path, drive_folder_id):
     # Check for duplicates in the specific folder
     query = f"name='{file_name}' and '{drive_folder_id}' in parents and trashed=false"
     results = service.files().list(
-        q=query, spaces='drive', fields='files(id, name)', 
+        q=query, spaces='drive', fields='files(id, name)',
         supportsAllDrives=True, includeItemsFromAllDrives=True
     ).execute()
     
@@ -101,6 +101,7 @@ def backup_project_data():
 
     print("\n--- Backup Complete ---")
 
-if __name__ == '__main__':
+#if __name__ == '__main__':
     # Run this directly to test the backup
-    backup_project_data()
+    #backup_project_data()
+    
