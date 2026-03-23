@@ -71,7 +71,6 @@ def upload_file_to_drive(service, file_path, drive_folder_id):
 def backup_project_data():
     print("\n--- Starting Google Drive Backup ---")
     service = authenticate_gdrive()
-    
     # drive folder ids
     weather_drive_folder_id = os.getenv("WEATHER_DRIVE_FOLDER_ID")
     energy_drive_folder_id = os.getenv("ENERGY_DRIVE_FOLDER_ID")
@@ -79,7 +78,7 @@ def backup_project_data():
     # Safety check: ensure the IDs were actually loaded
     if not weather_drive_folder_id or not energy_drive_folder_id:
         raise ValueError("Missing Drive Folder IDs! Check your .env file.")
-    
+
     # 1. Backup Energy CSVs directly
     raw_energy_dir = os.path.join(PROJECT_ROOT, "data", "raw", "energy")
     if os.path.exists(raw_energy_dir):
@@ -95,11 +94,11 @@ def backup_project_data():
         print("\nBacking up Weather data (compressing to .zip)...")
         for item in os.listdir(raw_weather_dir):
             item_path = os.path.join(raw_weather_dir, item)
-            
+
             # zip up directories like "2024"
             if os.path.isdir(item_path):
                 zip_output_path = os.path.join(raw_weather_dir, f"{item}")
-                
+
                 # Check if already zipped locally to save time
                 if not os.path.exists(f"{zip_output_path}.zip"):
                     print(f"    Zipping {item} folder locally...")
@@ -110,10 +109,8 @@ def backup_project_data():
 
     print("\n--- Backup Complete ---")
 
-
-
 # serves only for testing purposes
-#if __name__ == '__main__':
+# if __name__ == '__main__':
     # Run this directly to test the backup
-    #backup_project_data()
-    
+    # backup_project_data()
+
