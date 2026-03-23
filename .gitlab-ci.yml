@@ -1,24 +1,72 @@
-# .gitlab_ci.yml (version 1)
+# .gitlab_ci.yml (version 2 -- added test coverage checks)
 
 image: python:latest
 
+
+variables:
+  BUILD_TYPE: draft # you can change e.g. to release when the time comes
+
 before_script:
-- python --version
-- pip install pytest
-- echo "Hello, $GITLAB_USER_LOGIN!"
-- echo $REPO_NAME
+  - python --version
+  - pip install pytest
+  - echo "Hello, $GITLAB_USER_LOGIN!"
+  - echo $REPO_NAME
+  - echo $CI_COMMIT_BRANCH
+  - echo $CI_PROJECT_DIR
+  - pwd
+
 
 stages: # List of stages for jobs, and their order of execution
-- unit_tests
+  - unit_tests
+  - integration
+
+
 
 # **************** UNIT TESTING stage ****************************
 
 tests_add:
   stage: unit_tests
   script:
-  - echo "Running unit tests for add... "
-  - echo $CI_COMMIT_BRANCH
-  - cd $CI_PROJECT_DIR/Code/calculator/our_add
-  - pytest
+    - echo "Running unit tests for add... "
+    - echo $CI_COMMIT_BRANCH
+    - cd $CI_PROJECT_DIR/Code/calculator/our_add
+    - pytest
+#  only:
+#    - 41-add   #this step only runs when the commit occurs in the 41-add branch
+
+
+
+
+# **************** INTEGRATION stage ****************************
+
+integration:
+  stage: integration
+  script:
+    - echo "Running integration tests at calculator level... "
+    - echo $CI_COMMIT_BRANCH
+    - cd $CI_PROJECT_DIR/Code/calculator/
+    - pytest test_calculator.py
+  only:
+    - naseixas   #this step only runs when the commit occurs in the miacouto branch
+  #  - main #this step only runs when the commit occurs in the main trunk
+
+test_coverage:
+  stage: integration
+  before_script:
+    - pip install pytest pytest-cov
+  script:
+    - echo "Assessing test coverage... "
+    - echo $CI_COMMIT_BRANCH
+    - cd $CI_PROJECT_DIR/Code/calculator/
+    - pytest --cov=. --cov-report=html --cov-report=term # report goes to terminal and htmlcov → open 'index.html' in a browser
+  artifacts:
+    paths:
+      - $CI_PROJECT_DIR/Code/calculator/htmlcov/ # Preserve the html coverage files as an artifact
+    expire_in: 1 day  # (Optional) Specify how long to keep the artifact
+    # (e.g., 1 week, 1 day, never).
+  only:
+    - naseixas   #this step only runs when the commit occurs in the miacouto branch
+  #  - main #this step only runs when the commit occurs in the main trunk
+
 
 
