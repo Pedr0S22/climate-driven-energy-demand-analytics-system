@@ -16,7 +16,7 @@ This file contains all QAs for the development of this project.
 
 * **Response:** The system executes the requested components and systematically records the start and end times, calculating total execution time for each phase, and writes this data to the system logs.
 
-* **Response measure:** Execution times for 100% of the key components (ingestion, feature engineering, and training) are successfully logged with a timestamp precision of at least 1s.
+* **Response measure:** Execution times for 100% of the key components (ingestion, feature engineering, and training) are successfully logged with a timestamp precision of at most 1s.
 
 
 
