@@ -20,7 +20,10 @@ Details on the specific classes and scripts executing the machine learning pipel
 
 ### 2.1. Ingestion Module
 * **Target:** ENTSO-E API & Copernicus ERA5 API.
-* **Logic:** [`TODO`: Define how the Python script handles data retrieving, retries, and saves raw files].
+* **Logic:** The module implements targeted data fetching utilizing `start_date` and `end_date` parameters.
+  - **ENTSO-E (Energy):** Uses `EntsoePandasClient` to retrieve total load data (in MW), adjusting temporal bounds with a 1-day timedelta to capture the full end-date, and formats the output to a CSV file in `/data/raw/energy/`.
+  - **Copernicus ERA5 (Weather):** Uses `cdsapi` to request meteorological variables for the specified date range. The API returns a ZIP file, which the script safely extracts, renames, and saves into `/data/raw/weather/`. It includes error handling for API quotas/messages surfacing as `BadZipFile` errors.
+  - **Data Backup:** After successful retrieval, the script invokes a Google Drive synchronization module to automatically back up the raw data.
 
 ### 2.2. Cleaning Module
 * **Target:** Reads from `/data/raw/`, outputs to `/data/processed/`.
