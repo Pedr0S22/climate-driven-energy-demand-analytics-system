@@ -216,7 +216,7 @@ __marimo__/
 .streamlit/secrets.toml
 
 # Data
-Code/energy_prediction_system/data/raw/weather/**/*.nc
+Code/energy_prediction_system/data/raw/weather/**/*.csv
 Code/energy_prediction_system/data/raw/weather/**/*.rar
 Code/energy_prediction_system/data/raw/weather/**/*.zip
 Code/energy_prediction_system/data/raw/energy/**/*.csv
