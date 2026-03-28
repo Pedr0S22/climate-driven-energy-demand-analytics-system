@@ -1,5 +1,4 @@
 import os
-import shutil
 from dotenv import load_dotenv, find_dotenv
 from google.auth.transport.requests import Request
 from google.oauth2.credentials import Credentials
@@ -88,24 +87,14 @@ def backup_project_data():
                 file_path = os.path.join(raw_energy_dir, file)
                 upload_file_to_drive(service, file_path, energy_drive_folder_id)
 
-    # 2. Zip and Backup Weather Folders
+    # 2. Backup Weather CSVs
     raw_weather_dir = os.path.join(PROJECT_ROOT, "data", "raw", "weather")
     if os.path.exists(raw_weather_dir):
-        print("\nBacking up Weather data (compressing to .zip)...")
-        for item in os.listdir(raw_weather_dir):
-            item_path = os.path.join(raw_weather_dir, item)
-
-            # zip up directories like "2024"
-            if os.path.isdir(item_path):
-                zip_output_path = os.path.join(raw_weather_dir, f"{item}")
-
-                # Check if already zipped locally to save time
-                if not os.path.exists(f"{zip_output_path}.zip"):
-                    print(f"    Zipping {item} folder locally...")
-                    shutil.make_archive(zip_output_path, "zip", item_path)
-
-                # Upload the zip
-                upload_file_to_drive(service, f"{zip_output_path}.zip", weather_drive_folder_id)
+        print("\nBacking up Weather data...")
+        for file in os.listdir(raw_weather_dir):
+            if file.endswith(".csv"):
+                file_path = os.path.join(raw_weather_dir, file)
+                upload_file_to_drive(service, file_path, weather_drive_folder_id)
 
     print("\n--- Backup Complete ---")
 

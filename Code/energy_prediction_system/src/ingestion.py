@@ -1,6 +1,7 @@
 # for copernicus
 import os
 import cdsapi
+import zipfile
 
 # for entso/e
 import pandas as pd
@@ -22,10 +23,12 @@ def fetch_copernicus_data(start_date: str, end_date: str):
     dataset = "reanalysis-era5-land-timeseries"
     client = cdsapi.Client()
 
-    output_path = os.path.join(raw_weather_dir, f"era5_timeseries_{start_date}_to_{end_date}.csv")
+    # Define paths for both the final CSV and the temporary ZIP
+    output_csv_path = os.path.join(raw_weather_dir, f"era5_timeseries_{start_date}_to_{end_date}.csv")
+    temp_zip_path = os.path.join(raw_weather_dir, f"era5_timeseries_{start_date}_to_{end_date}.zip")
 
-    if os.path.exists(output_path):
-        print(f"    [Skipping] File already exists: {output_path}")
+    if os.path.exists(output_csv_path):
+        print(f"    [Skipping] File already exists: {output_csv_path}")
         return
 
     request = {
@@ -40,20 +43,42 @@ def fetch_copernicus_data(start_date: str, end_date: str):
             "soil_temperature_level_1",
             "volumetric_soil_water_level_1",
             "10m_u_component_of_wind",
-            "10m_v_component_of_wind"
+            "10m_v_component_of_wind",
         ],
         "location": {"longitude": -3.7, "latitude": 40.4},
         "date": [f"{start_date}/{end_date}"],
-        "data_format": "csv"
+        "data_format": "csv",
     }
 
     try:
-        print(f"    -> Downloading Copernicus data...")
-        client.retrieve(dataset, request).download(output_path)
-        print(f"    [Success] Saved Copernicus data to {output_path}")
+        print("    -> Downloading Copernicus data (saving as ZIP)...")
+        # Download to the temporary ZIP path instead of directly to CSV
+        client.retrieve(dataset, request).download(temp_zip_path)
+        
+        print("    -> Extracting ZIP file...")
+        with zipfile.ZipFile(temp_zip_path, 'r') as zip_ref:
+            # Get the name of the file inside the zip
+            extracted_file_names = zip_ref.namelist()
+            zip_ref.extractall(raw_weather_dir)
+            
+            # Rename the extracted file to match your desired output name
+            if extracted_file_names:
+                extracted_file_path = os.path.join(raw_weather_dir, extracted_file_names[0])
+                if extracted_file_path != output_csv_path:
+                    os.replace(extracted_file_path, output_csv_path) # os.replace safely overwrites
+
+        # Clean up the temporary zip file
+        os.remove(temp_zip_path)
+        print(f"    [Success] Saved and extracted Copernicus data to {output_csv_path}")
+
+    # Catch specifically if the file isn't a ZIP
+    except zipfile.BadZipFile:
+        print("    [Error] The downloaded file is not a valid ZIP archive. It might be an API error message.")
+        with open(temp_zip_path, 'r', errors='ignore') as f:
+            print("    -> Server Response snippet:", f.read()[:500])
+            
     except Exception as e:
         print(f"    [Error] Failed to fetch Copernicus data: {e}")
-
 
 def fetch_entsoe_data(start_date: str, end_date: str, country_code: str = "ES"):
     print(f"\nFetching ENTSO-E load data for {country_code} from {start_date} to {end_date}...")
@@ -96,4 +121,4 @@ if __name__ == "__main__":
     fetch_entsoe_data(start_date, end_date, country_code="ES")
     fetch_copernicus_data(start_date, end_date)
 
-    #backup_project_data()
+    backup_project_data()
