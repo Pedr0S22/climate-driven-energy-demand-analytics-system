@@ -33,15 +33,15 @@ Land Hourly data from 1950 to present" dataset found at [https://cds.climate.cop
 3. The system connects to the ENTSO-E Transparency Platform and retrives the primary target variable which is total electricity load, expressed in megawatts (MW)
 4. The system connects to the Copernicus Climate Data Store (ERA5 dataset) and retrieves meteorological data. Specifically, it extracts:
 
-    * Lake total layer temperature (in Kelvin)
+    * Skin temperature (in Kelvin)
     * 2-meter air temperature (in Kelvin)
     * 2-meter dewpoint temperature (in Kelvin)
-    * soil temperature level1 (in kelvin)
+    * soil temperature level 1 (in kelvin)
     * Surface solar radiation downwards (in J/m²)
-    * Surface latent heat flux (in J/m²)
+    * Surface thermal radiation downwards (in J/m²)
     * Surface pressure (in Pa)
-    * Total evaporation (m of water equivalent )
     * 10-meter wind speed (both Eastward and Northward) (in m/s)
+    * Volumetric soil water layer 1 (in m³/ m³)
     * Total precipitation (in m)
 
     **For further familirization and better explanation regarding the variables mentioend below proceed to the Copernicus Climate Data Store**
