@@ -63,7 +63,7 @@ def fetch_copernicus_data(start_date: str, end_date: str):
             client.retrieve(dataset, request).download(temp_zip_path)
 
             print("    -> Extracting ZIP file...")
-            with zipfile.ZipFile(temp_zip_path, 'r') as zip_ref:
+            with zipfile.ZipFile(temp_zip_path, "r") as zip_ref:
                 # Get the name of the file inside the zip
                 extracted_file_names = zip_ref.namelist()
                 zip_ref.extractall(raw_weather_dir)
@@ -83,11 +83,11 @@ def fetch_copernicus_data(start_date: str, end_date: str):
         # Catch specifically if the file isn't a ZIP
         except zipfile.BadZipFile:
             print("    [Error] The downloaded file is not a valid ZIP archive. It might be an API error message.")
-            with open(temp_zip_path, 'r', errors='ignore') as f:
+            with open(temp_zip_path, "r", errors="ignore") as f:
                 print("    -> Server Response snippet:", f.read()[:500])
 
             if attempt < max_retries - 1:
-                sleep_time = 2 ** attempt
+                sleep_time = 2**attempt
                 print(f"    -> Retrying in {sleep_time} seconds...")
                 time.sleep(sleep_time)
             else:
@@ -96,11 +96,12 @@ def fetch_copernicus_data(start_date: str, end_date: str):
         except Exception as e:
             print(f"    [Error] Failed to fetch Copernicus data: {e}")
             if attempt < max_retries - 1:
-                sleep_time = 2 ** attempt
+                sleep_time = 2**attempt
                 print(f"    -> Retrying in {sleep_time} seconds...")
                 time.sleep(sleep_time)
             else:
                 print("    [Error] Max retries reached for Copernicus data fetch.")
+
 
 def fetch_entsoe_data(start_date: str, end_date: str, country_code: str = "ES"):
     print(f"\nFetching ENTSO-E load data for {country_code} from {start_date} to {end_date}...")
@@ -139,7 +140,7 @@ def fetch_entsoe_data(start_date: str, end_date: str, country_code: str = "ES"):
         except Exception as e:
             print(f"    [Error] Failed to fetch ENTSO-E data: {e}")
             if attempt < max_retries - 1:
-                sleep_time = 2 ** attempt
+                sleep_time = 2**attempt
                 print(f"    -> Retrying in {sleep_time} seconds...")
                 time.sleep(sleep_time)
             else:
