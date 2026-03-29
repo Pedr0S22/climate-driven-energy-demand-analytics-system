@@ -1,14 +1,13 @@
+default:
+  image: python:3.11
+
 variables:
   BUILD_TYPE: draft                           # Change it e.g. to "release" when the time comes
   APP_DIR: "Code/energy_prediction_system"    # Project path in the repository
 
-before_script:
+.base_before_script: &base_before_script
   - python --version
-  - echo "Hello, $GITLAB_USER_LOGIN!"
-  - echo $REPO_NAME
-  - echo $CI_COMMIT_BRANCH
-  - echo $CI_PROJECT_DIR
-  - pwd
+  - pip install pytest pytest-cov pandas entsoe-py cdsapi python-dotenv google-api-python-client google-auth-httplib2 google-auth-oauthlib flake8 xenon bandit
 
 stages:
     - unit-tests
@@ -21,8 +20,7 @@ stages:
 
 unit-tests:
   stage: unit-tests
-  before_script:
-    - pip install pytest pytest-cov pandas entsoe-py cdsapi python-dotenv google-api-python-client google-auth-httplib2 google-auth-oauthlib
+  before_script: *base_before_script
   script:
   - echo "Assessing unit test coverage... "
   - cd $APP_DIR
@@ -34,9 +32,7 @@ unit-tests:
 
 integration-tests:
   stage: integration-tests
-  before_script:
-    - !reference [before_script]
-    - pip install pytest pytest-cov pandas entsoe-py cdsapi python-dotenv google-api-python-client google-auth-httplib2 google-auth-oauthlib
+  before_script: *base_before_script
   script:
   - echo "Assessing test coverage... "
   - cd $APP_DIR
@@ -48,9 +44,7 @@ integration-tests:
 
 coding_style:
   stage: quality
-  before_script:
-    - !reference [before_script]
-    - pip install flake8
+  before_script: *base_before_script
   script:
     - echo "Checking coding style... "
     - cd $APP_DIR
@@ -59,9 +53,7 @@ coding_style:
 
 code_complexity:
   stage: quality
-  before_script:
-    - !reference [before_script]
-    - pip install xenon
+  before_script: *base_before_script
   script:
     - echo "Checking code complexity... "               # -b A : At least one block has a complexity rank higher than A (i.e. B, C, D, E or F)
     - cd $APP_DIR                                       # -m A : At least one module has a complexity rank higher than A (i.e. B, C, D, E or F)
@@ -73,9 +65,7 @@ code_complexity:
 
 security:
   stage: security
-  before_script:
-    - !reference [before_script]
-    - pip install bandit
+  before_script: *base_before_script
   script:
     - echo "Running security tests at application level... "
     - cd $APP_DIR
