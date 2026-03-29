@@ -10,7 +10,7 @@ app_root = os.path.abspath(os.path.join(os.path.dirname(__file__), "../.."))
 sys.path.insert(0, app_root)
 sys.path.insert(0, os.path.join(app_root, "src"))
 
-# Now imports will work regardless of where pytest is executed from
+# imports will work regardless of where pytest is executed from
 from src.ingestion import fetch_copernicus_data, fetch_entsoe_data
 from src.gdrive_sync import backup_project_data
 
@@ -34,7 +34,7 @@ def test_fetch_entsoe_single_day(mock_entsoe_client, mock_exists, mock_env_vars)
     
     fetch_entsoe_data("2023-01-01", "2023-01-01")
     
-    # Verify it added the 1-day timedelta to capture the full single day
+    # Verify the 1-day timedelta to capture the full single day
     mock_client_instance.query_load.assert_called_once()
     _, kwargs = mock_client_instance.query_load.call_args
     assert kwargs["start"] == pd.Timestamp("2023-01-01", tz="Europe/Madrid")
@@ -71,9 +71,9 @@ def test_fetch_entsoe_retry_mechanism(mock_entsoe_client, mock_exists, mock_slee
     
     fetch_entsoe_data("2023-01-01", "2023-01-01")
     
-    # It should try exactly 3 times (max_retries = 3) before giving up
+    # try exactly 3 times (max_retries = 3) before giving up
     assert mock_client_instance.query_load.call_count == 3
-    # It should sleep 2 times (after 1st and 2nd failure)
+    # sleep 2 times (after 1st and 2nd failure)
     assert mock_sleep.call_count == 2
 
 @patch("src.ingestion.os.path.exists")
@@ -184,3 +184,15 @@ def test_upload_file_to_drive_duplicate():
     
     upload_file_to_drive(mock_service, "dummy/test.csv", "folder_id")
     mock_service.files().create.assert_not_called()
+
+
+def test_fetch_entsoe_invalid_dates():
+    """Test that passing an end_date before a start_date raises an error"""
+    with pytest.raises(ValueError, match="start_date cannot be strictly after end_date"):
+        fetch_entsoe_data("2023-12-31", "2023-01-01")
+
+
+def test_fetch_copernicus_invalid_dates():
+    """Test that passing an end_date before a start_date raises an error"""
+    with pytest.raises(ValueError, match="start_date cannot be strictly after end_date"):
+        fetch_copernicus_data("2023-12-31", "2023-01-01")

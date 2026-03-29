@@ -1,4 +1,8 @@
-image: python:3.11
+test_job:
+  image: python:3.11
+  script:
+    - pip install pandas pytest entsoe-py cdsapi python-dotenv
+    - pytest tests/
 
 
 variables:

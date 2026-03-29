@@ -14,6 +14,9 @@ from gdrive_sync import backup_project_data
 
 
 def fetch_copernicus_data(start_date: str, end_date: str):
+    if pd.Timestamp(start_date) > pd.Timestamp(end_date):
+        raise ValueError("start_date cannot be strictly after end_date.")
+
     print(f"Fetching Copernicus ERA5-Land timeseries data from {start_date} to {end_date}...")
     SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
     PROJECT_ROOT = os.path.abspath(os.path.join(SCRIPT_DIR, ".."))
@@ -58,18 +61,18 @@ def fetch_copernicus_data(start_date: str, end_date: str):
             print(f"    -> Downloading Copernicus data (saving as ZIP)... [Attempt {attempt + 1}/{max_retries}]")
             # Download to the temporary ZIP path instead of directly to CSV
             client.retrieve(dataset, request).download(temp_zip_path)
-            
+
             print("    -> Extracting ZIP file...")
             with zipfile.ZipFile(temp_zip_path, 'r') as zip_ref:
                 # Get the name of the file inside the zip
                 extracted_file_names = zip_ref.namelist()
                 zip_ref.extractall(raw_weather_dir)
-                
+
                 # Rename the extracted file to match your desired output name
                 if extracted_file_names:
                     extracted_file_path = os.path.join(raw_weather_dir, extracted_file_names[0])
                     if extracted_file_path != output_csv_path:
-                        os.replace(extracted_file_path, output_csv_path) # os.replace safely overwrites
+                        os.replace(extracted_file_path, output_csv_path)  # os.replace safely overwrites
 
             # Clean up the temporary zip file
             if os.path.exists(temp_zip_path):
@@ -82,14 +85,14 @@ def fetch_copernicus_data(start_date: str, end_date: str):
             print("    [Error] The downloaded file is not a valid ZIP archive. It might be an API error message.")
             with open(temp_zip_path, 'r', errors='ignore') as f:
                 print("    -> Server Response snippet:", f.read()[:500])
-            
+
             if attempt < max_retries - 1:
                 sleep_time = 2 ** attempt
                 print(f"    -> Retrying in {sleep_time} seconds...")
                 time.sleep(sleep_time)
             else:
                 print("    [Error] Max retries reached for Copernicus API.")
-                
+
         except Exception as e:
             print(f"    [Error] Failed to fetch Copernicus data: {e}")
             if attempt < max_retries - 1:
@@ -147,7 +150,6 @@ if __name__ == "__main__":
     start_date = "2020-01-01"
     end_date = "2025-12-31"
 
-    # Fetch the entire timeseries for both ENTSO-E and Copernicus in one go
     fetch_entsoe_data(start_date, end_date, country_code="ES")
     fetch_copernicus_data(start_date, end_date)
 
