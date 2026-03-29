@@ -1,0 +1,13 @@
+services:
+  db_server:
+    image: postgres:15
+    volumes:
+      # Mapeia os scripts de inicialização (Read-Only)
+      - ./init-scripts:/docker-entrypoint-initdb.d:ro
+      
+      # Mapeia a pasta de dados real (Persistência)
+      # Nota: 'postgres_data' é um volume gerido pelo Docker
+      - postgres_data:/var/lib/postgresql/data 
+
+volumes:
+  postgres_data: # Define o volume persistente

@@ -1,0 +1,106 @@
+version: '3.8'
+
+services:
+  # --- 1. LAYER: DATABASES ---
+  db_server:
+    extends:
+      file: src/databases/docker-compose.db.yml
+      service: db_relational
+    networks:
+      - backend_net
+
+  elasticsearch:
+    image: docker.elastic.co/elasticsearch/elasticsearch:8.10.2
+    container_name: energy_elastic
+    environment:
+      - discovery.type=single-node
+      - xpack.security.enabled=false
+      - "ES_JAVA_OPTS=-Xms512m -Xmx512m"
+    networks:
+      - backend_net
+    volumes:
+      - elastic_data:/usr/share/elasticsearch/data
+    healthcheck:
+      test: ["CMD-SHELL", "curl -s http://localhost:9200/_cluster/health | grep -q 'status.*green\\|yellow'"]
+      interval: 15s
+      timeout: 10s
+      retries: 5
+
+  logstash:
+    image: docker.elastic.co/logstash/logstash:8.10.2
+    container_name: energy_logstash
+    volumes:
+      - ./src/databases/elk/logstash.conf:/usr/share/logstash/pipeline/logstash.conf:ro
+    networks:
+      - backend_net
+    depends_on:
+      elasticsearch:
+        condition: service_healthy
+
+  kibana:
+    image: docker.elastic.co/kibana/kibana:8.10.2
+    container_name: energy_kibana
+    ports:
+      - "5601:5601"
+    networks:
+      - frontend_net # Removida a backend_net por segurança; Kibana só precisa de falar com ES
+    depends_on:
+      elasticsearch:
+        condition: service_healthy
+
+  # --- 2. LAYER: BACKEND (API) ---
+  api:
+    build: ./src/api
+    container_name: energy_api
+    restart: always # QA8: Auto-recovery
+    environment:
+      - DB_HOST=db_server
+      - LOGSTASH_HOST=logstash
+      - DATA_PATH=/app/data
+    networks:
+      - backend_net
+      - frontend_net
+    volumes:
+      - ./data:/app/data:ro # Persistência de modelos (Read-Only para a API)
+    depends_on:
+      db_server:
+        condition: service_healthy
+      elasticsearch:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+
+  # --- 3. LAYER: FRONTEND (APP) ---
+  app:
+    build: ./src/app
+    container_name: energy_app
+    ports:
+      - "3000:3000"
+    networks:
+      - frontend_net
+    depends_on:
+      api:
+        condition: service_healthy
+
+  # --- 4. LAYER: DATA PIPELINE (Pipe-Filter) ---
+  pipeline:
+    build: ./src/data-pipeline
+    container_name: energy_pipeline
+    networks:
+      - backend_net
+    volumes:
+      - ./data:/app/data # Escrita permitida para salvar novos modelos
+    depends_on:
+      db_server:
+        condition: service_healthy
+
+networks:
+  frontend_net:
+  backend_net:
+
+volumes:
+  postgres_data:
+  elastic_data:
