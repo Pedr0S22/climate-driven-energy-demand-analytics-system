@@ -3,10 +3,8 @@ import pandas as pd
 import zipfile
 from unittest.mock import patch, MagicMock, mock_open
 
-# Now we can import from `src` directly because of conftest.py
-from src.ingestion import fetch_copernicus_data, fetch_entsoe_data
-from src.gdrive_sync import backup_project_data
-from src.gdrive_sync import upload_file_to_drive
+from ingestion import fetch_copernicus_data, fetch_entsoe_data
+from gdrive_sync import backup_project_data, upload_file_to_drive
 
 
 @pytest.fixture
@@ -177,7 +175,7 @@ def test_backup_project_data_missing_ids(monkeypatch):
     """Test GDrive backup aborts if folder IDs are missing"""
     monkeypatch.delenv("WEATHER_DRIVE_FOLDER_ID", raising=False)
     monkeypatch.delenv("ENERGY_DRIVE_FOLDER_ID", raising=False)
-    with patch("src.gdrive_sync.authenticate_gdrive"):
+    with patch("gdrive_sync.authenticate_gdrive"):
         with pytest.raises(ValueError, match="Missing Drive Folder IDs!"):
             backup_project_data()
 
