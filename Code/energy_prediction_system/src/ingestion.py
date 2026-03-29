@@ -104,6 +104,9 @@ def fetch_copernicus_data(start_date: str, end_date: str):
 
 
 def fetch_entsoe_data(start_date: str, end_date: str, country_code: str = "ES"):
+    if pd.Timestamp(start_date) > pd.Timestamp(end_date):
+        raise ValueError("start_date cannot be strictly after end_date.")
+
     print(f"\nFetching ENTSO-E load data for {country_code} from {start_date} to {end_date}...")
     SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
     PROJECT_ROOT = os.path.abspath(os.path.join(SCRIPT_DIR, ".."))
