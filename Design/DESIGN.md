@@ -19,8 +19,26 @@ This document captures the low-level system design decisions, technical stack, d
 Details on the specific classes and scripts executing the machine learning pipeline.
 
 ### 2.1. Ingestion Module
-* **Target:** ENTSO-E API & Copernicus ERA5 API.
-* **Logic:** [`TODO`: Define how the Python script handles data retrieving, retries, and saves raw files].
+* **Target APIs:** ENTSO-E Transparency Platform (Energy Demand) & Copernicus Climate Data Store ERA5-Land (Meteorological Data).
+* **Orchestration:** Driven by a master `data_retrieval(start_date, end_date, country_code)` function that sequentially triggers energy data fetching, weather data fetching, and finally, cloud backup.
+* **Core Logic & Mechanisms:**
+  - **Input Validation & Idempotency:** The module strictly validates that `start_date` is not strictly after `end_date`. It features an idempotency check: before querying external APIs, the script checks if the target CSV already exists in the local directories (`/data/raw/weather/` and `/data/raw/energy/`). If it does, the expensive API call is skipped to save time and quota.
+  - **Resilience & Exponential Backoff:** Both fetching mechanisms are wrapped in a robust retry loop (configured globally via `MAX_RETRIES = 3`). If an API connection fails, times out, or returns a corrupted file, the script applies an exponential backoff (`2^attempt` seconds) before retrying, preventing rapid-fire failures and handling temporary network drops gracefully.
+  - **ENTSO-E (Energy Data):**
+    - Utilizes the `EntsoePandasClient` authenticated via an API key loaded from a `.env` file.
+    - Automatically localizes timestamps to the `Europe/Madrid` timezone.
+    - Applies a mathematically precise `+ 1 day` timedelta to the user-supplied `end_date` to ensure the API captures the absolute final hours of the requested boundary.
+    - Renames the output column to `Load_MW` and saves the raw output as a CSV specifically tagged with the target country code (e.g., `ES` for Spain).
+  - **Copernicus ERA5-Land (Weather Data):**
+    - Uses the `cdsapi.Client()` to fetch 11 specific meteorological variables (e.g., 2m temperature, skin temperature, 10m wind components, solar radiation) for a fixed geographical bounding box (longitude: -3.7, latitude: 40.4).
+    - The CDS API natively returns data packaged in a `.zip` archive. The script safely downloads this to a temporary local path (`temp_zip_path`), unpacks it into memory, renames the inner contents to match the project's standardized naming convention, and automatically purges the `.zip` residue.
+    - **Edge Case Handling:** Explicitly catches `zipfile.BadZipFile` exceptions. The Copernicus API is known to return plain-text HTML/JSON error messages (like queue timeouts or quota limits) masked as an HTTP 200 ZIP download. The script safely traps this, reads the error snippet for the log, and falls back to the retry mechanism.
+  - **Data Backup (`gdrive_sync.py`):**
+    - Once local CSVs are securely written, the module triggers `backup_project_data()`.
+    - Authenticates with Google Drive via OAuth 2.0 (`credentials.json` and `token.json`).
+    - Scans both local raw directories and queries the target Google Drive folders (`WEATHER_DRIVE_FOLDER_ID` and `ENERGY_DRIVE_FOLDER_ID`).
+    - Prevents redundant uploads by verifying if the exact file name already exists in the destination Drive folder before initiating the chunked, resumable media upload.
+* **Observability:** All stages execute using Python's standard `logging` library (INFO, WARNING, ERROR levels) rather than raw print statements. This ensures execution flow and exceptions (complete with stack traces) can be audited effectively.
 
 ### 2.2. Cleaning Module
 * **Target:** Reads from `/data/raw/`, outputs to `/data/processed/`.
