@@ -22,7 +22,6 @@ def fetch_copernicus_data(start_date: str, end_date: str):
     os.makedirs(raw_weather_dir, exist_ok=True)
 
     dataset = "reanalysis-era5-land-timeseries"
-    client = cdsapi.Client()
 
     # Define paths for both the final CSV and the temporary ZIP
     output_csv_path = os.path.join(raw_weather_dir, f"era5_timeseries_{start_date}_to_{end_date}.csv")
@@ -31,6 +30,8 @@ def fetch_copernicus_data(start_date: str, end_date: str):
     if os.path.exists(output_csv_path):
         print(f"    [Skipping] File already exists: {output_csv_path}")
         return
+
+    client = cdsapi.Client()
 
     request = {
         "variable": [

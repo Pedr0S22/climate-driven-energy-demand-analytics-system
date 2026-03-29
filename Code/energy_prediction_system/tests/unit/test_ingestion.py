@@ -1,9 +1,16 @@
 import os
+import sys
 import pytest
 import pandas as pd
-from unittest.mock import patch, MagicMock
+import zipfile
+from unittest.mock import patch, MagicMock, mock_open
 
-# Adjust import path as needed depending on your project execution setup
+# Dynamically add the app root and src directory to the Python path
+app_root = os.path.abspath(os.path.join(os.path.dirname(__file__), "../.."))
+sys.path.insert(0, app_root)
+sys.path.insert(0, os.path.join(app_root, "src"))
+
+# Now imports will work regardless of where pytest is executed from
 from src.ingestion import fetch_copernicus_data, fetch_entsoe_data
 from src.gdrive_sync import backup_project_data
 
@@ -17,7 +24,7 @@ def mock_env_vars(monkeypatch):
 @patch("src.ingestion.EntsoePandasClient")
 def test_fetch_entsoe_single_day(mock_entsoe_client, mock_exists, mock_env_vars):
     """Test single day ingestion logic (start_date == end_date)"""
-    mock_exists.return_value = False  # Trigger the API call
+    mock_exists.return_value = False
     
     mock_client_instance = MagicMock()
     mock_entsoe_client.return_value = mock_client_instance
@@ -115,3 +122,65 @@ def test_backup_project_data(mock_exists, mock_listdir, mock_upload, mock_env_va
         
     # Verify upload was called twice (once for each file)
     assert mock_upload.call_count == 2
+
+
+# ==========================================
+# Additional Coverage Tests
+# ==========================================
+
+@patch("src.ingestion.os.path.exists")
+def test_fetch_entsoe_skips_if_exists(mock_exists):
+    """Test ENTSO-E skips if file already exists"""
+    mock_exists.return_value = True
+    with patch("src.ingestion.EntsoePandasClient") as mock_client:
+        fetch_entsoe_data("2023-01-01", "2023-01-01")
+        mock_client.assert_not_called()
+
+@patch("src.ingestion.os.getenv", return_value=None)
+@patch("src.ingestion.os.path.exists", return_value=False)
+def test_fetch_entsoe_no_api_key(mock_exists, mock_getenv):
+    """Test ENTSO-E aborts if API key is missing"""
+    with patch("src.ingestion.EntsoePandasClient") as mock_client:
+        fetch_entsoe_data("2023-01-01", "2023-01-01")
+        mock_client.assert_not_called()
+
+@patch("src.ingestion.os.path.exists")
+def test_fetch_copernicus_skips_if_exists(mock_exists):
+    """Test Copernicus skips if file already exists"""
+    mock_exists.return_value = True
+    with patch("src.ingestion.cdsapi.Client") as mock_client:
+        fetch_copernicus_data("2023-01-01", "2023-01-01")
+        mock_client.assert_not_called()
+
+@patch("src.ingestion.time.sleep", return_value=None)
+@patch("src.ingestion.os.path.exists", return_value=False)
+@patch("src.ingestion.cdsapi.Client")
+def test_fetch_copernicus_bad_zip_file(mock_cds_client, mock_exists, mock_sleep):
+    """Test Copernicus API quotas/messages handling as BadZipFile"""
+    mock_client_instance = MagicMock()
+    mock_cds_client.return_value = mock_client_instance
+    
+    with patch("src.ingestion.zipfile.ZipFile") as mock_zip:
+        mock_zip.side_effect = zipfile.BadZipFile("Not a zip")
+        with patch("builtins.open", mock_open(read_data="API Error Details")):
+            fetch_copernicus_data("2023-01-01", "2023-01-01")
+        # Should retry 3 times
+        assert mock_zip.call_count == 3
+        assert mock_sleep.call_count == 2
+
+def test_backup_project_data_missing_ids(monkeypatch):
+    """Test GDrive backup aborts if folder IDs are missing"""
+    monkeypatch.delenv("WEATHER_DRIVE_FOLDER_ID", raising=False)
+    monkeypatch.delenv("ENERGY_DRIVE_FOLDER_ID", raising=False)
+    with patch("src.gdrive_sync.authenticate_gdrive"):
+        with pytest.raises(ValueError, match="Missing Drive Folder IDs!"):
+            backup_project_data()
+
+from src.gdrive_sync import upload_file_to_drive
+def test_upload_file_to_drive_duplicate():
+    """Test upload skipped when file already exists on GDrive"""
+    mock_service = MagicMock()
+    mock_service.files().list().execute.return_value = {"files": [{"id": "123"}]}
+    
+    upload_file_to_drive(mock_service, "dummy/test.csv", "folder_id")
+    mock_service.files().create.assert_not_called()
