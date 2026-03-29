@@ -1,20 +1,12 @@
-import os
-import sys
 import pytest
 import pandas as pd
 import zipfile
 from unittest.mock import patch, MagicMock, mock_open
 
-# Dynamically add the app root and src directory to the Python path
-# This must be done before importing from `src`
-from ingestion import fetch_copernicus_data, fetch_entsoe_data
-from gdrive_sync import backup_project_data
-from gdrive_sync import upload_file_to_drive
-
-
-app_root = os.path.abspath(os.path.join(os.path.dirname(__file__), "../.."))
-sys.path.insert(0, app_root)
-sys.path.insert(0, os.path.join(app_root, "src"))
+# Now we can import from `src` directly because of conftest.py
+from src.ingestion import fetch_copernicus_data, fetch_entsoe_data
+from src.gdrive_sync import backup_project_data
+from src.gdrive_sync import upload_file_to_drive
 
 
 @pytest.fixture
