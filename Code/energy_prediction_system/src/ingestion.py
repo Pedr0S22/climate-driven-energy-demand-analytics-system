@@ -3,6 +3,7 @@ import time
 import os
 import cdsapi
 import zipfile
+import logging
 
 # for entso/e
 import pandas as pd
@@ -12,12 +13,14 @@ from entsoe import EntsoePandasClient
 # for gdrive
 from gdrive_sync import backup_project_data
 
+MAX_RETRIES = 3
+
 
 def fetch_copernicus_data(start_date: str, end_date: str):
     if pd.Timestamp(start_date) > pd.Timestamp(end_date):
         raise ValueError("start_date cannot be strictly after end_date.")
 
-    print(f"Fetching Copernicus ERA5-Land timeseries data from {start_date} to {end_date}...")
+    logging.info(f"Fetching Copernicus ERA5-Land timeseries data from {start_date} to {end_date}...")
     SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
     PROJECT_ROOT = os.path.abspath(os.path.join(SCRIPT_DIR, ".."))
 
@@ -31,7 +34,7 @@ def fetch_copernicus_data(start_date: str, end_date: str):
     temp_zip_path = os.path.join(raw_weather_dir, f"era5_timeseries_{start_date}_to_{end_date}.zip")
 
     if os.path.exists(output_csv_path):
-        print(f"    [Skipping] File already exists: {output_csv_path}")
+        logging.info(f"Skipping: File already exists: {output_csv_path}")
         return
 
     client = cdsapi.Client()
@@ -55,14 +58,13 @@ def fetch_copernicus_data(start_date: str, end_date: str):
         "data_format": "csv",
     }
 
-    max_retries = 3
-    for attempt in range(max_retries):
+    for attempt in range(MAX_RETRIES):
         try:
-            print(f"    -> Downloading Copernicus data (saving as ZIP)... [Attempt {attempt + 1}/{max_retries}]")
+            logging.info(f"Downloading Copernicus data (saving as ZIP)... [Attempt {attempt + 1}/{MAX_RETRIES}]")
             # Download to the temporary ZIP path instead of directly to CSV
             client.retrieve(dataset, request).download(temp_zip_path)
 
-            print("    -> Extracting ZIP file...")
+            logging.info("Extracting ZIP file...")
             with zipfile.ZipFile(temp_zip_path, "r") as zip_ref:
                 # Get the name of the file inside the zip
                 extracted_file_names = zip_ref.namelist()
@@ -77,37 +79,37 @@ def fetch_copernicus_data(start_date: str, end_date: str):
             # Clean up the temporary zip file
             if os.path.exists(temp_zip_path):
                 os.remove(temp_zip_path)
-            print(f"    [Success] Saved and extracted Copernicus data to {output_csv_path}")
+            logging.info(f"Success: Saved and extracted Copernicus data to {output_csv_path}")
             break
 
         # Catch specifically if the file isn't a ZIP
         except zipfile.BadZipFile:
-            print("    [Error] The downloaded file is not a valid ZIP archive. It might be an API error message.")
+            logging.error("The downloaded file is not a valid ZIP archive. It might be an API error message.")
             with open(temp_zip_path, "r", errors="ignore") as f:
-                print("    -> Server Response snippet:", f.read()[:500])
+                logging.error(f"Server Response snippet: {f.read()[:500]}")
 
-            if attempt < max_retries - 1:
+            if attempt < MAX_RETRIES - 1:
                 sleep_time = 2**attempt
-                print(f"    -> Retrying in {sleep_time} seconds...")
+                logging.warning(f"Retrying in {sleep_time} seconds...")
                 time.sleep(sleep_time)
             else:
-                print("    [Error] Max retries reached for Copernicus API.")
+                logging.error("Max retries reached for Copernicus API.")
 
-        except Exception as e:
-            print(f"    [Error] Failed to fetch Copernicus data: {e}")
-            if attempt < max_retries - 1:
+        except Exception:
+            logging.error("Failed to fetch Copernicus data.", exc_info=True)
+            if attempt < MAX_RETRIES - 1:
                 sleep_time = 2**attempt
-                print(f"    -> Retrying in {sleep_time} seconds...")
+                logging.warning(f"Retrying in {sleep_time} seconds...")
                 time.sleep(sleep_time)
             else:
-                print("    [Error] Max retries reached for Copernicus data fetch.")
+                logging.error("Max retries reached for Copernicus data fetch.")
 
 
 def fetch_entsoe_data(start_date: str, end_date: str, country_code: str = "ES"):
     if pd.Timestamp(start_date) > pd.Timestamp(end_date):
         raise ValueError("start_date cannot be strictly after end_date.")
 
-    print(f"\nFetching ENTSO-E load data for {country_code} from {start_date} to {end_date}...")
+    logging.info(f"Fetching ENTSO-E load data for {country_code} from {start_date} to {end_date}...")
     SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
     PROJECT_ROOT = os.path.abspath(os.path.join(SCRIPT_DIR, ".."))
 
@@ -116,7 +118,7 @@ def fetch_entsoe_data(start_date: str, end_date: str, country_code: str = "ES"):
     output_path = os.path.join(raw_energy_dir, f"entsoe_{country_code}_load_{start_date}_to_{end_date}.csv")
 
     if os.path.exists(output_path):
-        print(f"    [Skipping] File already exists: {output_path}")
+        logging.info(f"Skipping: File already exists: {output_path}")
         return
 
     env_path = os.path.join(SCRIPT_DIR, ".env")
@@ -124,37 +126,46 @@ def fetch_entsoe_data(start_date: str, end_date: str, country_code: str = "ES"):
     api_key = os.getenv("ENTSOE_API_KEY")
 
     if not api_key:
-        print(f"    [Error] ENTSOE_API_KEY not found! Looked in: {env_path}")
+        logging.error(f"ENTSOE_API_KEY not found! Looked in: {env_path}")
         return
 
-    max_retries = 3
-    for attempt in range(max_retries):
+    for attempt in range(MAX_RETRIES):
         try:
-            print(f"    -> Querying ENTSO-E API... [Attempt {attempt + 1}/{max_retries}]")
+            logging.info(f"Querying ENTSO-E API... [Attempt {attempt + 1}/{MAX_RETRIES}]")
             client = EntsoePandasClient(api_key=api_key)
             start = pd.Timestamp(start_date, tz="Europe/Madrid")
             end = pd.Timestamp(end_date, tz="Europe/Madrid") + pd.Timedelta(days=1)
 
             load_data = client.query_load(country_code, start=start, end=end)
             load_data.to_csv(output_path, header=["Load_MW"])
-            print(f"    [Success] Saved ENTSO-E data to {output_path}")
+            logging.info(f"Success: Saved ENTSO-E data to {output_path}")
             break
 
-        except Exception as e:
-            print(f"    [Error] Failed to fetch ENTSO-E data: {e}")
-            if attempt < max_retries - 1:
+        except Exception:
+            logging.error("Failed to fetch ENTSO-E data.", exc_info=True)
+            if attempt < MAX_RETRIES - 1:
                 sleep_time = 2**attempt
-                print(f"    -> Retrying in {sleep_time} seconds...")
+                logging.warning(f"Retrying in {sleep_time} seconds...")
                 time.sleep(sleep_time)
             else:
-                print("    [Error] Max retries reached for ENTSO-E data fetch.")
+                logging.error("Max retries reached for ENTSO-E data fetch.")
+
+
+def data_retrieval(start_date: str, end_date: str, country_code: str = "ES"):
+    """Master function to orchestrate data ingestion from multiple sources and backup."""
+    fetch_entsoe_data(start_date, end_date, country_code)
+    fetch_copernicus_data(start_date, end_date)
+    backup_project_data()
 
 
 if __name__ == "__main__":
+    # Configure logging
+    logging.basicConfig(
+        level=logging.INFO,
+        format="%(asctime)s [%(levelname)s] %(message)s",
+        datefmt="%Y-%m-%d %H:%M:%S",
+    )
     start_date = "2020-01-01"
     end_date = "2025-12-31"
 
-    fetch_entsoe_data(start_date, end_date, country_code="ES")
-    fetch_copernicus_data(start_date, end_date)
-
-    backup_project_data()
+    data_retrieval(start_date, end_date, country_code="ES")

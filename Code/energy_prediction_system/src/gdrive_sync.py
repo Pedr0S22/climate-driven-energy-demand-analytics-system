@@ -1,4 +1,5 @@
 import os
+import logging
 from dotenv import load_dotenv, find_dotenv
 from google.auth.transport.requests import Request
 from google.oauth2.credentials import Credentials
@@ -49,7 +50,7 @@ def upload_file_to_drive(service, file_path, drive_folder_id):
     )
 
     if results.get("files", []):
-        print(f"    [Drive] {file_name} already exists. Skipping.")
+        logging.info(f"Drive: {file_name} already exists. Skipping.")
         return
 
     file_metadata = {"name": file_name, "parents": [drive_folder_id]}
@@ -63,12 +64,12 @@ def upload_file_to_drive(service, file_path, drive_folder_id):
         mime_type = "application/octet-stream"
 
     media = MediaFileUpload(file_path, mimetype=mime_type, resumable=True)
-    print(f"    [Drive] Uploading {file_name}...")
+    logging.info(f"Drive: Uploading {file_name}...")
     service.files().create(body=file_metadata, media_body=media, fields="id", supportsAllDrives=True).execute()
 
 
 def backup_project_data():
-    print("\n--- Starting Google Drive Backup ---")
+    logging.info("--- Starting Google Drive Backup ---")
     service = authenticate_gdrive()
     # drive folder ids
     weather_drive_folder_id = os.getenv("WEATHER_DRIVE_FOLDER_ID")
@@ -81,7 +82,7 @@ def backup_project_data():
     # 1. Backup Energy CSVs directly
     raw_energy_dir = os.path.join(PROJECT_ROOT, "data", "raw", "energy")
     if os.path.exists(raw_energy_dir):
-        print("Backing up Energy data...")
+        logging.info("Backing up Energy data...")
         for file in os.listdir(raw_energy_dir):
             if file.endswith(".csv"):
                 file_path = os.path.join(raw_energy_dir, file)
@@ -90,13 +91,13 @@ def backup_project_data():
     # 2. Backup Weather CSVs
     raw_weather_dir = os.path.join(PROJECT_ROOT, "data", "raw", "weather")
     if os.path.exists(raw_weather_dir):
-        print("\nBacking up Weather data...")
+        logging.info("Backing up Weather data...")
         for file in os.listdir(raw_weather_dir):
             if file.endswith(".csv"):
                 file_path = os.path.join(raw_weather_dir, file)
                 upload_file_to_drive(service, file_path, weather_drive_folder_id)
 
-    print("\n--- Backup Complete ---")
+    logging.info("--- Backup Complete ---")
 
 
 # serves only for testing purposes
