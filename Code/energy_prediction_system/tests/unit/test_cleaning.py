@@ -1,4 +1,24 @@
-from cleaning import ajust15_energy, fill_nan_energy, aggregate_hour, g15_energy, time_alignment_energy, g115g1, weather, time_alignment, g15min, ajust15, missingValuesFind, missingImputation, temp_termicRad_imputation, wind_imputation, solar_imputation, precip_imputation, pressure_imputation, soil_imputation, media_custom, outliers_treatment, media_nearest, hourly_aggregation, convert_era5_units
+from cleaning import (
+    ajust15_energy,
+    fill_nan_energy,
+    aggregate_hour,
+    g15_energy,
+    time_alignment_energy,
+    g115g1,
+    g15min,
+    ajust15,
+    missingValuesFind,
+    temp_termicRad_imputation,
+    wind_imputation,
+    solar_imputation,
+    precip_imputation,
+    pressure_imputation,
+    soil_imputation,
+    media_custom,
+    outliers_treatment,
+    media_nearest,
+    hourly_aggregation,
+    convert_era5_units)
 import pytest
 import pandas as pd
 import numpy as np
@@ -118,7 +138,8 @@ def test_fill_nan_energy_15min_multiple_nans_uses_mean_last6():
 
     # Ajusta para 6 últimos válidos antes de 11h
     valid_before = (
-        df_filled.loc[df_filled["Unnamed: 0"] < times[8], "Load_MW"].dropna().tail(6)
+        df_filled.loc[df_filled["Unnamed: 0"] <
+                      times[8], "Load_MW"].dropna().tail(6)
     )
     expected_mean = valid_before.mean()
 
@@ -278,7 +299,8 @@ def test_g15_energy_missing_15min_filled_and_aggregated():
     df_proc = g15_energy(df.copy())
 
     assert len(df_proc) == 1
-    assert df_proc["Unnamed: 0"].iloc[0] == pd.to_datetime("2023-01-01 10:00", utc=True)
+    assert df_proc["Unnamed: 0"].iloc[0] == pd.to_datetime(
+        "2023-01-01 10:00", utc=True)
     assert df_proc["Load_MW"].iloc[0] == 110.0  # Máximo da hora 10h
     assert df_proc["Load_MW"].isna().sum() == 0
 
@@ -315,7 +337,8 @@ def test_aggregate_hour_15min_to_1h():
         ],
         utc=True,
     )
-    df = pd.DataFrame({"Unnamed: 0": times, "Load_MW": [100.0, 105.0, 110.0, 108.0]})
+    df = pd.DataFrame({"Unnamed: 0": times, "Load_MW": [
+                      100.0, 105.0, 110.0, 108.0]})
     df_agg = aggregate_hour(df.copy())
     assert len(df_agg) == 1
     assert df_agg["Load_MW"].iloc[0] == 110.0
@@ -352,9 +375,8 @@ def test_g115g1_1h_plus_15min_processed():
         ]
     ).reset_index(drop=True)
 
-    df = pd.DataFrame(
-        {"Unnamed: 0": times, "Load_MW": [100.0, 105.0, 110.0, 115.0, 120.0, 125.0]}
-    )
+    df = pd.DataFrame({"Unnamed: 0": times, "Load_MW": [
+        100.0, 105.0, 110.0, 115.0, 120.0, 125.0]})
 
     df_proc = g115g1(df.copy())
     assert "idx_15_start" in df_proc.attrs
@@ -380,7 +402,11 @@ def test_g115g1_1h_plus_15min_processed():
 # =======================================
 def test_g15min_no_gaps_returns_same_df():
     """Sem gaps de 15min, retorna mesmo DF"""
-    times = pd.date_range("2023-01-01 10:00", periods=4, freq="15min", tz="UTC")
+    times = pd.date_range(
+        "2023-01-01 10:00",
+        periods=4,
+        freq="15min",
+        tz="UTC")
     df = pd.DataFrame(
         {
             "valid_time": times,
@@ -443,7 +469,11 @@ def test_ajust15_rounds_to_15min():
 # TESTES missingValuesFind
 def test_missingValuesFind_single_nan_imputes():
     """Testa imputação simples"""
-    times = pd.date_range("2023-01-01 10:00", periods=4, freq="15min", tz="UTC")
+    times = pd.date_range(
+        "2023-01-01 10:00",
+        periods=4,
+        freq="15min",
+        tz="UTC")
     df = pd.DataFrame(
         {
             "valid_time": times,
@@ -461,7 +491,11 @@ def test_missingValuesFind_single_nan_imputes():
 
 def test_temp_termicRad_imputation_media_4prev_2next():
     """t2m: média 4 anteriores + 2 seguintes"""
-    times = pd.date_range("2023-01-01 10:00", periods=7, freq="15min", tz="UTC")
+    times = pd.date_range(
+        "2023-01-01 10:00",
+        periods=7,
+        freq="15min",
+        tz="UTC")
     series = pd.Series([10, 11, 12, 13, np.nan, 15, 16], index=times)
     result = temp_termicRad_imputation(series)
     expected = (10 + 11 + 12 + 13 + 15 + 16) / 6  # 12.833
@@ -470,7 +504,11 @@ def test_temp_termicRad_imputation_media_4prev_2next():
 
 def test_wind_imputation_media_last3():
     """u10/v10: média últimas 3"""
-    times = pd.date_range("2023-01-01 10:00", periods=5, freq="15min", tz="UTC")
+    times = pd.date_range(
+        "2023-01-01 10:00",
+        periods=5,
+        freq="15min",
+        tz="UTC")
     series = pd.Series([2, 2.5, 3, np.nan, 4], index=times)
     result = wind_imputation(series)
     expected = (2 + 2.5 + 3) / 3  # 2.5
@@ -489,7 +527,11 @@ def test_solar_imputation_night_zero():
 
 def test_precip_imputation_surrounded_by_zeros():
     """tp: rodeado de 0s → 0"""
-    times = pd.date_range("2023-01-01 10:00", periods=5, freq="15min", tz="UTC")
+    times = pd.date_range(
+        "2023-01-01 10:00",
+        periods=5,
+        freq="15min",
+        tz="UTC")
     series = pd.Series([0, 0, np.nan, 0, 0], index=times)
     result = precip_imputation(series)
     assert pytest.approx(result.iloc[2], rel=1e-6) == 0
@@ -497,8 +539,13 @@ def test_precip_imputation_surrounded_by_zeros():
 
 def test_pressure_imputation_media_last4():
     """sp: média das últimas 4 observações válidas anteriores"""
-    times = pd.date_range("2023-01-01 10:00", periods=6, freq="15min", tz="UTC")
-    series = pd.Series([1012.8, 1013.0, 1013.2, 1013.5, np.nan, 1014.0], index=times)
+    times = pd.date_range(
+        "2023-01-01 10:00",
+        periods=6,
+        freq="15min",
+        tz="UTC")
+    series = pd.Series([1012.8, 1013.0, 1013.2, 1013.5,
+                       np.nan, 1014.0], index=times)
     result = pressure_imputation(series)
 
     expected = (1012.8 + 1013.0 + 1013.2 + 1013.5) / 4
@@ -507,8 +554,13 @@ def test_pressure_imputation_media_last4():
 
 def test_soil_imputation_media_last6():
     """swvl1: média últimas 6"""
-    times = pd.date_range("2023-01-01 10:00", periods=7, freq="15min", tz="UTC")
-    series = pd.Series([0.3, 0.31, 0.32, 0.33, 0.34, 0.35, np.nan], index=times)
+    times = pd.date_range(
+        "2023-01-01 10:00",
+        periods=7,
+        freq="15min",
+        tz="UTC")
+    series = pd.Series(
+        [0.3, 0.31, 0.32, 0.33, 0.34, 0.35, np.nan], index=times)
     result = soil_imputation(series)
     expected = (0.3 + 0.31 + 0.32 + 0.33 + 0.34 + 0.35) / 6  # 0.325
     assert pytest.approx(result.iloc[6], rel=1e-6) == expected
@@ -516,7 +568,11 @@ def test_soil_imputation_media_last6():
 
 def test_media_custom_correct_window():
     """Testa media_custom"""
-    times = pd.date_range("2023-01-01 10:00", periods=7, freq="15min", tz="UTC")
+    times = pd.date_range(
+        "2023-01-01 10:00",
+        periods=7,
+        freq="15min",
+        tz="UTC")
     series = pd.Series([1, 2, 3, 4, np.nan, 6, 7], index=times)
     result = media_custom(series, n_prev=2, n_next=2)
     # Verifica que preencheu NaN
@@ -526,7 +582,11 @@ def test_media_custom_correct_window():
 # OUTLIERS
 def test_outliers_treatment_t2m_physical_outlier_uses_media_custom():
     """t2m = -45°C (abaixo limite físico -40°C) → media_custom(4,2)"""
-    times = pd.date_range("2023-01-01 10:00", periods=10, freq="15min", tz="UTC")
+    times = pd.date_range(
+        "2023-01-01 10:00",
+        periods=10,
+        freq="15min",
+        tz="UTC")
 
     df = pd.DataFrame(
         {
@@ -538,13 +598,18 @@ def test_outliers_treatment_t2m_physical_outlier_uses_media_custom():
     )
 
     df_result = outliers_treatment(df.copy())
-    assert pytest.approx(df_result.loc[4, "t2m"], rel=1e-6) == 10.5  # ✓ CORRETO
+    assert pytest.approx(
+        df_result.loc[4, "t2m"], rel=1e-6) == 10.5  # ✓ CORRETO
     assert df_result.loc[4, "t2m"] >= -40
 
 
 def test_outliers_treatment_stl1_iqr_but_physical_ok_not_treated():
     """stl1 outlier IQR mas dentro limite físico (-40,65) → NÃO tratado"""
-    times = pd.date_range("2023-01-01 10:00", periods=9, freq="15min", tz="UTC")
+    times = pd.date_range(
+        "2023-01-01 10:00",
+        periods=9,
+        freq="15min",
+        tz="UTC")
 
     df = pd.DataFrame(
         {
@@ -564,7 +629,11 @@ def test_outliers_treatment_stl1_iqr_but_physical_ok_not_treated():
 
 def test_outliers_treatment_ssrd_physical_and_iqr_outlier_uses_media_nearest():
     """ssrd negativo (limite físico + IQR) → media_nearest(2)"""
-    times = pd.date_range("2023-01-01 10:00", periods=7, freq="15min", tz="UTC")
+    times = pd.date_range(
+        "2023-01-01 10:00",
+        periods=7,
+        freq="15min",
+        tz="UTC")
 
     df = pd.DataFrame(
         {
@@ -576,13 +645,18 @@ def test_outliers_treatment_ssrd_physical_and_iqr_outlier_uses_media_nearest():
     )
 
     df_result = outliers_treatment(df.copy())
-    assert pytest.approx(df_result.loc[2, "ssrd"], rel=1e-6) == 105.0  # ✓ CORRETO
+    assert pytest.approx(
+        df_result.loc[2, "ssrd"], rel=1e-6) == 105.0  # ✓ CORRETO
     assert df_result.loc[2, "ssrd"] >= 0
 
 
 def test_outliers_treatment_tp_iqr_but_physical_ok_not_treated():
     """tp outlier IQR mas <=55mm → NÃO tratado"""
-    times = pd.date_range("2023-01-01 10:00", periods=9, freq="15min", tz="UTC")
+    times = pd.date_range(
+        "2023-01-01 10:00",
+        periods=9,
+        freq="15min",
+        tz="UTC")
 
     df = pd.DataFrame(
         {
@@ -602,16 +676,26 @@ def test_outliers_treatment_tp_iqr_but_physical_ok_not_treated():
 
 def test_outliers_treatment_swvl1_iqr_only_uses_media_custom_6_0():
     """swvl1 outlier IQR (IQR only) → media_custom(6 prev, 0 next)"""
-    times = pd.date_range("2023-01-01 10:00", periods=10, freq="15min", tz="UTC")
+    times = pd.date_range(
+        "2023-01-01 10:00",
+        periods=10,
+        freq="15min",
+        tz="UTC")
 
-    df = pd.DataFrame(
-        {
-            "valid_time": times,
-            "latitude": [40.0] * 10,
-            "longitude": [-8.0] * 10,
-            "swvl1": [0.20, 0.21, 0.22, 0.23, 0.24, 0.25, 0.90, 0.26, 0.27, 0.28],
-        }
-    )
+    df = pd.DataFrame({"valid_time": times,
+                       "latitude": [40.0] * 10,
+                       "longitude": [-8.0] * 10,
+                       "swvl1": [0.20,
+                                 0.21,
+                                 0.22,
+                                 0.23,
+                                 0.24,
+                                 0.25,
+                                 0.90,
+                                 0.26,
+                                 0.27,
+                                 0.28],
+                       })
 
     df_result = outliers_treatment(df.copy())
     assert pytest.approx(df_result.loc[6, "swvl1"], rel=1e-6) == 0.225
@@ -619,7 +703,11 @@ def test_outliers_treatment_swvl1_iqr_only_uses_media_custom_6_0():
 
 def test_outliers_treatment_no_outliers_returns_same():
     """Sem outliers → mantém originais"""
-    times = pd.date_range("2023-01-01 10:00", periods=4, freq="15min", tz="UTC")
+    times = pd.date_range(
+        "2023-01-01 10:00",
+        periods=4,
+        freq="15min",
+        tz="UTC")
 
     df = pd.DataFrame(
         {
@@ -656,7 +744,11 @@ def test_hourly_aggregation_already_hourly_returns_same():
 
 def test_hourly_aggregation_15min_to_hourly_single_column_mean():
     """15min → 1h: MÉDIA t2m em 10:00 (11.5) e 11:00 (24.25), apaga resto"""
-    times = pd.date_range("2023-01-01 10:00", periods=8, freq="15min", tz="UTC")
+    times = pd.date_range(
+        "2023-01-01 10:00",
+        periods=8,
+        freq="15min",
+        tz="UTC")
 
     df = pd.DataFrame(
         {
@@ -678,7 +770,8 @@ def test_hourly_aggregation_15min_to_hourly_single_column_mean():
     # Médias corretas
     # (10+11+12+13)/4
     assert pytest.approx(df_result.loc[0, "t2m"], rel=1e-6) == 11.5
-    assert pytest.approx(df_result.loc[1, "t2m"], rel=1e-6) == 24.25  # (15+30+25+27)/4
+    assert pytest.approx(
+        df_result.loc[1, "t2m"], rel=1e-6) == 24.25  # (15+30+25+27)/4
 
     # lat/lon inalterados
     assert df_result["latitude"].iloc[0] == 40.0
@@ -687,7 +780,11 @@ def test_hourly_aggregation_15min_to_hourly_single_column_mean():
 
 def test_weather_pipeline_completo():
     """Testa o pipeline weather completo - cobre blocos grandes 261-298"""
-    times = pd.date_range("2023-01-01 10:00", periods=8, freq="15min", tz="UTC")
+    times = pd.date_range(
+        "2023-01-01 10:00",
+        periods=8,
+        freq="15min",
+        tz="UTC")
     df = pd.DataFrame(
         {
             "valid_time": times,
@@ -717,11 +814,16 @@ def test_weather_pipeline_completo():
 def test_coverage_final_push():
     """Teste ULTRA SIMPLES que cobre linhas críticas do cleaning.py"""
     # Energy simples
-    times_e = pd.to_datetime(["2023-01-01 10:00", "2023-01-01 11:00"], utc=True)
+    times_e = pd.to_datetime(
+        ["2023-01-01 10:00", "2023-01-01 11:00"], utc=True)
     df_energy = pd.DataFrame({"Unnamed: 0": times_e, "Load_MW": [100, 110]})
     result_energy = fill_nan_energy(df_energy.copy())
 
-    times_w = pd.date_range("2023-01-01 10:00", periods=4, freq="15min", tz="UTC")
+    times_w = pd.date_range(
+        "2023-01-01 10:00",
+        periods=4,
+        freq="15min",
+        tz="UTC")
     df_weather = pd.DataFrame(
         {
             "valid_time": times_w,
@@ -742,7 +844,11 @@ def test_coverage_final_push():
 
 
 def test_media_nearest_basic():
-    times = pd.date_range("2023-01-01 10:00", periods=5, freq="15min", tz="UTC")
+    times = pd.date_range(
+        "2023-01-01 10:00",
+        periods=5,
+        freq="15min",
+        tz="UTC")
     series = pd.Series([10, 11, np.nan, 13, 14], index=times)
     result = media_nearest(series)
     assert pytest.approx(result.iloc[2], rel=1e-6) == 10.5
@@ -785,7 +891,8 @@ def test_time_alignment_energy_mixed_intervals_g115g1():
         utc=True,
     )
 
-    df = pd.DataFrame({"Unnamed: 0": times, "Load_MW": [100, 110, 120, 125, 130]})
+    df = pd.DataFrame(
+        {"Unnamed: 0": times, "Load_MW": [100, 110, 120, 125, 130]})
 
     result = time_alignment_energy(df.copy())
     assert "idx_15_start" in result.attrs

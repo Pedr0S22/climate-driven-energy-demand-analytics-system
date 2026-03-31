@@ -27,7 +27,8 @@ def fill_nan_energy(df):
 
         if num_nan_hora == 1:
             # Apenas 1 NaN na hora - interpolação (apenas neste ponto)
-            df.loc[idx, "Load_MW"] = df["Load_MW"].interpolate(method="linear").loc[idx]
+            df.loc[idx, "Load_MW"] = df["Load_MW"].interpolate(
+                method="linear").loc[idx]
         else:
             # Mais que 1 NaN na hora - média das últimas 6 observações válidas
             dados_anteriores = df.loc[: idx - 1, "Load_MW"].dropna().tail(6)
@@ -85,9 +86,8 @@ def aggregate_hour(df):
             valores_hora = []
             indices_hora = []
 
-            while (
-                i < len(df_15min) and df_15min.loc[i, time_col].floor("h") == hora_atual
-            ):
+            while (i < len(df_15min) and df_15min.loc[i, time_col].floor(
+                    "h") == hora_atual):
                 valores_hora.append(df_15min.loc[i, value_col])
                 indices_hora.append(i)
                 i += 1
@@ -172,7 +172,8 @@ def time_alignment_energy(df):
         # Tem mais do que um intervalo
         unique_diffs = set(diffs)
 
-        if {pd.Timedelta(hours=1), pd.Timedelta(minutes=15)}.issubset(unique_diffs):
+        if {pd.Timedelta(hours=1), pd.Timedelta(
+                minutes=15)}.issubset(unique_diffs):
             return g115g1(df)
         else:
             return g15_energy(df)
@@ -231,7 +232,9 @@ def g115g1(df):
     for i in range(1, len(diffs)):
         prev_diff = diffs[i - 1]
         this_diff = diffs[i]
-        if prev_diff >= pd.Timedelta(hours=1) and this_diff == pd.Timedelta(minutes=15):
+        if prev_diff >= pd.Timedelta(
+                hours=1) and this_diff == pd.Timedelta(
+                minutes=15):
             idx_15_start = i - 1  # 2 linhas acima da linha onde encontra a dif 15min
             break
 
@@ -243,7 +246,7 @@ def g115g1(df):
     df_1H = df.iloc[: idx_15_start + 1].copy().reset_index(drop=True)
 
     # A partir da linha seguinte (15 min): chama g15_energy
-    df_15 = df.iloc[idx_15_start + 1 :].copy().reset_index(drop=True)
+    df_15 = df.iloc[idx_15_start + 1:].copy().reset_index(drop=True)
     df_15 = g15_energy(df_15)
     df_15.attrs["idx_15_start"] = idx_15_start
 
@@ -261,14 +264,15 @@ def g115g1(df):
 
 
 def weather(pasta_saida=None):
+    base_path = "/Users/beatrizfernandes/Desktop/PIACD/dados_PIACD/Weather"
     datasets = [
-        "/Users/beatrizfernandes/Desktop/PIACD/dados_PIACD/Weather/era5_timeseries_2020-01-01_to_2025-12-31.csv",
-        "/Users/beatrizfernandes/Desktop/PIACD/dados_PIACD/Weather/reanalysis-era5-land-timeseries-sfc-2m-temperatureauafbxo0.csv",
-        "/Users/beatrizfernandes/Desktop/PIACD/dados_PIACD/Weather/reanalysis-era5-land-timeseries-sfc-pressure-precipitationtwpvvkbd.csv",
-        "/Users/beatrizfernandes/Desktop/PIACD/dados_PIACD/Weather/reanalysis-era5-land-timeseries-sfc-radiation-heathoyt7mym.csv",
-        "/Users/beatrizfernandes/Desktop/PIACD/dados_PIACD/Weather/reanalysis-era5-land-timeseries-sfc-skin-temperaturercarv5g8.csv",
-        "/Users/beatrizfernandes/Desktop/PIACD/dados_PIACD/Weather/reanalysis-era5-land-timeseries-sfc-soil-temperatureokgb55eq.csv",
-        "/Users/beatrizfernandes/Desktop/PIACD/dados_PIACD/Weather/reanalysis-era5-land-timeseries-sfc-soil-waterp9pn16zx.csv",
+        f"{base_path}/era5_timeseries_2020-01-01_to_2025-12-31.csv",
+        f"{base_path}/reanalysis-era5-land-timeseries-sfc-2m-temperatureauafbxo0.csv",
+        f"{base_path}/reanalysis-era5-land-timeseries-sfc-pressure-precipitationtwpvvkbd.csv",
+        f"{base_path}/reanalysis-era5-land-timeseries-sfc-radiation-heathoyt7mym.csv",
+        f"{base_path}/reanalysis-era5-land-timeseries-sfc-skin-temperaturercarv5g8.csv",
+        f"{base_path}/reanalysis-era5-land-timeseries-sfc-soil-temperatureokgb55eq.csv",
+        f"{base_path}/reanalysis-era5-land-timeseries-sfc-soil-waterp9pn16zx.csv",
     ]
 
     for arquivo in datasets:
@@ -406,7 +410,10 @@ def missingImputation(df, var):
         if nan_count == 0:
             resultado.append(serie)
         elif nan_count == 1:
-            resultado.append(serie.interpolate(method="linear", limit_direction="both"))
+            resultado.append(
+                serie.interpolate(
+                    method="linear",
+                    limit_direction="both"))
         else:
             print(f"{var} | {hora}: ESTRATÉGIA ESPECÍFICA")
             if var in ["t2m", "skt", "stl1", "d2m", "strd"]:
@@ -540,7 +547,8 @@ def outliers_treatment(df):
 
                 elif var in ["ssrd", "tp"]:
                     # média 2 mais próximas
-                    df.loc[outliers_tratar, var] = media_nearest(df[var], n_nearest=2)
+                    df.loc[outliers_tratar, var] = media_nearest(
+                        df[var], n_nearest=2)
 
         elif var in iqr_only:
             if n_candidatos > 0:
@@ -552,10 +560,12 @@ def outliers_treatment(df):
                     )
                 elif var == "sp":
                     # média 4 prev + 2 next
-                    df.loc[outliers_candidatos, var] = media_custom(df[var], 4, 2)
+                    df.loc[outliers_candidatos, var] = media_custom(
+                        df[var], 4, 2)
                 elif var == "swvl1":
                     # últimas 6
-                    df.loc[outliers_candidatos, var] = media_custom(df[var], 6, 0)
+                    df.loc[outliers_candidatos, var] = media_custom(
+                        df[var], 6, 0)
 
         else:
             print("manter")
@@ -591,7 +601,8 @@ def hourly_aggregation(df):
             hora_atual = df.loc[i, "valid_time"].floor("h")
             indices_hora = []
             # mesma hora
-            while i < len(df) and df.loc[i, "valid_time"].floor("h") == hora_atual:
+            while i < len(df) and df.loc[i,
+                                         "valid_time"].floor("h") == hora_atual:
                 indices_hora.append(i)
                 i += 1
             if len(indices_hora) > 1:
@@ -651,29 +662,32 @@ def cleaning(pasta_energy_corrigido, pasta_weather_corrigido):
             df["datetime"] = pd.to_datetime(df["valid_time"], utc=True)
 
             # Remove colunas indesejadas e mantém só variáveis meteo
-            cols_manter = [col for col in df.columns if col not in cols_excluir]
+            cols_manter = [
+                col for col in df.columns if col not in cols_excluir]
             df = df[cols_manter]
             dfs_weather.append(df)
 
     df_weather = pd.concat(dfs_weather, ignore_index=True)
-    df_weather = df_weather.groupby("datetime").mean(numeric_only=True).reset_index()
+    df_weather = df_weather.groupby("datetime").mean(
+        numeric_only=True).reset_index()
     print(f" Weather: {len(df_weather)} registos únicos")
 
     # 3. juntar
     df_final = pd.merge(df_weather, df_energy, on="datetime", how="inner")
 
     # 4. verificar
-    print(f"\n DATASET FINAL:")
+    print("\n DATASET FINAL:")
     print(f"   Shape: {df_final.shape}")
     print(f"   Colunas: {list(df_final.columns)}")
-    print(f"   Período: {df_final['datetime'].min()} → {df_final['datetime'].max()}")
+    print(
+        f"   Período: {df_final['datetime'].min()} → {df_final['datetime'].max()}")
 
     nulos = df_final.isnull().sum()
     if nulos.sum() > 0:
-        print(f"\n Valores em falta:")
+        print("\n Valores em falta:")
         print(nulos[nulos > 0])
     else:
-        print("\n SEM valores em falta!")
+        print("\n sem valores em falta!")
 
     nome_final = "dados_finais_completos.csv"
     caminho_final = os.path.join(pasta_saida, nome_final)
