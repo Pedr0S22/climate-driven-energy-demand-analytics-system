@@ -1,36 +1,7 @@
-from src.cleaning import (
-    ajust15_energy,
-    fill_nan_energy,
-    aggregate_hour,
-    g15_energy,
-    time_alignment_energy,
-    g115g1,
-    weather,
-    time_alignment,
-    g15min,
-    ajust15,
-    missingValuesFind,
-    missingImputation,
-    temp_termicRad_imputation,
-    wind_imputation,
-    solar_imputation,
-    precip_imputation,
-    pressure_imputation,
-    soil_imputation,
-    media_custom,
-    outliers_treatment,
-    media_nearest,
-    hourly_aggregation,
-    convert_era5_units,
-)
+from cleaning import ajust15_energy, fill_nan_energy, aggregate_hour, g15_energy, time_alignment_energy, g115g1, weather, time_alignment, g15min, ajust15, missingValuesFind, missingImputation, temp_termicRad_imputation, wind_imputation, solar_imputation, precip_imputation, pressure_imputation, soil_imputation, media_custom, outliers_treatment, media_nearest, hourly_aggregation, convert_era5_units
 import pytest
 import pandas as pd
 import numpy as np
-import sys
-import os
-
-sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "../..")))
-
 
 # =======================================
 # DADOS ENERGY
