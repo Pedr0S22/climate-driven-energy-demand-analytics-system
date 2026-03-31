@@ -6,7 +6,7 @@ import numpy as np
 import pandas as pd
 import pytest
 
-from src.cleaning import ajust15_energy, fill_nan_energy, aggregate_hour, g15_energy, time_alignment_energy,g115g1,  weather, time_alignment, g15min, ajust15, missingValuesFind, missingImputation, temp_termicRad_imputation, wind_imputation, solar_imputation, precip_imputation, pressure_imputation, soil_imputation, media_custom, outliers_treatment, media_nearest, hourly_aggregation
+from src.cleaning import ajust15_energy, fill_nan_energy, aggregate_hour, g15_energy, time_alignment_energy,g115g1,  weather, time_alignment, g15min, ajust15, missingValuesFind, missingImputation, temp_termicRad_imputation, wind_imputation, solar_imputation, precip_imputation, pressure_imputation, soil_imputation, media_custom, outliers_treatment, media_nearest, hourly_aggregation, convert_era5_units
 
 
 
@@ -625,3 +625,81 @@ def test_media_nearest_basic():
     series = pd.Series([10, 11, np.nan, 13, 14], index=times)
     result = media_nearest(series)
     assert pytest.approx(result.iloc[2], rel=1e-6) == 10.5
+
+
+def test_fill_nan_energy_primeira_linha_nan():
+    times = pd.to_datetime([
+        "2023-01-01 10:00", 
+        "2023-01-01 10:15",  
+        "2023-01-01 10:30",
+        "2023-01-01 10:45"
+    ], utc=True)
+    
+    df = pd.DataFrame({
+        "Unnamed: 0": times,
+        "Load_MW": [None, 105.0, 110.0, 115.0]  # Primeira linha NaN
+    })
+    
+    df_filled = fill_nan_energy(df.copy())
+    
+    assert df_filled.loc[0, "Load_MW"] == 105.0  
+    assert not df_filled["Load_MW"].isna().any()  
+    assert len(df_filled) == 4  
+    
+    
+def test_time_alignment_energy_mixed_intervals_g115g1():
+    times = pd.to_datetime([
+        "2023-01-01 10:00", 
+        "2023-01-01 11:00",  
+        "2023-01-01 12:00",  
+        "2023-01-01 12:15",  
+        "2023-01-01 12:30"
+    ], utc=True)
+    
+    df = pd.DataFrame({
+        "Unnamed: 0": times,
+        "Load_MW": [100, 110, 120, 125, 130]
+    })
+    
+    result = time_alignment_energy(df.copy())
+    assert "idx_15_start" in result.attrs 
+    
+    
+def test_g115g1_no_transition_returns_original():
+    times = pd.to_datetime([
+        "2023-01-01 10:00", "2023-01-01 11:00",  # Sempre 1h
+        "2023-01-01 12:00", "2023-01-01 13:00"
+    ], utc=True)
+    
+    df = pd.DataFrame({
+        "Unnamed: 0": times,
+        "Load_MW": [100, 110, 120, 130]
+    })
+    
+    result = g115g1(df.copy())
+    assert "idx_15_start" not in result.attrs
+    pd.testing.assert_frame_equal(df, result, check_dtype=False)
+    
+    
+    
+def test_convert_era5_units_all_conversions():
+    times = pd.date_range("2023-01-01 10:00", periods=2, freq="h", tz="UTC")
+    df = pd.DataFrame({
+        'valid_time': times,
+        'skt': [273.15, 286.15],   
+        't2m': [273.15, 286.15],  
+        'd2m': [273.15, 286.15],
+        'stl1': [273.15, 286.15],
+        'ssrd': [900, 1800],       
+        'strd': [900, 1800],
+        # Pa → hPa
+        'sp': [101325, 102000],    
+        # m → mm  
+        'tp': [0.001, 0.005]     
+    })
+    
+    result = convert_era5_units(df.copy())
+    assert pytest.approx(result['t2m'].iloc[0]) == 0.0      
+    assert pytest.approx(result['ssrd'].iloc[0]) == 1.0   
+    assert pytest.approx(result['sp'].iloc[0]) == 1013.25   
+    assert pytest.approx(result['tp'].iloc[0]) == 1.0       
