@@ -3,7 +3,7 @@ import shutil
 import tempfile
 import numpy as np
 import pandas as pd
-from unittest.mock import patch, MagicMock
+from unittest.mock import patch
 
 from cleaning import (
     energy,
@@ -150,14 +150,14 @@ def test_full_pipeline_integration(mock_entsoe, mock_cds):
 
     try:
         # 1. ENTSO‑E
-        df_entsoe = mock_entsoe_data_mixed_granularity_clean(
+        df_entsoe = mock_entsoe_data(
             start_date, end_date)
         entsoe_filename = f"entsoe_ES_load_{start_date}_to_{end_date}.csv"
         entsoe_path = os.path.join(raw_energy, entsoe_filename)
         df_entsoe.to_csv(entsoe_path, index=False)
 
         # 2. Copernicus
-        df_copernicus = mock_copernicus_data_mixed_granularity_clean(
+        df_copernicus = mock_copernicus_data(
             start_date, end_date)
         # exact same name as fetch_copernicus_data
         copernicus_filename = f"era5_timeseries_{start_date}_to_{end_date}.csv"
@@ -182,7 +182,8 @@ def test_full_pipeline_integration(mock_entsoe, mock_cds):
         )
 
         # 7. CSV final
-        REAL_PROCESSED = "/Users/beatrizfernandes/Desktop/PIACD/projeto/pl1g1/Code/energy_prediction_system/data/processed"
+        BASE_DIR = "/Users/beatrizfernandes/Desktop/PIACD/projeto/pl1g1/Code/energy_prediction_system"
+        REAL_PROCESSED = os.path.join(BASE_DIR, "data", "processed")
         final_csv = os.path.join(REAL_PROCESSED, "dados_finais_completos.csv")
         assert os.path.exists(final_csv), f"CSV final não existe: {final_csv}"
         assert os.path.getsize(final_csv) > 0
@@ -208,7 +209,7 @@ def test_full_pipeline_integration(mock_entsoe, mock_cds):
 ##########
 #########
 
-# 5. mock ENTSO‑E 15 min com outliers e NaN
+# 5. mock ENTSO‑E 15 min com NaN
 
 
 def mock_entsoe_data_15min_with_nan_and_without_out(start_date, end_date):
@@ -304,14 +305,14 @@ def test_full_pipeline_integration_15min_with_outliers_and_nan(
 
     try:
         # 1. ENTSO‑E
-        df_entsoe = mock_entsoe_data_mixed_granularity_clean(
+        df_entsoe = mock_entsoe_data_15min_with_nan_and_without_out(
             start_date, end_date)
         entsoe_filename = f"entsoe_ES_load_{start_date}_to_{end_date}.csv"
         entsoe_path = os.path.join(raw_energy, entsoe_filename)
         df_entsoe.to_csv(entsoe_path, index=False)
 
         # 2. Copernicus
-        df_copernicus = mock_copernicus_data_mixed_granularity_clean(
+        df_copernicus = mock_copernicus_data_15min_with_outliers_and_nan(
             start_date, end_date)
         # exact same name as fetch_copernicus_data
         copernicus_filename = f"era5_timeseries_{start_date}_to_{end_date}.csv"
@@ -336,7 +337,8 @@ def test_full_pipeline_integration_15min_with_outliers_and_nan(
         )
 
         # 7. CSV final
-        REAL_PROCESSED = "/Users/beatrizfernandes/Desktop/PIACD/projeto/pl1g1/Code/energy_prediction_system/data/processed"
+        BASE_DIR = "/Users/beatrizfernandes/Desktop/PIACD/projeto/pl1g1/Code/energy_prediction_system"
+        REAL_PROCESSED = os.path.join(BASE_DIR, "data", "processed")
         final_csv = os.path.join(REAL_PROCESSED, "dados_finais_completos.csv")
         assert os.path.exists(final_csv), f"CSV final não existe: {final_csv}"
         assert os.path.getsize(final_csv) > 0
@@ -424,14 +426,14 @@ def test_full_pipeline_integration_1h_clean(mock_entsoe, mock_cds):
 
     try:
         # 1. ENTSO‑E
-        df_entsoe = mock_entsoe_data_mixed_granularity_clean(
+        df_entsoe = mock_entsoe_data_1h_clean(
             start_date, end_date)
         entsoe_filename = f"entsoe_ES_load_{start_date}_to_{end_date}.csv"
         entsoe_path = os.path.join(raw_energy, entsoe_filename)
         df_entsoe.to_csv(entsoe_path, index=False)
 
         # 2. Copernicus
-        df_copernicus = mock_copernicus_data_mixed_granularity_clean(
+        df_copernicus = mock_copernicus_data_1h_clean(
             start_date, end_date)
         # exact same name as fetch_copernicus_data
         copernicus_filename = f"era5_timeseries_{start_date}_to_{end_date}.csv"
@@ -456,7 +458,8 @@ def test_full_pipeline_integration_1h_clean(mock_entsoe, mock_cds):
         )
 
         # 7. CSV final
-        REAL_PROCESSED = "/Users/beatrizfernandes/Desktop/PIACD/projeto/pl1g1/Code/energy_prediction_system/data/processed"
+        BASE_DIR = "/Users/beatrizfernandes/Desktop/PIACD/projeto/pl1g1/Code/energy_prediction_system"
+        REAL_PROCESSED = os.path.join(BASE_DIR, "data", "processed")
         final_csv = os.path.join(REAL_PROCESSED, "dados_finais_completos.csv")
         assert os.path.exists(final_csv), f"CSV final não existe: {final_csv}"
         assert os.path.getsize(final_csv) > 0
@@ -479,7 +482,7 @@ def test_full_pipeline_integration_1h_clean(mock_entsoe, mock_cds):
 ##########
 #########
 
-# 11. mock ENTSO‑E 1h sem outliers
+# 11. mock ENTSO‑E 1h sem outliers e NaN
 
 
 def mock_entsoe_data_1h_without_outliers(start_date, end_date):
@@ -496,7 +499,7 @@ def mock_entsoe_data_1h_without_outliers(start_date, end_date):
     df = df.reset_index().rename(columns={"index": "Unnamed: 0"})
     return df
 
-# 12. mock Copernicus 1h com outliers
+# 12. mock Copernicus 1h com outliers e sem NaN
 
 
 def mock_copernicus_data_1h_with_outliers(start_date, end_date):
@@ -551,14 +554,14 @@ def test_full_pipeline_integration_1h_with_outliers(mock_entsoe, mock_cds):
 
     try:
         # 1. ENTSO‑E
-        df_entsoe = mock_entsoe_data_mixed_granularity_clean(
+        df_entsoe = mock_entsoe_data_1h_without_outliers(
             start_date, end_date)
         entsoe_filename = f"entsoe_ES_load_{start_date}_to_{end_date}.csv"
         entsoe_path = os.path.join(raw_energy, entsoe_filename)
         df_entsoe.to_csv(entsoe_path, index=False)
 
         # 2. Copernicus
-        df_copernicus = mock_copernicus_data_mixed_granularity_clean(
+        df_copernicus = mock_copernicus_data_1h_with_outliers(
             start_date, end_date)
         # exact same name as fetch_copernicus_data
         copernicus_filename = f"era5_timeseries_{start_date}_to_{end_date}.csv"
@@ -583,7 +586,8 @@ def test_full_pipeline_integration_1h_with_outliers(mock_entsoe, mock_cds):
         )
 
         # 7. CSV final
-        REAL_PROCESSED = "/Users/beatrizfernandes/Desktop/PIACD/projeto/pl1g1/Code/energy_prediction_system/data/processed"
+        BASE_DIR = "/Users/beatrizfernandes/Desktop/PIACD/projeto/pl1g1/Code/energy_prediction_system"
+        REAL_PROCESSED = os.path.join(BASE_DIR, "data", "processed")
         final_csv = os.path.join(REAL_PROCESSED, "dados_finais_completos.csv")
         assert os.path.exists(final_csv), f"CSV final não existe: {final_csv}"
         assert os.path.getsize(final_csv) > 0
@@ -762,7 +766,8 @@ def test_full_pipeline_integration_mixed_granularity_datasets_clean(
         )
 
         # 7. CSV final
-        REAL_PROCESSED = "/Users/beatrizfernandes/Desktop/PIACD/projeto/pl1g1/Code/energy_prediction_system/data/processed"
+        BASE_DIR = "/Users/beatrizfernandes/Desktop/PIACD/projeto/pl1g1/Code/energy_prediction_system"
+        REAL_PROCESSED = os.path.join(BASE_DIR, "data", "processed")
         final_csv = os.path.join(REAL_PROCESSED, "dados_finais_completos.csv")
         assert os.path.exists(final_csv), f"CSV final não existe: {final_csv}"
         assert os.path.getsize(final_csv) > 0
@@ -928,14 +933,14 @@ def test_full_pipeline_integration_mixed_granularity_datasets_with_outliers_nan(
 
     try:
         # 1. ENTSO‑E
-        df_entsoe = mock_entsoe_data_mixed_granularity_clean(
+        df_entsoe = mock_entsoe_data_mixed_granularity_15min_nan(
             start_date, end_date)
         entsoe_filename = f"entsoe_ES_load_{start_date}_to_{end_date}.csv"
         entsoe_path = os.path.join(raw_energy, entsoe_filename)
         df_entsoe.to_csv(entsoe_path, index=False)
 
         # 2. Copernicus
-        df_copernicus = mock_copernicus_data_mixed_granularity_clean(
+        df_copernicus = mock_copernicus_data_mixed_granularity_15min_outliers_nan(
             start_date, end_date)
         # exact same name as fetch_copernicus_data
         copernicus_filename = f"era5_timeseries_{start_date}_to_{end_date}.csv"
@@ -960,7 +965,8 @@ def test_full_pipeline_integration_mixed_granularity_datasets_with_outliers_nan(
         )
 
         # 7. CSV final
-        REAL_PROCESSED = "/Users/beatrizfernandes/Desktop/PIACD/projeto/pl1g1/Code/energy_prediction_system/data/processed"
+        BASE_DIR = "/Users/beatrizfernandes/Desktop/PIACD/projeto/pl1g1/Code/energy_prediction_system"
+        REAL_PROCESSED = os.path.join(BASE_DIR, "data", "processed")
         final_csv = os.path.join(REAL_PROCESSED, "dados_finais_completos.csv")
         assert os.path.exists(final_csv), f"CSV final não existe: {final_csv}"
         assert os.path.getsize(final_csv) > 0
