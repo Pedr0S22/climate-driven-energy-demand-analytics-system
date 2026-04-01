@@ -5,6 +5,7 @@ import numpy as np
 import pandas as pd
 from unittest.mock import patch
 
+
 from cleaning import (
     energy,
     weather,
@@ -101,6 +102,7 @@ def mock_entsoe_data(start_date, end_date):
     df = df.reset_index().rename(columns={"index": "Unnamed: 0"})
     return df
 
+
 # 3
 
 
@@ -145,9 +147,6 @@ def test_full_pipeline_integration(mock_entsoe, mock_cds):
         end_date,
     ) = setup_dirs()
 
-    fake_path = "/tmp/fake_weather_data"
-    fake_df = setup_fake_weather_files(fake_path)
-
     try:
         # 1. ENTSO‑E
         df_entsoe = mock_entsoe_data(
@@ -172,8 +171,10 @@ def test_full_pipeline_integration(mock_entsoe, mock_cds):
         energy(raw_energy, pasta_saida=energy_clean)
 
         # 5. clima
-        with patch("pandas.read_csv", return_value=fake_df):
-            weather(pasta_saida=weather_clean)
+        with tempfile.TemporaryDirectory(prefix="fake_weather_") as fake_path:
+            fake_df = setup_fake_weather_files(fake_path)
+            with patch("pandas.read_csv", return_value=fake_df):
+                weather(pasta_saida=weather_clean)
 
         # 6. limpeza e junção final
         df_final = cleaning(
@@ -300,9 +301,6 @@ def test_full_pipeline_integration_15min_with_outliers_and_nan(
         end_date,
     ) = setup_dirs()
 
-    fake_path = "/tmp/fake_weather_data"
-    fake_df = setup_fake_weather_files(fake_path)
-
     try:
         # 1. ENTSO‑E
         df_entsoe = mock_entsoe_data_15min_with_nan_and_without_out(
@@ -327,8 +325,10 @@ def test_full_pipeline_integration_15min_with_outliers_and_nan(
         energy(raw_energy, pasta_saida=energy_clean)
 
         # 5. clima
-        with patch("pandas.read_csv", return_value=fake_df):
-            weather(pasta_saida=weather_clean)
+        with tempfile.TemporaryDirectory(prefix="fake_weather_") as fake_path:
+            fake_df = setup_fake_weather_files(fake_path)
+            with patch("pandas.read_csv", return_value=fake_df):
+                weather(pasta_saida=weather_clean)
 
         # 6. limpeza e junção final
         df_final = cleaning(
@@ -421,9 +421,6 @@ def test_full_pipeline_integration_1h_clean(mock_entsoe, mock_cds):
         end_date,
     ) = setup_dirs()
 
-    fake_path = "/tmp/fake_weather_data"
-    fake_df = setup_fake_weather_files(fake_path)
-
     try:
         # 1. ENTSO‑E
         df_entsoe = mock_entsoe_data_1h_clean(
@@ -448,8 +445,10 @@ def test_full_pipeline_integration_1h_clean(mock_entsoe, mock_cds):
         energy(raw_energy, pasta_saida=energy_clean)
 
         # 5. clima
-        with patch("pandas.read_csv", return_value=fake_df):
-            weather(pasta_saida=weather_clean)
+        with tempfile.TemporaryDirectory(prefix="fake_weather_") as fake_path:
+            fake_df = setup_fake_weather_files(fake_path)
+            with patch("pandas.read_csv", return_value=fake_df):
+                weather(pasta_saida=weather_clean)
 
         # 6. limpeza e junção final
         df_final = cleaning(
@@ -549,9 +548,6 @@ def test_full_pipeline_integration_1h_with_outliers(mock_entsoe, mock_cds):
         end_date,
     ) = setup_dirs()
 
-    fake_path = "/tmp/fake_weather_data"
-    fake_df = setup_fake_weather_files(fake_path)
-
     try:
         # 1. ENTSO‑E
         df_entsoe = mock_entsoe_data_1h_without_outliers(
@@ -576,8 +572,10 @@ def test_full_pipeline_integration_1h_with_outliers(mock_entsoe, mock_cds):
         energy(raw_energy, pasta_saida=energy_clean)
 
         # 5. clima
-        with patch("pandas.read_csv", return_value=fake_df):
-            weather(pasta_saida=weather_clean)
+        with tempfile.TemporaryDirectory(prefix="fake_weather_") as fake_path:
+            fake_df = setup_fake_weather_files(fake_path)
+            with patch("pandas.read_csv", return_value=fake_df):
+                weather(pasta_saida=weather_clean)
 
         # 6. limpeza e junção final
         df_final = cleaning(
@@ -729,9 +727,6 @@ def test_full_pipeline_integration_mixed_granularity_datasets_clean(
         end_date,
     ) = setup_dirs()
 
-    fake_path = "/tmp/fake_weather_data"
-    fake_df = setup_fake_weather_files(fake_path)
-
     try:
         # 1. ENTSO‑E
         df_entsoe = mock_entsoe_data_mixed_granularity_clean(
@@ -756,8 +751,10 @@ def test_full_pipeline_integration_mixed_granularity_datasets_clean(
         energy(raw_energy, pasta_saida=energy_clean)
 
         # 5. clima
-        with patch("pandas.read_csv", return_value=fake_df):
-            weather(pasta_saida=weather_clean)
+        with tempfile.TemporaryDirectory(prefix="fake_weather_") as fake_path:
+            fake_df = setup_fake_weather_files(fake_path)
+            with patch("pandas.read_csv", return_value=fake_df):
+                weather(pasta_saida=weather_clean)
 
         # 6. limpeza e junção final
         df_final = cleaning(
@@ -928,9 +925,6 @@ def test_full_pipeline_integration_mixed_granularity_datasets_with_outliers_nan(
         end_date,
     ) = setup_dirs()
 
-    fake_path = "/tmp/fake_weather_data"
-    fake_df = setup_fake_weather_files(fake_path)
-
     try:
         # 1. ENTSO‑E
         df_entsoe = mock_entsoe_data_mixed_granularity_15min_nan(
@@ -955,8 +949,10 @@ def test_full_pipeline_integration_mixed_granularity_datasets_with_outliers_nan(
         energy(raw_energy, pasta_saida=energy_clean)
 
         # 5. clima
-        with patch("pandas.read_csv", return_value=fake_df):
-            weather(pasta_saida=weather_clean)
+        with tempfile.TemporaryDirectory(prefix="fake_weather_") as fake_path:
+            fake_df = setup_fake_weather_files(fake_path)
+            with patch("pandas.read_csv", return_value=fake_df):
+                weather(pasta_saida=weather_clean)
 
         # 6. limpeza e junção final
         df_final = cleaning(
