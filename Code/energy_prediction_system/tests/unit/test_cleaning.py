@@ -576,7 +576,7 @@ def test_media_custom_correct_window():
 
 
 # OUTLIERS
-def test_outliers_treatment_t2m_physical_outlier_uses_media_custom(): 
+def test_outliers_treatment_t2m_physical_outlier_uses_media_custom():
     times = pd.date_range(
         "2023-01-01 10:00",
         periods=10,
@@ -598,7 +598,7 @@ def test_outliers_treatment_t2m_physical_outlier_uses_media_custom():
     assert df_result.loc[4, "t2m"] >= -40
 
 
-def test_outliers_treatment_stl1_iqr_but_physical_ok_not_treated(): 
+def test_outliers_treatment_stl1_iqr_but_physical_ok_not_treated():
     times = pd.date_range(
         "2023-01-01 10:00",
         periods=9,
@@ -621,7 +621,7 @@ def test_outliers_treatment_stl1_iqr_but_physical_ok_not_treated():
     assert df_result.loc[4, "stl1"] == 50.0
 
 
-def test_outliers_treatment_ssrd_physical_and_iqr_outlier_uses_media_nearest(): 
+def test_outliers_treatment_ssrd_physical_and_iqr_outlier_uses_media_nearest():
     times = pd.date_range(
         "2023-01-01 10:00",
         periods=7,
@@ -643,7 +643,7 @@ def test_outliers_treatment_ssrd_physical_and_iqr_outlier_uses_media_nearest():
     assert df_result.loc[2, "ssrd"] >= 0
 
 
-def test_outliers_treatment_tp_iqr_but_physical_ok_not_treated(): 
+def test_outliers_treatment_tp_iqr_but_physical_ok_not_treated():
     times = pd.date_range(
         "2023-01-01 10:00",
         periods=9,
@@ -666,7 +666,7 @@ def test_outliers_treatment_tp_iqr_but_physical_ok_not_treated():
     assert df_result.loc[4, "tp"] == 20.0
 
 
-def test_outliers_treatment_swvl1_iqr_only_uses_media_custom_6_0(): 
+def test_outliers_treatment_swvl1_iqr_only_uses_media_custom_6_0():
     times = pd.date_range(
         "2023-01-01 10:00",
         periods=10,
@@ -692,7 +692,7 @@ def test_outliers_treatment_swvl1_iqr_only_uses_media_custom_6_0():
     assert pytest.approx(df_result.loc[6, "swvl1"], rel=1e-6) == 0.225
 
 
-def test_outliers_treatment_no_outliers_returns_same(): 
+def test_outliers_treatment_no_outliers_returns_same():
     times = pd.date_range(
         "2023-01-01 10:00",
         periods=4,
@@ -766,7 +766,7 @@ def test_hourly_aggregation_15min_to_hourly_single_column_mean():
     assert df_result["longitude"].iloc[0] == -8.0
 
 
-def test_weather_pipeline_completo(): 
+def test_weather_pipeline_completo():
     times = pd.date_range(
         "2023-01-01 10:00",
         periods=8,
@@ -798,7 +798,7 @@ def test_weather_pipeline_completo():
     assert df_final["ssrd"].min() >= 0
 
 
-def test_coverage_final_push(): 
+def test_coverage_final_push():
     # Energy simples
     times_e = pd.to_datetime(
         ["2023-01-01 10:00", "2023-01-01 11:00"], utc=True)
@@ -822,7 +822,7 @@ def test_coverage_final_push():
     result_weather1 = missingValuesFind(df_weather.copy())
     result_weather2 = outliers_treatment(result_weather1)
     result_weather3 = hourly_aggregation(result_weather2)
- 
+
     assert len(result_energy) == 2
     assert not result_weather3["t2m"].isna().any()
     assert len(result_weather3) == 1

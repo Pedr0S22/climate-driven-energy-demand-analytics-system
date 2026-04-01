@@ -3,7 +3,7 @@ import shutil
 import tempfile
 import numpy as np
 import pandas as pd
-
+from unittest.mock import patch, MagicMock
 
 from cleaning import (
     energy,
@@ -12,7 +12,44 @@ from cleaning import (
 )
 
 
+def setup_fake_weather_files(fake_path):
+    os.makedirs(fake_path, exist_ok=True)
+
+    # cria um CSV falso com datas 2020–2025, só para o teste
+    index = pd.date_range("2024-01-01", "2024-01-02", freq="1h", tz="UTC")
+    df = pd.DataFrame(
+        {
+            "valid_time": index,
+            "t2m": 273.15 + 15 + np.random.randn(len(index)),
+            "d2m": 273.15 + 12 + np.random.randn(len(index)),
+            "ssrd": 200 + 100 * np.random.randn(len(index)),
+            "tp": 0.1 + 0.05 * np.random.randn(len(index)),
+        }
+    )
+
+    # ficheiro fake
+    ERA5_CSV = os.path.join(
+        fake_path,
+        "era5_timeseries_2020-01-01_to_2025-12-31.csv")
+    df.to_csv(ERA5_CSV, index=False)
+
+    # restantes
+    other_files = [
+        "reanalysis-era5-land-timeseries-sfc-2m-temperatureauafbxo0.csv",
+        "reanalysis-era5-land-timeseries-sfc-pressure-precipitationtwpvvkbd.csv",
+        "reanalysis-era5-land-timeseries-sfc-radiation-heathoyt7mym.csv",
+        "reanalysis-era5-land-timeseries-sfc-skin-temperaturercarv5g8.csv",
+        "reanalysis-era5-land-timeseries-sfc-soil-temperatureokgb55eq.csv",
+        "reanalysis-era5-land-timeseries-sfc-soil-waterp9pn16zx.csv",
+    ]
+    for fname in other_files:
+        df.head(0).to_csv(os.path.join(fake_path, fname), index=False)
+
+    return df
+
 # 1
+
+
 def setup_dirs():
     base_dir = tempfile.mkdtemp(prefix="piacd_test_")
 
@@ -104,6 +141,10 @@ def test_full_pipeline_integration():
         end_date,
     ) = setup_dirs()
 
+    # caminho fake para o weather.py
+    fake_path = "/tmp/fake_weather_data"
+    fake_df = setup_fake_weather_files(fake_path)
+
     try:
         # 1. ENTSO‑E
         df_entsoe = mock_entsoe_data(start_date, end_date)
@@ -127,8 +168,14 @@ def test_full_pipeline_integration():
             os.path.join(
                 raw_weather,
                 os.path.basename(copernicus_path)),
-            index=False)
-        weather(pasta_saida=weather_clean)
+            index=False
+        )
+
+        with patch(
+            "pandas.read_csv",
+            return_value=fake_df
+        ):
+            weather(pasta_saida=weather_clean)
 
         # 5. limpeza e junção final
         df_final = cleaning(
@@ -150,7 +197,8 @@ def test_full_pipeline_integration():
         assert "datetime" in df_final.columns
         assert "Load_MW" in df_final.columns
         assert any(var in df_final.columns for var in [
-            "t2m", "ssrd", "tp", "u10", "v10"])
+            "t2m", "ssrd", "tp", "u10", "v10"]
+        )
         assert df_final["datetime"].min() < pd.Timestamp(
             end_date, tz="UTC") + pd.Timedelta(days=1)
         assert df_final["datetime"].max() > pd.Timestamp(
@@ -159,9 +207,11 @@ def test_full_pipeline_integration():
         assert os.path.getsize(final_csv) > 0
 
         print(
-            f"Pipeline completo com sucesso: {len(df_final)} registos no dataset final.")
+            f"Pipeline completo com sucesso: {len(df_final)} registos no dataset final."
+        )
     finally:
         shutil.rmtree(base_dir, ignore_errors=True)
+
 
 ##########
 #########
@@ -253,6 +303,9 @@ def test_full_pipeline_integration_15min_with_outliers_and_nan():
         end_date,
     ) = setup_dirs()
 
+    fake_path = "/tmp/fake_weather_data"
+    fake_df = setup_fake_weather_files(fake_path)
+
     try:
         # 1. ENTSO‑E
         df_entsoe = mock_entsoe_data_15min_with_nan_and_without_out(
@@ -278,8 +331,14 @@ def test_full_pipeline_integration_15min_with_outliers_and_nan():
             os.path.join(
                 raw_weather,
                 os.path.basename(copernicus_path)),
-            index=False)
-        weather(pasta_saida=weather_clean)
+            index=False
+        )
+
+        with patch(
+            "pandas.read_csv",
+            return_value=fake_df
+        ):
+            weather(pasta_saida=weather_clean)
 
         # 5. limpeza e junção final
         df_final = cleaning(
@@ -291,7 +350,7 @@ def test_full_pipeline_integration_15min_with_outliers_and_nan():
         REAL_PROCESSED = (
             "/Users/beatrizfernandes/Desktop/PIACD/projeto/pl1g1/Code/energy_prediction_system/data/processed"
         )
-        nome_final = "dados_finais_15min_outliers_nan.csv"
+        nome_final = "dados_finais_completos.csv"
         final_csv = os.path.join(REAL_PROCESSED, nome_final)
         assert os.path.exists(final_csv), f"CSV final não existe: {final_csv}"
         assert os.path.getsize(final_csv) > 0
@@ -302,10 +361,12 @@ def test_full_pipeline_integration_15min_with_outliers_and_nan():
         assert "datetime" in df_final.columns
         assert "Load_MW" in df_final.columns
         assert any(var in df_final.columns for var in [
-            "t2m", "ssrd", "tp", "u10", "v10"])
+            "t2m", "ssrd", "tp", "u10", "v10"]
+        )
 
         print(
-            f"Pipeline 15min com outliers + NaN: {len(df_final)} registos no dataset final.")
+            f"Pipeline 15min com outliers + NaN: {len(df_final)} registos no dataset final."
+        )
     finally:
         shutil.rmtree(base_dir, ignore_errors=True)
 
@@ -370,6 +431,9 @@ def test_full_pipeline_integration_1h_clean():
         end_date,
     ) = setup_dirs()
 
+    fake_path = "/tmp/fake_weather_data"
+    fake_df = setup_fake_weather_files(fake_path)
+
     try:
         # 1. ENTSO‑E 1h, limpo
         df_entsoe = mock_entsoe_data_1h_clean(start_date, end_date)
@@ -393,8 +457,14 @@ def test_full_pipeline_integration_1h_clean():
             os.path.join(
                 raw_weather,
                 os.path.basename(copernicus_path)),
-            index=False)
-        weather(pasta_saida=weather_clean)
+            index=False
+        )
+
+        with patch(
+            "pandas.read_csv",
+            return_value=fake_df
+        ):
+            weather(pasta_saida=weather_clean)
 
         # 5. limpeza e junção final
         df_final = cleaning(
@@ -406,7 +476,7 @@ def test_full_pipeline_integration_1h_clean():
         REAL_PROCESSED = (
             "/Users/beatrizfernandes/Desktop/PIACD/projeto/pl1g1/Code/energy_prediction_system/data/processed"
         )
-        nome_final = "dados_finais_1h_clean.csv"
+        nome_final = "dados_finais_completos.csv"
         final_csv = os.path.join(REAL_PROCESSED, nome_final)
         assert os.path.exists(final_csv), f"CSV final não existe: {final_csv}"
         assert os.path.getsize(final_csv) > 0
@@ -416,14 +486,16 @@ def test_full_pipeline_integration_1h_clean():
         assert "datetime" in df_final.columns
         assert "Load_MW" in df_final.columns
         assert any(var in df_final.columns for var in [
-            "t2m", "ssrd", "tp", "u10", "v10"])
+            "t2m", "ssrd", "tp", "u10", "v10"]
+        )
 
         # 7. verificações básicas
         nulos = df_final.isnull().sum()
         assert nulos.sum() == 0
 
         print(
-            f"Pipeline 1h sem outliers/NaN: {len(df_final)} registos no dataset final.")
+            f"Pipeline 1h sem outliers/NaN: {len(df_final)} registos no dataset final."
+        )
     finally:
         shutil.rmtree(base_dir, ignore_errors=True)
 
@@ -495,6 +567,9 @@ def test_full_pipeline_integration_1h_with_outliers():
         end_date,
     ) = setup_dirs()
 
+    fake_path = "/tmp/fake_weather_data"
+    fake_df = setup_fake_weather_files(fake_path)
+
     try:
         # 1. ENTSO‑E
         df_entsoe = mock_entsoe_data_1h_without_outliers(start_date, end_date)
@@ -518,8 +593,14 @@ def test_full_pipeline_integration_1h_with_outliers():
             os.path.join(
                 raw_weather,
                 os.path.basename(copernicus_path)),
-            index=False)
-        weather(pasta_saida=weather_clean)
+            index=False
+        )
+
+        with patch(
+            "pandas.read_csv",
+            return_value=fake_df
+        ):
+            weather(pasta_saida=weather_clean)
 
         # 5. limpeza e junção final
         df_final = cleaning(
@@ -531,7 +612,7 @@ def test_full_pipeline_integration_1h_with_outliers():
         REAL_PROCESSED = (
             "/Users/beatrizfernandes/Desktop/PIACD/projeto/pl1g1/Code/energy_prediction_system/data/processed"
         )
-        nome_final = "dados_finais_1h_with_outliers.csv"
+        nome_final = "dados_finais_completos.csv"
         final_csv = os.path.join(REAL_PROCESSED, nome_final)
         assert os.path.exists(final_csv), f"CSV final não existe: {final_csv}"
         assert os.path.getsize(final_csv) > 0
@@ -541,16 +622,19 @@ def test_full_pipeline_integration_1h_with_outliers():
         assert "datetime" in df_final.columns
         assert "Load_MW" in df_final.columns
         assert any(var in df_final.columns for var in [
-            "t2m", "ssrd", "tp", "u10", "v10"])
+            "t2m", "ssrd", "tp", "u10", "v10"]
+        )
 
         # 7. sem valores em falta
         nulos = df_final.isnull().sum()
         assert nulos.sum() == 0
 
         print(
-            f"Pipeline 1h com outliers: {len(df_final)} registos no dataset final.")
+            f"Pipeline 1h com outliers: {len(df_final)} registos no dataset final."
+        )
     finally:
         shutil.rmtree(base_dir, ignore_errors=True)
+
 
 ##########
 #########
@@ -669,6 +753,9 @@ def test_full_pipeline_integration_mixed_granularity_datasets_clean():
         end_date,
     ) = setup_dirs()
 
+    fake_path = "/tmp/fake_weather_data"
+    fake_df = setup_fake_weather_files(fake_path)
+
     try:
         # 1. ENTSO‑E
         df_entsoe = mock_entsoe_data_mixed_granularity_clean(
@@ -693,8 +780,14 @@ def test_full_pipeline_integration_mixed_granularity_datasets_clean():
             os.path.join(
                 raw_weather,
                 os.path.basename(copernicus_path)),
-            index=False)
-        weather(pasta_saida=weather_clean)
+            index=False
+        )
+
+        with patch(
+            "pandas.read_csv",
+            return_value=fake_df
+        ):
+            weather(pasta_saida=weather_clean)
 
         # 5. limpeza e junção final
         df_final = cleaning(
@@ -706,7 +799,7 @@ def test_full_pipeline_integration_mixed_granularity_datasets_clean():
         REAL_PROCESSED = (
             "/Users/beatrizfernandes/Desktop/PIACD/projeto/pl1g1/Code/energy_prediction_system/data/processed"
         )
-        nome_final = "dados_finais_mixed_datasets_clean.csv"
+        nome_final = "dados_finais_completos.csv"
         final_csv = os.path.join(REAL_PROCESSED, nome_final)
         assert os.path.exists(final_csv), f"CSV final não existe: {final_csv}"
         assert os.path.getsize(final_csv) > 0
@@ -716,14 +809,15 @@ def test_full_pipeline_integration_mixed_granularity_datasets_clean():
         assert "datetime" in df_final.columns
         assert "Load_MW" in df_final.columns
         assert any(var in df_final.columns for var in [
-            "t2m", "ssrd", "tp", "u10", "v10"])
+            "t2m", "ssrd", "tp", "u10", "v10"]
+        )
 
         nulos = df_final.isnull().sum()
         assert nulos.sum() == 0
 
         print(
-            f"Pipeline datasets mistos (15min/1h) limpos: {len(df_final)} registos no dataset final.")
-
+            f"Pipeline datasets mistos (15min/1h) limpos: {len(df_final)} registos no dataset final."
+        )
     finally:
         shutil.rmtree(base_dir, ignore_errors=True)
 
@@ -863,6 +957,10 @@ def test_full_pipeline_integration_mixed_granularity_datasets_with_outliers_nan(
         end_date,
     ) = setup_dirs()
 
+    # caminho fake
+    fake_path = "/tmp/fake_weather_data"
+    fake_df = setup_fake_weather_files(fake_path)
+
     try:
         # 1. ENTSO‑E
         df_entsoe = mock_entsoe_data_mixed_granularity_15min_nan(
@@ -888,8 +986,14 @@ def test_full_pipeline_integration_mixed_granularity_datasets_with_outliers_nan(
             os.path.join(
                 raw_weather,
                 os.path.basename(copernicus_path)),
-            index=False)
-        weather(pasta_saida=weather_clean)
+            index=False
+        )
+
+        with patch(
+            "pandas.read_csv",
+            return_value=fake_df
+        ):
+            weather(pasta_saida=weather_clean)
 
         # 5. limpeza e junção final
         df_final = cleaning(
@@ -901,7 +1005,7 @@ def test_full_pipeline_integration_mixed_granularity_datasets_with_outliers_nan(
         REAL_PROCESSED = (
             "/Users/beatrizfernandes/Desktop/PIACD/projeto/pl1g1/Code/energy_prediction_system/data/processed"
         )
-        nome_final = "dados_finais_mixed_datasets_with_outliers_nan.csv"
+        nome_final = "dados_finais_completos.csv"
         final_csv = os.path.join(REAL_PROCESSED, nome_final)
         assert os.path.exists(final_csv), f"CSV final não existe: {final_csv}"
         assert os.path.getsize(final_csv) > 0
@@ -912,7 +1016,8 @@ def test_full_pipeline_integration_mixed_granularity_datasets_with_outliers_nan(
         assert "datetime" in df_final.columns
         assert "Load_MW" in df_final.columns
         assert any(var in df_final.columns for var in [
-            "t2m", "ssrd", "tp", "u10", "v10"])
+            "t2m", "ssrd", "tp", "u10", "v10"]
+        )
 
         # 7. verifica se ainda há NaN
         nulos = df_final.isnull().sum()
@@ -920,6 +1025,7 @@ def test_full_pipeline_integration_mixed_granularity_datasets_with_outliers_nan(
         print(nulos[nulos > 0])
 
         print(
-            f"Pipeline datasets mistos com outliers/NaN: {len(df_final)} registos no dataset final.")
+            f"Pipeline datasets mistos com outliers/NaN: {len(df_final)} registos no dataset final."
+        )
     finally:
         shutil.rmtree(base_dir, ignore_errors=True)
