@@ -11,6 +11,8 @@ from cleaning import (
     cleaning,
 )
 
+from ingestion import fetch_entsoe_data, fetch_copernicus_data
+
 
 def setup_fake_weather_files(fake_path):
     os.makedirs(fake_path, exist_ok=True)
@@ -130,7 +132,9 @@ def mock_copernicus_data(start_date, end_date):
 # 4. teste de integração
 
 
-def test_full_pipeline_integration():
+@patch("ingestion.cdsapi.Client")
+@patch("ingestion.EntsoePandasClient")
+def test_full_pipeline_integration(mock_entsoe, mock_cds):
     (
         base_dir,
         raw_energy,
@@ -141,77 +145,65 @@ def test_full_pipeline_integration():
         end_date,
     ) = setup_dirs()
 
-    # caminho fake para o weather.py
     fake_path = "/tmp/fake_weather_data"
     fake_df = setup_fake_weather_files(fake_path)
 
     try:
         # 1. ENTSO‑E
-        df_entsoe = mock_entsoe_data(start_date, end_date)
-        entsoe_path = os.path.join(
-            raw_energy, f"entsoe_ES_load_{start_date}_to_{end_date}.csv"
-        )
+        df_entsoe = mock_entsoe_data_mixed_granularity_clean(
+            start_date, end_date)
+        entsoe_filename = f"entsoe_ES_load_{start_date}_to_{end_date}.csv"
+        entsoe_path = os.path.join(raw_energy, entsoe_filename)
         df_entsoe.to_csv(entsoe_path, index=False)
 
         # 2. Copernicus
-        df_copernicus = mock_copernicus_data(start_date, end_date)
-        copernicus_path = os.path.join(
-            raw_weather, f"era5_timeseries_{start_date}_to_{end_date}.csv"
-        )
+        df_copernicus = mock_copernicus_data_mixed_granularity_clean(
+            start_date, end_date)
+        # exact same name as fetch_copernicus_data
+        copernicus_filename = f"era5_timeseries_{start_date}_to_{end_date}.csv"
+        copernicus_path = os.path.join(raw_weather, copernicus_filename)
         df_copernicus.to_csv(copernicus_path, index=False)
 
-        # 3. energia
+        # 3. chama as funções como se fossem do pipeline
+        fetch_entsoe_data(start_date, end_date)
+        fetch_copernicus_data(start_date, end_date)
+
+        # 4. energia
         energy(raw_energy, pasta_saida=energy_clean)
 
-        # 4. clima
-        df_copernicus.to_csv(
-            os.path.join(
-                raw_weather,
-                os.path.basename(copernicus_path)),
-            index=False
-        )
-
-        with patch(
-            "pandas.read_csv",
-            return_value=fake_df
-        ):
+        # 5. clima
+        with patch("pandas.read_csv", return_value=fake_df):
             weather(pasta_saida=weather_clean)
 
-        # 5. limpeza e junção final
+        # 6. limpeza e junção final
         df_final = cleaning(
             pasta_energy_corrigido=energy_clean,
             pasta_weather_corrigido=weather_clean,
         )
 
-        # 6. caminho do CSV final
-        REAL_PROCESSED = (
-            "/Users/beatrizfernandes/Desktop/PIACD/projeto/pl1g1/Code/energy_prediction_system/data/processed"
-        )
+        # 7. CSV final
+        REAL_PROCESSED = "/Users/beatrizfernandes/Desktop/PIACD/projeto/pl1g1/Code/energy_prediction_system/data/processed"
         final_csv = os.path.join(REAL_PROCESSED, "dados_finais_completos.csv")
         assert os.path.exists(final_csv), f"CSV final não existe: {final_csv}"
         assert os.path.getsize(final_csv) > 0
 
-        # 7. verificações
+        # 8. verificações
         assert df_final is not None
         assert len(df_final) > 0
         assert "datetime" in df_final.columns
         assert "Load_MW" in df_final.columns
         assert any(var in df_final.columns for var in [
-            "t2m", "ssrd", "tp", "u10", "v10"]
-        )
+                   "t2m", "ssrd", "tp", "u10", "v10"])
         assert df_final["datetime"].min() < pd.Timestamp(
             end_date, tz="UTC") + pd.Timedelta(days=1)
         assert df_final["datetime"].max() > pd.Timestamp(
             start_date, tz="UTC") - pd.Timedelta(days=1)
-        assert os.path.exists(final_csv)
-        assert os.path.getsize(final_csv) > 0
 
         print(
             f"Pipeline completo com sucesso: {len(df_final)} registos no dataset final."
         )
     finally:
         shutil.rmtree(base_dir, ignore_errors=True)
-
 
 ##########
 #########
@@ -292,7 +284,11 @@ def mock_copernicus_data_15min_with_outliers_and_nan(start_date, end_date):
 # 7. teste de integração com 15 min, outliers e NaN
 
 
-def test_full_pipeline_integration_15min_with_outliers_and_nan():
+@patch("ingestion.cdsapi.Client")
+@patch("ingestion.EntsoePandasClient")
+def test_full_pipeline_integration_15min_with_outliers_and_nan(
+        mock_entsoe,
+        mock_cds):
     (
         base_dir,
         raw_energy,
@@ -308,67 +304,57 @@ def test_full_pipeline_integration_15min_with_outliers_and_nan():
 
     try:
         # 1. ENTSO‑E
-        df_entsoe = mock_entsoe_data_15min_with_nan_and_without_out(
+        df_entsoe = mock_entsoe_data_mixed_granularity_clean(
             start_date, end_date)
-        entsoe_path = os.path.join(
-            raw_energy, f"entsoe_ES_load_{start_date}_to_{end_date}.csv"
-        )
+        entsoe_filename = f"entsoe_ES_load_{start_date}_to_{end_date}.csv"
+        entsoe_path = os.path.join(raw_energy, entsoe_filename)
         df_entsoe.to_csv(entsoe_path, index=False)
 
         # 2. Copernicus
-        df_copernicus = mock_copernicus_data_15min_with_outliers_and_nan(
+        df_copernicus = mock_copernicus_data_mixed_granularity_clean(
             start_date, end_date)
-        copernicus_path = os.path.join(
-            raw_weather, f"era5_timeseries_{start_date}_to_{end_date}.csv"
-        )
+        # exact same name as fetch_copernicus_data
+        copernicus_filename = f"era5_timeseries_{start_date}_to_{end_date}.csv"
+        copernicus_path = os.path.join(raw_weather, copernicus_filename)
         df_copernicus.to_csv(copernicus_path, index=False)
 
-        # 3. energia
+        # 3. ingestão
+        fetch_entsoe_data(start_date, end_date)
+        fetch_copernicus_data(start_date, end_date)
+
+        # 4. energia
         energy(raw_energy, pasta_saida=energy_clean)
 
-        # 4. clima
-        df_copernicus.to_csv(
-            os.path.join(
-                raw_weather,
-                os.path.basename(copernicus_path)),
-            index=False
-        )
-
-        with patch(
-            "pandas.read_csv",
-            return_value=fake_df
-        ):
+        # 5. clima
+        with patch("pandas.read_csv", return_value=fake_df):
             weather(pasta_saida=weather_clean)
 
-        # 5. limpeza e junção final
+        # 6. limpeza e junção final
         df_final = cleaning(
             pasta_energy_corrigido=energy_clean,
             pasta_weather_corrigido=weather_clean,
         )
 
-        # 6. caminho do CSV final
-        REAL_PROCESSED = (
-            "/Users/beatrizfernandes/Desktop/PIACD/projeto/pl1g1/Code/energy_prediction_system/data/processed"
-        )
-        nome_final = "dados_finais_completos.csv"
-        final_csv = os.path.join(REAL_PROCESSED, nome_final)
+        # 7. CSV final
+        REAL_PROCESSED = "/Users/beatrizfernandes/Desktop/PIACD/projeto/pl1g1/Code/energy_prediction_system/data/processed"
+        final_csv = os.path.join(REAL_PROCESSED, "dados_finais_completos.csv")
         assert os.path.exists(final_csv), f"CSV final não existe: {final_csv}"
         assert os.path.getsize(final_csv) > 0
 
-        # 7. verificações básicas
+        # 8. verificações
         assert df_final is not None
         assert len(df_final) > 0
         assert "datetime" in df_final.columns
         assert "Load_MW" in df_final.columns
         assert any(var in df_final.columns for var in [
-            "t2m", "ssrd", "tp", "u10", "v10"]
-        )
+                   "t2m", "ssrd", "tp", "u10", "v10"])
 
         print(
             f"Pipeline 15min com outliers + NaN: {len(df_final)} registos no dataset final."
         )
     finally:
         shutil.rmtree(base_dir, ignore_errors=True)
+
 
 ##########
 #########
@@ -420,7 +406,9 @@ def mock_copernicus_data_1h_clean(start_date, end_date):
 # 10. teste integraçao 1h limpo
 
 
-def test_full_pipeline_integration_1h_clean():
+@patch("ingestion.cdsapi.Client")
+@patch("ingestion.EntsoePandasClient")
+def test_full_pipeline_integration_1h_clean(mock_entsoe, mock_cds):
     (
         base_dir,
         raw_energy,
@@ -435,63 +423,52 @@ def test_full_pipeline_integration_1h_clean():
     fake_df = setup_fake_weather_files(fake_path)
 
     try:
-        # 1. ENTSO‑E 1h, limpo
-        df_entsoe = mock_entsoe_data_1h_clean(start_date, end_date)
-        entsoe_path = os.path.join(
-            raw_energy, f"entsoe_ES_load_{start_date}_to_{end_date}_1h.csv"
-        )
+        # 1. ENTSO‑E
+        df_entsoe = mock_entsoe_data_mixed_granularity_clean(
+            start_date, end_date)
+        entsoe_filename = f"entsoe_ES_load_{start_date}_to_{end_date}.csv"
+        entsoe_path = os.path.join(raw_energy, entsoe_filename)
         df_entsoe.to_csv(entsoe_path, index=False)
 
-        # 2. Copernicus 1h, limpo
-        df_copernicus = mock_copernicus_data_1h_clean(start_date, end_date)
-        copernicus_path = os.path.join(
-            raw_weather, f"era5_timeseries_{start_date}_to_{end_date}_1h.csv"
-        )
+        # 2. Copernicus
+        df_copernicus = mock_copernicus_data_mixed_granularity_clean(
+            start_date, end_date)
+        # exact same name as fetch_copernicus_data
+        copernicus_filename = f"era5_timeseries_{start_date}_to_{end_date}.csv"
+        copernicus_path = os.path.join(raw_weather, copernicus_filename)
         df_copernicus.to_csv(copernicus_path, index=False)
 
-        # 3. energia
+        # 3.  ingestão
+        fetch_entsoe_data(start_date, end_date)
+        fetch_copernicus_data(start_date, end_date)
+
+        # 4. energia
         energy(raw_energy, pasta_saida=energy_clean)
 
-        # 4. clima
-        df_copernicus.to_csv(
-            os.path.join(
-                raw_weather,
-                os.path.basename(copernicus_path)),
-            index=False
-        )
-
-        with patch(
-            "pandas.read_csv",
-            return_value=fake_df
-        ):
+        # 5. clima
+        with patch("pandas.read_csv", return_value=fake_df):
             weather(pasta_saida=weather_clean)
 
-        # 5. limpeza e junção final
+        # 6. limpeza e junção final
         df_final = cleaning(
             pasta_energy_corrigido=energy_clean,
             pasta_weather_corrigido=weather_clean,
         )
 
-        # 6. caminho do CSV final
-        REAL_PROCESSED = (
-            "/Users/beatrizfernandes/Desktop/PIACD/projeto/pl1g1/Code/energy_prediction_system/data/processed"
-        )
-        nome_final = "dados_finais_completos.csv"
-        final_csv = os.path.join(REAL_PROCESSED, nome_final)
+        # 7. CSV final
+        REAL_PROCESSED = "/Users/beatrizfernandes/Desktop/PIACD/projeto/pl1g1/Code/energy_prediction_system/data/processed"
+        final_csv = os.path.join(REAL_PROCESSED, "dados_finais_completos.csv")
         assert os.path.exists(final_csv), f"CSV final não existe: {final_csv}"
         assert os.path.getsize(final_csv) > 0
 
+        # 8. verificações
         assert df_final is not None
         assert len(df_final) > 0
         assert "datetime" in df_final.columns
         assert "Load_MW" in df_final.columns
         assert any(var in df_final.columns for var in [
-            "t2m", "ssrd", "tp", "u10", "v10"]
-        )
-
-        # 7. verificações básicas
-        nulos = df_final.isnull().sum()
-        assert nulos.sum() == 0
+                   "t2m", "ssrd", "tp", "u10", "v10"])
+        assert df_final.isnull().sum().sum() == 0
 
         print(
             f"Pipeline 1h sem outliers/NaN: {len(df_final)} registos no dataset final."
@@ -556,7 +533,9 @@ def mock_copernicus_data_1h_with_outliers(start_date, end_date):
 # 13. teste integraçao 1h com outliers
 
 
-def test_full_pipeline_integration_1h_with_outliers():
+@patch("ingestion.cdsapi.Client")
+@patch("ingestion.EntsoePandasClient")
+def test_full_pipeline_integration_1h_with_outliers(mock_entsoe, mock_cds):
     (
         base_dir,
         raw_energy,
@@ -572,62 +551,51 @@ def test_full_pipeline_integration_1h_with_outliers():
 
     try:
         # 1. ENTSO‑E
-        df_entsoe = mock_entsoe_data_1h_without_outliers(start_date, end_date)
-        entsoe_path = os.path.join(
-            raw_energy,
-            f"entsoe_ES_load_{start_date}_to_{end_date}_1h_outliers.csv")
+        df_entsoe = mock_entsoe_data_mixed_granularity_clean(
+            start_date, end_date)
+        entsoe_filename = f"entsoe_ES_load_{start_date}_to_{end_date}.csv"
+        entsoe_path = os.path.join(raw_energy, entsoe_filename)
         df_entsoe.to_csv(entsoe_path, index=False)
 
         # 2. Copernicus
-        df_copernicus = mock_copernicus_data_1h_with_outliers(
+        df_copernicus = mock_copernicus_data_mixed_granularity_clean(
             start_date, end_date)
-        copernicus_path = os.path.join(
-            raw_weather, f"era5_timeseries_{start_date}_to_{end_date}_1h_outliers.csv")
+        # exact same name as fetch_copernicus_data
+        copernicus_filename = f"era5_timeseries_{start_date}_to_{end_date}.csv"
+        copernicus_path = os.path.join(raw_weather, copernicus_filename)
         df_copernicus.to_csv(copernicus_path, index=False)
 
-        # 3. energia
+        # 3.  ingestão
+        fetch_entsoe_data(start_date, end_date)
+        fetch_copernicus_data(start_date, end_date)
+
+        # 4. energia
         energy(raw_energy, pasta_saida=energy_clean)
 
-        # 4. clima
-        df_copernicus.to_csv(
-            os.path.join(
-                raw_weather,
-                os.path.basename(copernicus_path)),
-            index=False
-        )
-
-        with patch(
-            "pandas.read_csv",
-            return_value=fake_df
-        ):
+        # 5. clima
+        with patch("pandas.read_csv", return_value=fake_df):
             weather(pasta_saida=weather_clean)
 
-        # 5. limpeza e junção final
+        # 6. limpeza e junção final
         df_final = cleaning(
             pasta_energy_corrigido=energy_clean,
             pasta_weather_corrigido=weather_clean,
         )
 
-        # 6. caminho do CSV final
-        REAL_PROCESSED = (
-            "/Users/beatrizfernandes/Desktop/PIACD/projeto/pl1g1/Code/energy_prediction_system/data/processed"
-        )
-        nome_final = "dados_finais_completos.csv"
-        final_csv = os.path.join(REAL_PROCESSED, nome_final)
+        # 7. CSV final
+        REAL_PROCESSED = "/Users/beatrizfernandes/Desktop/PIACD/projeto/pl1g1/Code/energy_prediction_system/data/processed"
+        final_csv = os.path.join(REAL_PROCESSED, "dados_finais_completos.csv")
         assert os.path.exists(final_csv), f"CSV final não existe: {final_csv}"
         assert os.path.getsize(final_csv) > 0
 
+        # 8. verificações
         assert df_final is not None
         assert len(df_final) > 0
         assert "datetime" in df_final.columns
         assert "Load_MW" in df_final.columns
         assert any(var in df_final.columns for var in [
-            "t2m", "ssrd", "tp", "u10", "v10"]
-        )
-
-        # 7. sem valores em falta
-        nulos = df_final.isnull().sum()
-        assert nulos.sum() == 0
+                   "t2m", "ssrd", "tp", "u10", "v10"])
+        assert df_final.isnull().sum().sum() == 0
 
         print(
             f"Pipeline 1h com outliers: {len(df_final)} registos no dataset final."
@@ -742,7 +710,11 @@ def mock_copernicus_data_mixed_granularity_clean(start_date, end_date):
 # 16.
 
 
-def test_full_pipeline_integration_mixed_granularity_datasets_clean():
+@patch("ingestion.cdsapi.Client")
+@patch("ingestion.EntsoePandasClient")
+def test_full_pipeline_integration_mixed_granularity_datasets_clean(
+        mock_entsoe,
+        mock_cds):
     (
         base_dir,
         raw_energy,
@@ -760,66 +732,56 @@ def test_full_pipeline_integration_mixed_granularity_datasets_clean():
         # 1. ENTSO‑E
         df_entsoe = mock_entsoe_data_mixed_granularity_clean(
             start_date, end_date)
-        entsoe_path = os.path.join(
-            raw_energy, f"entsoe_ES_load_{start_date}_to_{end_date}_mixed.csv"
-        )
+        entsoe_filename = f"entsoe_ES_load_{start_date}_to_{end_date}.csv"
+        entsoe_path = os.path.join(raw_energy, entsoe_filename)
         df_entsoe.to_csv(entsoe_path, index=False)
 
         # 2. Copernicus
         df_copernicus = mock_copernicus_data_mixed_granularity_clean(
             start_date, end_date)
-        copernicus_path = os.path.join(
-            raw_weather, f"era5_timeseries_{start_date}_to_{end_date}_mixed.csv")
+        # exact same name as fetch_copernicus_data
+        copernicus_filename = f"era5_timeseries_{start_date}_to_{end_date}.csv"
+        copernicus_path = os.path.join(raw_weather, copernicus_filename)
         df_copernicus.to_csv(copernicus_path, index=False)
 
-        # 3. energia
+        # 3.  ingestão
+        fetch_entsoe_data(start_date, end_date)
+        fetch_copernicus_data(start_date, end_date)
+
+        # 4. energia
         energy(raw_energy, pasta_saida=energy_clean)
 
-        # 4. clima
-        df_copernicus.to_csv(
-            os.path.join(
-                raw_weather,
-                os.path.basename(copernicus_path)),
-            index=False
-        )
-
-        with patch(
-            "pandas.read_csv",
-            return_value=fake_df
-        ):
+        # 5. clima
+        with patch("pandas.read_csv", return_value=fake_df):
             weather(pasta_saida=weather_clean)
 
-        # 5. limpeza e junção final
+        # 6. limpeza e junção final
         df_final = cleaning(
             pasta_energy_corrigido=energy_clean,
             pasta_weather_corrigido=weather_clean,
         )
 
-        # 6. CSV final
-        REAL_PROCESSED = (
-            "/Users/beatrizfernandes/Desktop/PIACD/projeto/pl1g1/Code/energy_prediction_system/data/processed"
-        )
-        nome_final = "dados_finais_completos.csv"
-        final_csv = os.path.join(REAL_PROCESSED, nome_final)
+        # 7. CSV final
+        REAL_PROCESSED = "/Users/beatrizfernandes/Desktop/PIACD/projeto/pl1g1/Code/energy_prediction_system/data/processed"
+        final_csv = os.path.join(REAL_PROCESSED, "dados_finais_completos.csv")
         assert os.path.exists(final_csv), f"CSV final não existe: {final_csv}"
         assert os.path.getsize(final_csv) > 0
 
+        # 8. verificações
         assert df_final is not None
         assert len(df_final) > 0
         assert "datetime" in df_final.columns
         assert "Load_MW" in df_final.columns
         assert any(var in df_final.columns for var in [
-            "t2m", "ssrd", "tp", "u10", "v10"]
-        )
-
-        nulos = df_final.isnull().sum()
-        assert nulos.sum() == 0
+                   "t2m", "ssrd", "tp", "u10", "v10"])
+        assert df_final.isnull().sum().sum() == 0
 
         print(
             f"Pipeline datasets mistos (15min/1h) limpos: {len(df_final)} registos no dataset final."
         )
     finally:
         shutil.rmtree(base_dir, ignore_errors=True)
+
 
 ##########
 #########
@@ -946,7 +908,11 @@ def mock_copernicus_data_mixed_granularity_15min_outliers_nan(
 # 19.
 
 
-def test_full_pipeline_integration_mixed_granularity_datasets_with_outliers_nan():
+@patch("ingestion.cdsapi.Client")
+@patch("ingestion.EntsoePandasClient")
+def test_full_pipeline_integration_mixed_granularity_datasets_with_outliers_nan(
+        mock_entsoe,
+        mock_cds):
     (
         base_dir,
         raw_energy,
@@ -957,69 +923,57 @@ def test_full_pipeline_integration_mixed_granularity_datasets_with_outliers_nan(
         end_date,
     ) = setup_dirs()
 
-    # caminho fake
     fake_path = "/tmp/fake_weather_data"
     fake_df = setup_fake_weather_files(fake_path)
 
     try:
         # 1. ENTSO‑E
-        df_entsoe = mock_entsoe_data_mixed_granularity_15min_nan(
+        df_entsoe = mock_entsoe_data_mixed_granularity_clean(
             start_date, end_date)
-        entsoe_path = os.path.join(
-            raw_energy,
-            f"entsoe_ES_load_{start_date}_to_{end_date}_mixed_15min_nan.csv")
+        entsoe_filename = f"entsoe_ES_load_{start_date}_to_{end_date}.csv"
+        entsoe_path = os.path.join(raw_energy, entsoe_filename)
         df_entsoe.to_csv(entsoe_path, index=False)
 
         # 2. Copernicus
-        df_copernicus = mock_copernicus_data_mixed_granularity_15min_outliers_nan(
+        df_copernicus = mock_copernicus_data_mixed_granularity_clean(
             start_date, end_date)
-        copernicus_path = os.path.join(
-            raw_weather,
-            f"era5_timeseries_{start_date}_to_{end_date}_mixed_15min_outliers_nan.csv")
+        # exact same name as fetch_copernicus_data
+        copernicus_filename = f"era5_timeseries_{start_date}_to_{end_date}.csv"
+        copernicus_path = os.path.join(raw_weather, copernicus_filename)
         df_copernicus.to_csv(copernicus_path, index=False)
 
-        # 3. energia
+        # 3.  ingestão
+        fetch_entsoe_data(start_date, end_date)
+        fetch_copernicus_data(start_date, end_date)
+
+        # 4. energia
         energy(raw_energy, pasta_saida=energy_clean)
 
-        # 4. clima
-        df_copernicus.to_csv(
-            os.path.join(
-                raw_weather,
-                os.path.basename(copernicus_path)),
-            index=False
-        )
-
-        with patch(
-            "pandas.read_csv",
-            return_value=fake_df
-        ):
+        # 5. clima
+        with patch("pandas.read_csv", return_value=fake_df):
             weather(pasta_saida=weather_clean)
 
-        # 5. limpeza e junção final
+        # 6. limpeza e junção final
         df_final = cleaning(
             pasta_energy_corrigido=energy_clean,
             pasta_weather_corrigido=weather_clean,
         )
 
-        # 6. CSV final
-        REAL_PROCESSED = (
-            "/Users/beatrizfernandes/Desktop/PIACD/projeto/pl1g1/Code/energy_prediction_system/data/processed"
-        )
-        nome_final = "dados_finais_completos.csv"
-        final_csv = os.path.join(REAL_PROCESSED, nome_final)
+        # 7. CSV final
+        REAL_PROCESSED = "/Users/beatrizfernandes/Desktop/PIACD/projeto/pl1g1/Code/energy_prediction_system/data/processed"
+        final_csv = os.path.join(REAL_PROCESSED, "dados_finais_completos.csv")
         assert os.path.exists(final_csv), f"CSV final não existe: {final_csv}"
         assert os.path.getsize(final_csv) > 0
 
-        # verificações básicas
+        # 8. verificações básicas
         assert df_final is not None
         assert len(df_final) > 0
         assert "datetime" in df_final.columns
         assert "Load_MW" in df_final.columns
         assert any(var in df_final.columns for var in [
-            "t2m", "ssrd", "tp", "u10", "v10"]
-        )
+                   "t2m", "ssrd", "tp", "u10", "v10"])
 
-        # 7. verifica se ainda há NaN
+        # 9. mostra NaN finais
         nulos = df_final.isnull().sum()
         print("\nValores em falta no dataset final:")
         print(nulos[nulos > 0])
