@@ -15,40 +15,48 @@ from cleaning import (
 from ingestion import fetch_entsoe_data, fetch_copernicus_data
 
 
-def setup_fake_weather_files(fake_path):
+def setup_fake_weather_files(fake_path, df_copernicus):
     os.makedirs(fake_path, exist_ok=True)
 
-    # cria um CSV falso com datas 2020–2025, só para o teste
-    index = pd.date_range("2024-01-01", "2024-01-02", freq="1h", tz="UTC")
-    df = pd.DataFrame(
-        {
-            "valid_time": index,
-            "t2m": 273.15 + 15 + np.random.randn(len(index)),
-            "d2m": 273.15 + 12 + np.random.randn(len(index)),
-            "ssrd": 200 + 100 * np.random.randn(len(index)),
-            "tp": 0.1 + 0.05 * np.random.randn(len(index)),
-        }
-    )
+    file_map = {"era5_timeseries_2020-01-01_to_2025-12-31.csv": ["valid_time",
+                                                                 "u10",
+                                                                 "v10",
+                                                                 "latitude",
+                                                                 "longitude"],
+                "reanalysis-era5-land-timeseries-sfc-2m-temperatureauafbxo0.csv": ["valid_time",
+                                                                                   "d2m",
+                                                                                   "t2m",
+                                                                                   "latitude",
+                                                                                   "longitude"],
+                "reanalysis-era5-land-timeseries-sfc-skin-temperaturercarv5g8.csv": ["valid_time",
+                                                                                     "skt",
+                                                                                     "latitude",
+                                                                                     "longitude"],
+                "reanalysis-era5-land-timeseries-sfc-radiation-heathoyt7mym.csv": ["valid_time",
+                                                                                   "ssrd",
+                                                                                   "strd",
+                                                                                   "latitude",
+                                                                                   "longitude"],
+                "reanalysis-era5-land-timeseries-sfc-pressure-precipitationtwpvvkbd.csv": ["valid_time",
+                                                                                           "sp",
+                                                                                           "tp",
+                                                                                           "latitude",
+                                                                                           "longitude"],
+                "reanalysis-era5-land-timeseries-sfc-soil-temperatureokgb55eq.csv": ["valid_time",
+                                                                                     "stl1",
+                                                                                     "latitude",
+                                                                                     "longitude"],
+                "reanalysis-era5-land-timeseries-sfc-soil-waterp9pn16zx.csv": ["valid_time",
+                                                                               "swvl1",
+                                                                               "latitude",
+                                                                               "longitude"],
+                }
 
-    # ficheiro fake
-    ERA5_CSV = os.path.join(
-        fake_path,
-        "era5_timeseries_2020-01-01_to_2025-12-31.csv")
-    df.to_csv(ERA5_CSV, index=False)
-
-    # restantes
-    other_files = [
-        "reanalysis-era5-land-timeseries-sfc-2m-temperatureauafbxo0.csv",
-        "reanalysis-era5-land-timeseries-sfc-pressure-precipitationtwpvvkbd.csv",
-        "reanalysis-era5-land-timeseries-sfc-radiation-heathoyt7mym.csv",
-        "reanalysis-era5-land-timeseries-sfc-skin-temperaturercarv5g8.csv",
-        "reanalysis-era5-land-timeseries-sfc-soil-temperatureokgb55eq.csv",
-        "reanalysis-era5-land-timeseries-sfc-soil-waterp9pn16zx.csv",
-    ]
-    for fname in other_files:
-        df.head(0).to_csv(os.path.join(fake_path, fname), index=False)
-
-    return df
+    for fname, cols in file_map.items():
+        cols_existentes = [c for c in cols if c in df_copernicus.columns]
+        df_copernicus[cols_existentes].to_csv(
+            os.path.join(fake_path, fname), index=False
+        )
 
 # 1
 
@@ -172,8 +180,18 @@ def test_full_pipeline_integration(mock_entsoe, mock_cds):
 
         # 5. clima
         with tempfile.TemporaryDirectory(prefix="fake_weather_") as fake_path:
-            fake_df = setup_fake_weather_files(fake_path)
-            with patch("pandas.read_csv", return_value=fake_df):
+            setup_fake_weather_files(fake_path, df_copernicus)
+
+            original_read_csv = pd.read_csv
+
+            def fake_read_csv(path, *args, **kwargs):
+                fname = os.path.basename(path)
+                fake_file = os.path.join(fake_path, fname)
+                if os.path.exists(fake_file):
+                    return original_read_csv(fake_file, *args, **kwargs)
+                return original_read_csv(path, *args, **kwargs)
+
+            with patch("cleaning.pd.read_csv", side_effect=fake_read_csv):
                 weather(pasta_saida=weather_clean)
 
         # 6. limpeza e junção final
@@ -326,8 +344,18 @@ def test_full_pipeline_integration_15min_with_outliers_and_nan(
 
         # 5. clima
         with tempfile.TemporaryDirectory(prefix="fake_weather_") as fake_path:
-            fake_df = setup_fake_weather_files(fake_path)
-            with patch("pandas.read_csv", return_value=fake_df):
+            setup_fake_weather_files(fake_path, df_copernicus)
+
+            original_read_csv = pd.read_csv
+
+            def fake_read_csv(path, *args, **kwargs):
+                fname = os.path.basename(path)
+                fake_file = os.path.join(fake_path, fname)
+                if os.path.exists(fake_file):
+                    return original_read_csv(fake_file, *args, **kwargs)
+                return original_read_csv(path, *args, **kwargs)
+
+            with patch("cleaning.pd.read_csv", side_effect=fake_read_csv):
                 weather(pasta_saida=weather_clean)
 
         # 6. limpeza e junção final
@@ -446,8 +474,18 @@ def test_full_pipeline_integration_1h_clean(mock_entsoe, mock_cds):
 
         # 5. clima
         with tempfile.TemporaryDirectory(prefix="fake_weather_") as fake_path:
-            fake_df = setup_fake_weather_files(fake_path)
-            with patch("pandas.read_csv", return_value=fake_df):
+            setup_fake_weather_files(fake_path, df_copernicus)
+
+            original_read_csv = pd.read_csv
+
+            def fake_read_csv(path, *args, **kwargs):
+                fname = os.path.basename(path)
+                fake_file = os.path.join(fake_path, fname)
+                if os.path.exists(fake_file):
+                    return original_read_csv(fake_file, *args, **kwargs)
+                return original_read_csv(path, *args, **kwargs)
+
+            with patch("cleaning.pd.read_csv", side_effect=fake_read_csv):
                 weather(pasta_saida=weather_clean)
 
         # 6. limpeza e junção final
@@ -573,8 +611,18 @@ def test_full_pipeline_integration_1h_with_outliers(mock_entsoe, mock_cds):
 
         # 5. clima
         with tempfile.TemporaryDirectory(prefix="fake_weather_") as fake_path:
-            fake_df = setup_fake_weather_files(fake_path)
-            with patch("pandas.read_csv", return_value=fake_df):
+            setup_fake_weather_files(fake_path, df_copernicus)
+
+            original_read_csv = pd.read_csv
+
+            def fake_read_csv(path, *args, **kwargs):
+                fname = os.path.basename(path)
+                fake_file = os.path.join(fake_path, fname)
+                if os.path.exists(fake_file):
+                    return original_read_csv(fake_file, *args, **kwargs)
+                return original_read_csv(path, *args, **kwargs)
+
+            with patch("cleaning.pd.read_csv", side_effect=fake_read_csv):
                 weather(pasta_saida=weather_clean)
 
         # 6. limpeza e junção final
@@ -657,19 +705,17 @@ def mock_entsoe_data_mixed_granularity_clean(start_date, end_date):
 
 
 def mock_copernicus_data_mixed_granularity_clean(start_date, end_date):
-    start_15min = pd.Timestamp(start_date, tz="UTC")
-    end_15min = pd.Timestamp(end_date, tz="UTC") + pd.Timedelta(days=1)
-    index_15min = pd.date_range(
-        start=start_15min,
-        end=end_15min,
-        freq="15min",
-        tz="UTC")
-    index_15min = index_15min[:-1]
+    start = pd.Timestamp(start_date, tz="UTC")
+    end = pd.Timestamp(end_date, tz="UTC") + pd.Timedelta(days=1)
+    mid = start + (end - start) / 2
 
-    start_1h = pd.Timestamp(start_date, tz="UTC")
-    end_1h = pd.Timestamp(end_date, tz="UTC") + pd.Timedelta(days=1)
-    index_1h = pd.date_range(start=start_1h, end=end_1h, freq="1h", tz="UTC")
-    index_1h = index_1h[:-1]
+    index_15min = pd.date_range(
+        start=mid,
+        end=end,
+        freq="15min",
+        tz="UTC")[
+        :-1]
+    index_1h = pd.date_range(start=start, end=mid, freq="1h", tz="UTC")[:-1]
 
     df_15min = pd.DataFrame(
         {
@@ -752,8 +798,18 @@ def test_full_pipeline_integration_mixed_granularity_datasets_clean(
 
         # 5. clima
         with tempfile.TemporaryDirectory(prefix="fake_weather_") as fake_path:
-            fake_df = setup_fake_weather_files(fake_path)
-            with patch("pandas.read_csv", return_value=fake_df):
+            setup_fake_weather_files(fake_path, df_copernicus)
+
+            original_read_csv = pd.read_csv
+
+            def fake_read_csv(path, *args, **kwargs):
+                fname = os.path.basename(path)
+                fake_file = os.path.join(fake_path, fname)
+                if os.path.exists(fake_file):
+                    return original_read_csv(fake_file, *args, **kwargs)
+                return original_read_csv(path, *args, **kwargs)
+
+            with patch("cleaning.pd.read_csv", side_effect=fake_read_csv):
                 weather(pasta_saida=weather_clean)
 
         # 6. limpeza e junção final
@@ -839,19 +895,17 @@ def mock_entsoe_data_mixed_granularity_15min_nan(start_date, end_date):
 def mock_copernicus_data_mixed_granularity_15min_outliers_nan(
         start_date,
         end_date):
-    start_15min = pd.Timestamp(start_date, tz="UTC")
-    end_15min = pd.Timestamp(end_date, tz="UTC") + pd.Timedelta(days=1)
-    index_15min = pd.date_range(
-        start=start_15min,
-        end=end_15min,
-        freq="15min",
-        tz="UTC")
-    index_15min = index_15min[:-1]
+    start = pd.Timestamp(start_date, tz="UTC")
+    end = pd.Timestamp(end_date, tz="UTC") + pd.Timedelta(days=1)
+    mid = start + (end - start) / 2
 
-    start_1h = pd.Timestamp(start_date, tz="UTC")
-    end_1h = pd.Timestamp(end_date, tz="UTC") + pd.Timedelta(days=1)
-    index_1h = pd.date_range(start=start_1h, end=end_1h, freq="1h", tz="UTC")
-    index_1h = index_1h[:-1]
+    index_15min = pd.date_range(
+        start=mid,
+        end=end,
+        freq="15min",
+        tz="UTC")[
+        :-1]
+    index_1h = pd.date_range(start=start, end=mid, freq="1h", tz="UTC")[:-1]
 
     # 15 min → com outliers e NaN
     df_15min = pd.DataFrame(
@@ -950,8 +1004,18 @@ def test_full_pipeline_integration_mixed_granularity_datasets_with_outliers_nan(
 
         # 5. clima
         with tempfile.TemporaryDirectory(prefix="fake_weather_") as fake_path:
-            fake_df = setup_fake_weather_files(fake_path)
-            with patch("pandas.read_csv", return_value=fake_df):
+            setup_fake_weather_files(fake_path, df_copernicus)
+
+            original_read_csv = pd.read_csv
+
+            def fake_read_csv(path, *args, **kwargs):
+                fname = os.path.basename(path)
+                fake_file = os.path.join(fake_path, fname)
+                if os.path.exists(fake_file):
+                    return original_read_csv(fake_file, *args, **kwargs)
+                return original_read_csv(path, *args, **kwargs)
+
+            with patch("cleaning.pd.read_csv", side_effect=fake_read_csv):
                 weather(pasta_saida=weather_clean)
 
         # 6. limpeza e junção final
