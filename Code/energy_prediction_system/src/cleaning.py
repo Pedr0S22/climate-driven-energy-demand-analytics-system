@@ -1,6 +1,8 @@
 import pandas as pd
 import os
 import numpy as np
+from pathlib import Path
+import logging
 
 # =======================================
 # DADOS ENERGY
@@ -70,8 +72,10 @@ def aggregate_hour(df):
                     indices_para_apagar.append(idx)
 
         df = df.drop(indices_para_apagar).reset_index(drop=True)
-        print(f"  Shape antes: {len(df) + len(indices_para_apagar)} (15min)")
-        print(f"  Shape depois: {len(df)} (1h com máximo)")
+        logging.debug(
+            "  Shape antes: %d (15min)",
+            len(df) + len(indices_para_apagar))
+        logging.debug("  Shape depois: %d (1h com máximo)", len(df))
 
     # --- CASO 2: mistura 1h + 15 min (com idx_15_start guardado) ---
     else:
@@ -103,8 +107,8 @@ def aggregate_hour(df):
         df_final = pd.concat([df_horario, df_15min], ignore_index=True)
         df_final = df_final.sort_values(time_col).reset_index(drop=True)
 
-        print("  Mistura 1h + 15 min: 15 min → 1h agregado.")
-        print(f"  Shape final: {len(df_final)} (1h com máximo)")
+        logging.info("  Mistura 1h + 15 min")
+        logging.debug("  Shape final: %d ", len(df_final))
 
         return df_final
 
@@ -116,25 +120,26 @@ def energy(pasta_energy, pasta_saida=None):
         if nomefich.endswith(".csv"):
             caminho = os.path.join(pasta_energy, nomefich)
             df = pd.read_csv(caminho)
-            print(f"\n=== {nomefich} ===")
-            print("Colunas:", list(df.columns))
-            print(df.dtypes)
-            print("Primeiras linhas:")
-            print(df.head())
-            print("Shape:", df.shape)
+            logging.info("=== %s ===", nomefich)
+            logging.debug("Colunas: %s", list(df.columns))
+            logging.debug("Tipos:\n%s", df.dtypes.to_string())
+            logging.debug("Primeiras linhas:\n%s", df.head().to_string())
+            logging.debug("Shape: %s", df.shape)
             n_nan_total = df["Load_MW"].isna().sum()
-            print(f"   Total: {n_nan_total} missing")  # há 0 valores em falta
+            logging.info("Total: %d missing", n_nan_total)
 
             # mudar o timestamp para formato UTC
             # em 2020 e 2021 o horário está de 1h em 1h; 2022 tem de 1h em 1h e
             # de 15min em 15min; o resto é de 15min em 15min
-            print("###########")
             df["Unnamed: 0"] = pd.to_datetime(df["Unnamed: 0"], utc=True)
-            # mostra 5 linhas com a coluna já em UTC (mesmo nome!) ===
-            print("##### COLUNA 'Unnamed: 0' EM UTC (5 primeiras linhas) #####")
-            print(df["Unnamed: 0"].head(5))
-            print("DataFrame completo com coluna em UTC (5 primeiras linhas):")
-            print(df.head(5))
+            logging.debug(
+                "Coluna 'Unnamed: 0' em UTC (5 primeiras linhas):\n%s",
+                df["Unnamed: 0"].head(5).to_string(),
+            )
+            logging.debug(
+                "DataFrame com coluna em UTC (5 primeiras linhas):\n%s",
+                df.head(5).to_string(),
+            )
 
             df_e = time_alignment_energy(df)
 
@@ -142,7 +147,9 @@ def energy(pasta_energy, pasta_saida=None):
                 os.makedirs(pasta_saida, exist_ok=True)
                 caminho_saida = os.path.join(pasta_saida, nomefich)
                 df_e.to_csv(caminho_saida, index=False)
-                print(f" Ficheiro corrigido guardado em: {caminho_saida}")
+                logging.info(
+                    "Ficheiro corrigido guardado em: %s",
+                    caminho_saida)
 
 
 def time_alignment_energy(df):
@@ -154,10 +161,10 @@ def time_alignment_energy(df):
     ts = df["Unnamed: 0"]
     diffs = ts.diff().dropna().unique()
 
-    print("\nFREQUÊNCIA TEMPORAL:")
-    print("Diferenças encontradas no dataset:")
-    for d in diffs:
-        print(d)
+    logging.debug("FREQUÊNCIA TEMPORAL:")
+    logging.debug(
+        "Diferenças encontradas no dataset: %s", [
+            str(d) for d in diffs])
 
     if len(diffs) == 1:
         d = diffs[0]
@@ -264,7 +271,9 @@ def g115g1(df):
 
 
 def weather(pasta_saida=None):
-    base_path = "/Users/beatrizfernandes/Desktop/PIACD/dados_PIACD/Weather"
+    root = Path(__file__).parent.parent.parent.parent.parent
+
+    base_path = root / "data" / "raw" / "weather"
     datasets = [
         f"{base_path}/era5_timeseries_2020-01-01_to_2025-12-31.csv",
         f"{base_path}/reanalysis-era5-land-timeseries-sfc-2m-temperatureauafbxo0.csv",
@@ -276,23 +285,20 @@ def weather(pasta_saida=None):
     ]
 
     for arquivo in datasets:
-        print(f"\n--- {arquivo} ---")
-        print("##########")
-        print("##########")
+        logging.info("--- %s ---", arquivo)
         df = pd.read_csv(arquivo)
 
-        print("Colunas:", list(df.columns))
-        print(df.info())
-        print("Valores nulos por coluna:")
-        print(df.isnull().sum())  # não há valores nulos em nenhum dataset
-        print("Primeiras linhas:")
-        print(df.head())
-        print("Shape:", df.shape)
+        logging.debug("Colunas: %s", list(df.columns))
+        logging.debug("Info:\n%s", df.dtypes.to_string())
+        nulos = df.isnull().sum()
+        logging.debug("Valores nulos por coluna:\n%s", nulos.to_string())
+        logging.debug("Primeiras linhas:\n%s", df.head().to_string())
+        logging.debug("Shape: %s", df.shape)
 
         df = convert_era5_units(df)
-        print("\n=== DEPOIS DAS CONVERSÕES ===")
-        print(df.head())
-        print("Shape após conversões:", df.shape)
+        logging.debug("=== DEPOIS DAS CONVERSÕES ===")
+        logging.debug("Head após conversões:\n%s", df.head().to_string())
+        logging.debug("Shape após conversões: %s", df.shape)
 
         df_aligned = time_alignment(df)
         df_clean = outliers_treatment(df_aligned)
@@ -335,13 +341,12 @@ def time_alignment(df):
 
     # Diferença entre cada linha e a anterior
     df["diff"] = df["valid_time"].diff()
-    print("\nFREQUÊNCIA TEMPORAL:")
 
     # Pega apenas as diferenças válidas e únicas
     diffs_unicos = df["diff"].dropna().unique()
-    print("Diferenças encontradas no dataset:")
-    for d in diffs_unicos:
-        print(d)
+    logging.debug(
+        "Diferenças encontradas no dataset: %s", [
+            str(d) for d in diffs_unicos])
 
     if len(diffs_unicos) == 1:
         if diffs_unicos[0] == pd.Timedelta(hours=1):
@@ -415,7 +420,6 @@ def missingImputation(df, var):
                     method="linear",
                     limit_direction="both"))
         else:
-            print(f"{var} | {hora}: ESTRATÉGIA ESPECÍFICA")
             if var in ["t2m", "skt", "stl1", "d2m", "strd"]:
                 resultado.append(temp_termicRad_imputation(serie))
             elif var in ["u10", "v10"]:
@@ -526,7 +530,7 @@ def outliers_treatment(df):
         # Detecta outliers IQR
         outliers_candidatos = (df[var] < lower_bound) | (df[var] > upper_bound)
         n_candidatos = outliers_candidatos.sum()
-        print(f"  IQR outliers: {n_candidatos}")
+        logging.debug("%s — IQR outliers: %d", var, n_candidatos)
 
         # Verifica limites físicos
         if var in limites_fisicos:
@@ -535,7 +539,10 @@ def outliers_treatment(df):
                 (df[var] < limite_min) | (df[var] > limite_max)
             )
             n_outliers_reais = outliers_reais.sum()
-            print(f"  Limites físicos: {n_outliers_reais}")
+            logging.debug(
+                "%s — Limites físicos: %d outliers reais",
+                var,
+                n_outliers_reais)
 
             # outliers fora dos limites físicos
             if n_outliers_reais > 0:
@@ -568,7 +575,7 @@ def outliers_treatment(df):
                         df[var], 6, 0)
 
         else:
-            print("manter")
+            logging.debug("%s — sem tratamento de outliers (manter)", var)
 
     return df.reset_index()
 
@@ -621,7 +628,7 @@ def hourly_aggregation(df):
         df = df.drop(indices_para_apagar).reset_index(drop=True)
 
     else:
-        print(" Já está de 1h em 1h")
+        logging.info("Já está de 1h em 1h")
 
     return df.sort_values("valid_time").reset_index(drop=True)
 
@@ -630,7 +637,8 @@ def hourly_aggregation(df):
 # JUNTAR DATASETS
 # =======================================
 def cleaning(pasta_energy_corrigido, pasta_weather_corrigido):
-    pasta_saida = "/Users/beatrizfernandes/Desktop/PIACD/projeto/pl1g1/Code/energy_prediction_system/data/processed"
+    root = Path(__file__).parent.parent.parent.parent.parent
+    pasta_saida = root / "Code" / "energy_prediction_system" / "data" / "processed"
     os.makedirs(pasta_saida, exist_ok=True)
 
     # 1. energy
@@ -649,7 +657,7 @@ def cleaning(pasta_energy_corrigido, pasta_weather_corrigido):
         .sort_values("datetime")
         .reset_index(drop=True)
     )
-    print(f"Energy: {len(df_energy)} registos únicos")
+    logging.info("Energy: %d registos únicos", len(df_energy))
 
     # 2. weather
     dfs_weather = []
@@ -670,24 +678,26 @@ def cleaning(pasta_energy_corrigido, pasta_weather_corrigido):
     df_weather = pd.concat(dfs_weather, ignore_index=True)
     df_weather = df_weather.groupby("datetime").mean(
         numeric_only=True).reset_index()
-    print(f" Weather: {len(df_weather)} registos únicos")
+    logging.info("Weather: %d registos únicos", len(df_weather))
 
     # 3. juntar
     df_final = pd.merge(df_weather, df_energy, on="datetime", how="inner")
 
     # 4. verificar
-    print("\n DATASET FINAL:")
-    print(f"   Shape: {df_final.shape}")
-    print(f"   Colunas: {list(df_final.columns)}")
-    print(
-        f"   Período: {df_final['datetime'].min()} → {df_final['datetime'].max()}")
-
+    logging.info("DATASET FINAL:")
+    logging.info("  Shape: %s", df_final.shape)
+    logging.info("  Colunas: %s", list(df_final.columns))
+    logging.info(
+        "  Período: %s - %s",
+        df_final["datetime"].min(),
+        df_final["datetime"].max(),
+    )
     nulos = df_final.isnull().sum()
     if nulos.sum() > 0:
-        print("\n Valores em falta:")
-        print(nulos[nulos > 0])
+        logging.warning("Valores em falta no dataset final:\n%s",
+                        nulos[nulos > 0].to_string())
     else:
-        print("\n sem valores em falta!")
+        logging.info("Sem valores em falta no dataset final.")
 
     nome_final = "dados_finais_completos.csv"
     caminho_final = os.path.join(pasta_saida, nome_final)
@@ -702,18 +712,17 @@ def cleaning(pasta_energy_corrigido, pasta_weather_corrigido):
 
 
 if __name__ == "__main__":
-    caminho_energy = "/Users/beatrizfernandes/Desktop/PIACD/dados_PIACD/energy"
-    caminho_weather = "/Users/beatrizfernandes/Desktop/PIACD/dados_PIACD/Weather"
-    pasta_final = "/Users/beatrizfernandes/Desktop/PIACD/dados_PIACD/processed"
+    ROOT = Path(__file__).parent.parent.parent.parent.parent
+    DATA_RAW = ROOT / "Code" / "energy_prediction_system" / "data" / "raw"
 
-    caminho_energy_corrigido = (
-        "/Users/beatrizfernandes/Desktop/PIACD/dados_PIACD/energy_corrigido"
-    )
+    caminho_energy = DATA_RAW / "energy"
+    caminho_weather = DATA_RAW / "weather"
+    pasta_final = ROOT / "Code" / "energy_prediction_system" / "data" / "processed"
+
+    caminho_energy_corrigido = DATA_RAW / "energy_corrigido"
     energy(caminho_energy, pasta_saida=caminho_energy_corrigido)
 
-    caminho_weather_corrigido = (
-        "/Users/beatrizfernandes/Desktop/PIACD/dados_PIACD/weather_corrigido"
-    )
+    caminho_weather_corrigido = DATA_RAW / "weather_corrigido"
     weather(pasta_saida=caminho_weather_corrigido)
 
     df_final = cleaning(

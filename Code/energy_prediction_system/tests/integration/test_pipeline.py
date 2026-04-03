@@ -1,22 +1,24 @@
+from ingestion import fetch_entsoe_data, fetch_copernicus_data
+from cleaning import (
+    energy,
+    weather,
+    cleaning,
+)
 import os
 import shutil
 import tempfile
 import numpy as np
 import pandas as pd
 from unittest.mock import patch
+import logging
+from pathlib import Path
 
-
-from cleaning import (
-    energy,
-    weather,
-    cleaning,
-)
-
-from ingestion import fetch_entsoe_data, fetch_copernicus_data
+PROJECT_ROOT = Path(__file__).parent.parent.parent.parent.parent.parent
 
 
 def setup_fake_weather_files(fake_path, df_copernicus):
-    os.makedirs(fake_path, exist_ok=True)
+    fake_path = Path(fake_path)
+    fake_path.mkdir(parents=True, exist_ok=True)
 
     file_map = {"era5_timeseries_2020-01-01_to_2025-12-31.csv": ["valid_time",
                                                                  "u10",
@@ -63,22 +65,23 @@ def setup_fake_weather_files(fake_path, df_copernicus):
 
 def setup_dirs():
     base_dir = tempfile.mkdtemp(prefix="piacd_test_")
+    base_dir_path = Path(base_dir)
 
-    raw_energy = os.path.join(base_dir, "data", "raw", "energy")
-    raw_weather = os.path.join(base_dir, "data", "raw", "weather")
-    energy_clean = os.path.join(base_dir, "data", "raw", "energy_corrigido")
-    weather_clean = os.path.join(base_dir, "data", "raw", "weather_corrigido")
+    raw_energy = base_dir_path / "energy"
+    raw_weather = base_dir_path / "weather"
+    energy_clean = base_dir_path / "energy_corrigido"
+    weather_clean = base_dir_path / "weather_corrigido"
 
-    os.makedirs(raw_energy, exist_ok=True)
-    os.makedirs(raw_weather, exist_ok=True)
-    os.makedirs(energy_clean, exist_ok=True)
-    os.makedirs(weather_clean, exist_ok=True)
+    raw_energy.mkdir(parents=True, exist_ok=True)
+    raw_weather.mkdir(parents=True, exist_ok=True)
+    energy_clean.mkdir(parents=True, exist_ok=True)
+    weather_clean.mkdir(parents=True, exist_ok=True)
 
     start_date = "2024-01-01"
     end_date = "2024-01-03"
 
     return (
-        base_dir,
+        base_dir_path,
         raw_energy,
         raw_weather,
         energy_clean,
@@ -146,7 +149,7 @@ def mock_copernicus_data(start_date, end_date):
 @patch("ingestion.EntsoePandasClient")
 def test_full_pipeline_integration(mock_entsoe, mock_cds):
     (
-        base_dir,
+        base_dir_path,
         raw_energy,
         raw_weather,
         energy_clean,
@@ -200,14 +203,7 @@ def test_full_pipeline_integration(mock_entsoe, mock_cds):
             pasta_weather_corrigido=weather_clean,
         )
 
-        # 7. CSV final
-        BASE_DIR = "/Users/beatrizfernandes/Desktop/PIACD/projeto/pl1g1/Code/energy_prediction_system"
-        REAL_PROCESSED = os.path.join(BASE_DIR, "data", "processed")
-        final_csv = os.path.join(REAL_PROCESSED, "dados_finais_completos.csv")
-        assert os.path.exists(final_csv), f"CSV final não existe: {final_csv}"
-        assert os.path.getsize(final_csv) > 0
-
-        # 8. verificações
+        # 7. verificações
         assert df_final is not None
         assert len(df_final) > 0
         assert "datetime" in df_final.columns
@@ -219,11 +215,18 @@ def test_full_pipeline_integration(mock_entsoe, mock_cds):
         assert df_final["datetime"].max() > pd.Timestamp(
             start_date, tz="UTC") - pd.Timedelta(days=1)
 
-        print(
-            f"Pipeline completo com sucesso: {len(df_final)} registos no dataset final."
-        )
+        logging.info(
+            "Pipeline completo com sucesso: %d registos no dataset final.",
+            len(df_final))
+    except AssertionError as e:
+        logging.error("Falha nas verificações do pipeline completo: %s", e)
+        raise
+    except Exception as e:
+        logging.error(
+            "Erro inesperado no test_full_pipeline_integration: %s", e)
+        raise
     finally:
-        shutil.rmtree(base_dir, ignore_errors=True)
+        shutil.rmtree(base_dir_path, ignore_errors=True)
 
 ##########
 #########
@@ -310,7 +313,7 @@ def test_full_pipeline_integration_15min_with_outliers_and_nan(
         mock_entsoe,
         mock_cds):
     (
-        base_dir,
+        base_dir_path,
         raw_energy,
         raw_weather,
         energy_clean,
@@ -364,14 +367,7 @@ def test_full_pipeline_integration_15min_with_outliers_and_nan(
             pasta_weather_corrigido=weather_clean,
         )
 
-        # 7. CSV final
-        BASE_DIR = "/Users/beatrizfernandes/Desktop/PIACD/projeto/pl1g1/Code/energy_prediction_system"
-        REAL_PROCESSED = os.path.join(BASE_DIR, "data", "processed")
-        final_csv = os.path.join(REAL_PROCESSED, "dados_finais_completos.csv")
-        assert os.path.exists(final_csv), f"CSV final não existe: {final_csv}"
-        assert os.path.getsize(final_csv) > 0
-
-        # 8. verificações
+        # 7. verificações
         assert df_final is not None
         assert len(df_final) > 0
         assert "datetime" in df_final.columns
@@ -379,11 +375,20 @@ def test_full_pipeline_integration_15min_with_outliers_and_nan(
         assert any(var in df_final.columns for var in [
                    "t2m", "ssrd", "tp", "u10", "v10"])
 
-        print(
-            f"Pipeline 15min com outliers + NaN: {len(df_final)} registos no dataset final."
-        )
+        logging.info(
+            "Pipeline 15min com outliers + NaN: %d registos no dataset final.",
+            len(df_final))
+    except AssertionError as e:
+        logging.error(
+            "Falha nas verificações do pipeline 15min com outliers/NaN: %s", e)
+        raise
+    except Exception as e:
+        logging.error(
+            "Erro inesperado no test_full_pipeline_integration_15min_with_outliers_and_nan: %s",
+            e)
+        raise
     finally:
-        shutil.rmtree(base_dir, ignore_errors=True)
+        shutil.rmtree(base_dir_path, ignore_errors=True)
 
 
 ##########
@@ -440,7 +445,7 @@ def mock_copernicus_data_1h_clean(start_date, end_date):
 @patch("ingestion.EntsoePandasClient")
 def test_full_pipeline_integration_1h_clean(mock_entsoe, mock_cds):
     (
-        base_dir,
+        base_dir_path,
         raw_energy,
         raw_weather,
         energy_clean,
@@ -494,14 +499,7 @@ def test_full_pipeline_integration_1h_clean(mock_entsoe, mock_cds):
             pasta_weather_corrigido=weather_clean,
         )
 
-        # 7. CSV final
-        BASE_DIR = "/Users/beatrizfernandes/Desktop/PIACD/projeto/pl1g1/Code/energy_prediction_system"
-        REAL_PROCESSED = os.path.join(BASE_DIR, "data", "processed")
-        final_csv = os.path.join(REAL_PROCESSED, "dados_finais_completos.csv")
-        assert os.path.exists(final_csv), f"CSV final não existe: {final_csv}"
-        assert os.path.getsize(final_csv) > 0
-
-        # 8. verificações
+        # 7. verificações
         assert df_final is not None
         assert len(df_final) > 0
         assert "datetime" in df_final.columns
@@ -510,11 +508,18 @@ def test_full_pipeline_integration_1h_clean(mock_entsoe, mock_cds):
                    "t2m", "ssrd", "tp", "u10", "v10"])
         assert df_final.isnull().sum().sum() == 0
 
-        print(
-            f"Pipeline 1h sem outliers/NaN: {len(df_final)} registos no dataset final."
-        )
+        logging.info(
+            "Pipeline 1h sem outliers/NaN: %d registos no dataset final.",
+            len(df_final))
+    except AssertionError as e:
+        logging.error("Falha nas verificações do pipeline 1h limpo: %s", e)
+        raise
+    except Exception as e:
+        logging.error(
+            "Erro inesperado no test_full_pipeline_integration_1h_clean: %s", e)
+        raise
     finally:
-        shutil.rmtree(base_dir, ignore_errors=True)
+        shutil.rmtree(base_dir_path, ignore_errors=True)
 
 ##########
 #########
@@ -577,7 +582,7 @@ def mock_copernicus_data_1h_with_outliers(start_date, end_date):
 @patch("ingestion.EntsoePandasClient")
 def test_full_pipeline_integration_1h_with_outliers(mock_entsoe, mock_cds):
     (
-        base_dir,
+        base_dir_path,
         raw_energy,
         raw_weather,
         energy_clean,
@@ -631,14 +636,7 @@ def test_full_pipeline_integration_1h_with_outliers(mock_entsoe, mock_cds):
             pasta_weather_corrigido=weather_clean,
         )
 
-        # 7. CSV final
-        BASE_DIR = "/Users/beatrizfernandes/Desktop/PIACD/projeto/pl1g1/Code/energy_prediction_system"
-        REAL_PROCESSED = os.path.join(BASE_DIR, "data", "processed")
-        final_csv = os.path.join(REAL_PROCESSED, "dados_finais_completos.csv")
-        assert os.path.exists(final_csv), f"CSV final não existe: {final_csv}"
-        assert os.path.getsize(final_csv) > 0
-
-        # 8. verificações
+        # 7. verificações
         assert df_final is not None
         assert len(df_final) > 0
         assert "datetime" in df_final.columns
@@ -647,11 +645,19 @@ def test_full_pipeline_integration_1h_with_outliers(mock_entsoe, mock_cds):
                    "t2m", "ssrd", "tp", "u10", "v10"])
         assert df_final.isnull().sum().sum() == 0
 
-        print(
-            f"Pipeline 1h com outliers: {len(df_final)} registos no dataset final."
-        )
+        logging.info(
+            "Pipeline 1h com outliers: %d registos no dataset final.",
+            len(df_final))
+    except AssertionError as e:
+        logging.error(
+            "Falha nas verificações do pipeline 1h com outliers: %s", e)
+        raise
+    except Exception as e:
+        logging.error(
+            "Erro inesperado no test_full_pipeline_integration_1h_with_outliers: %s", e)
+        raise
     finally:
-        shutil.rmtree(base_dir, ignore_errors=True)
+        shutil.rmtree(base_dir_path, ignore_errors=True)
 
 
 ##########
@@ -764,7 +770,7 @@ def test_full_pipeline_integration_mixed_granularity_datasets_clean(
         mock_entsoe,
         mock_cds):
     (
-        base_dir,
+        base_dir_path,
         raw_energy,
         raw_weather,
         energy_clean,
@@ -818,14 +824,7 @@ def test_full_pipeline_integration_mixed_granularity_datasets_clean(
             pasta_weather_corrigido=weather_clean,
         )
 
-        # 7. CSV final
-        BASE_DIR = "/Users/beatrizfernandes/Desktop/PIACD/projeto/pl1g1/Code/energy_prediction_system"
-        REAL_PROCESSED = os.path.join(BASE_DIR, "data", "processed")
-        final_csv = os.path.join(REAL_PROCESSED, "dados_finais_completos.csv")
-        assert os.path.exists(final_csv), f"CSV final não existe: {final_csv}"
-        assert os.path.getsize(final_csv) > 0
-
-        # 8. verificações
+        # 7. verificações
         assert df_final is not None
         assert len(df_final) > 0
         assert "datetime" in df_final.columns
@@ -834,11 +833,20 @@ def test_full_pipeline_integration_mixed_granularity_datasets_clean(
                    "t2m", "ssrd", "tp", "u10", "v10"])
         assert df_final.isnull().sum().sum() == 0
 
-        print(
-            f"Pipeline datasets mistos (15min/1h) limpos: {len(df_final)} registos no dataset final."
+        logging.info(
+            "Pipeline datasets mistos (15min/1h) limpos: %d registos no dataset final.",
+            len(df_final),
         )
+    except AssertionError as e:
+        logging.error("Falha nas verificações do pipeline misto limpo: %s", e)
+        raise
+    except Exception as e:
+        logging.error(
+            "Erro inesperado no test_full_pipeline_integration_mixed_granularity_datasets_clean: %s",
+            e)
+        raise
     finally:
-        shutil.rmtree(base_dir, ignore_errors=True)
+        shutil.rmtree(base_dir_path, ignore_errors=True)
 
 
 ##########
@@ -970,7 +978,7 @@ def test_full_pipeline_integration_mixed_granularity_datasets_with_outliers_nan(
         mock_entsoe,
         mock_cds):
     (
-        base_dir,
+        base_dir_path,
         raw_energy,
         raw_weather,
         energy_clean,
@@ -1024,14 +1032,7 @@ def test_full_pipeline_integration_mixed_granularity_datasets_with_outliers_nan(
             pasta_weather_corrigido=weather_clean,
         )
 
-        # 7. CSV final
-        BASE_DIR = "/Users/beatrizfernandes/Desktop/PIACD/projeto/pl1g1/Code/energy_prediction_system"
-        REAL_PROCESSED = os.path.join(BASE_DIR, "data", "processed")
-        final_csv = os.path.join(REAL_PROCESSED, "dados_finais_completos.csv")
-        assert os.path.exists(final_csv), f"CSV final não existe: {final_csv}"
-        assert os.path.getsize(final_csv) > 0
-
-        # 8. verificações básicas
+        # 7. verificações básicas
         assert df_final is not None
         assert len(df_final) > 0
         assert "datetime" in df_final.columns
@@ -1039,13 +1040,20 @@ def test_full_pipeline_integration_mixed_granularity_datasets_with_outliers_nan(
         assert any(var in df_final.columns for var in [
                    "t2m", "ssrd", "tp", "u10", "v10"])
 
-        # 9. mostra NaN finais
-        nulos = df_final.isnull().sum()
-        print("\nValores em falta no dataset final:")
-        print(nulos[nulos > 0])
-
-        print(
-            f"Pipeline datasets mistos com outliers/NaN: {len(df_final)} registos no dataset final."
+        logging.info(
+            "Pipeline datasets mistos com outliers/NaN: %d registos no dataset final.",
+            len(df_final),
         )
+    except AssertionError as e:
+        logging.error(
+            "Falha nas verificações do pipeline misto com outliers/NaN: %s", e)
+        raise
+    except Exception as e:
+        logging.error(
+            "Erro inesperado no test_full_pipeline_integration_mixed_granularity_datasets_with_outliers_nan: %s",
+            e,
+        )
+        raise
+
     finally:
-        shutil.rmtree(base_dir, ignore_errors=True)
+        shutil.rmtree(base_dir_path, ignore_errors=True)
