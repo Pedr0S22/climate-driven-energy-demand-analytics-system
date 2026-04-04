@@ -29,8 +29,7 @@ def fill_nan_energy(df):
 
         if num_nan_hora == 1:
             # Apenas 1 NaN na hora - interpolação (apenas neste ponto)
-            df.loc[idx, "Load_MW"] = df["Load_MW"].interpolate(
-                method="linear").loc[idx]
+            df.loc[idx, "Load_MW"] = df["Load_MW"].interpolate(method="linear").loc[idx]
         else:
             # Mais que 1 NaN na hora - média das últimas 6 observações válidas
             dados_anteriores = df.loc[: idx - 1, "Load_MW"].dropna().tail(6)
@@ -72,9 +71,7 @@ def aggregate_hour(df):
                     indices_para_apagar.append(idx)
 
         df = df.drop(indices_para_apagar).reset_index(drop=True)
-        logging.debug(
-            "  Shape antes: %d (15min)",
-            len(df) + len(indices_para_apagar))
+        logging.debug("  Shape antes: %d (15min)", len(df) + len(indices_para_apagar))
         logging.debug("  Shape depois: %d (1h com máximo)", len(df))
 
     # --- CASO 2: mistura 1h + 15 min (com idx_15_start guardado) ---
@@ -90,8 +87,7 @@ def aggregate_hour(df):
             valores_hora = []
             indices_hora = []
 
-            while (i < len(df_15min) and df_15min.loc[i, time_col].floor(
-                    "h") == hora_atual):
+            while i < len(df_15min) and df_15min.loc[i, time_col].floor("h") == hora_atual:
                 valores_hora.append(df_15min.loc[i, value_col])
                 indices_hora.append(i)
                 i += 1
@@ -147,9 +143,7 @@ def energy(pasta_energy, pasta_saida=None):
                 os.makedirs(pasta_saida, exist_ok=True)
                 caminho_saida = os.path.join(pasta_saida, nomefich)
                 df_e.to_csv(caminho_saida, index=False)
-                logging.info(
-                    "Ficheiro corrigido guardado em: %s",
-                    caminho_saida)
+                logging.info("Ficheiro corrigido guardado em: %s", caminho_saida)
 
 
 def time_alignment_energy(df):
@@ -162,9 +156,7 @@ def time_alignment_energy(df):
     diffs = ts.diff().dropna().unique()
 
     logging.debug("FREQUÊNCIA TEMPORAL:")
-    logging.debug(
-        "Diferenças encontradas no dataset: %s", [
-            str(d) for d in diffs])
+    logging.debug("Diferenças encontradas no dataset: %s", [str(d) for d in diffs])
 
     if len(diffs) == 1:
         d = diffs[0]
@@ -179,8 +171,7 @@ def time_alignment_energy(df):
         # Tem mais do que um intervalo
         unique_diffs = set(diffs)
 
-        if {pd.Timedelta(hours=1), pd.Timedelta(
-                minutes=15)}.issubset(unique_diffs):
+        if {pd.Timedelta(hours=1), pd.Timedelta(minutes=15)}.issubset(unique_diffs):
             return g115g1(df)
         else:
             return g15_energy(df)
@@ -239,9 +230,7 @@ def g115g1(df):
     for i in range(1, len(diffs)):
         prev_diff = diffs[i - 1]
         this_diff = diffs[i]
-        if prev_diff >= pd.Timedelta(
-                hours=1) and this_diff == pd.Timedelta(
-                minutes=15):
+        if prev_diff >= pd.Timedelta(hours=1) and this_diff == pd.Timedelta(minutes=15):
             idx_15_start = i - 1  # 2 linhas acima da linha onde encontra a dif 15min
             break
 
@@ -253,7 +242,7 @@ def g115g1(df):
     df_1H = df.iloc[: idx_15_start + 1].copy().reset_index(drop=True)
 
     # A partir da linha seguinte (15 min): chama g15_energy
-    df_15 = df.iloc[idx_15_start + 1:].copy().reset_index(drop=True)
+    df_15 = df.iloc[idx_15_start + 1 :].copy().reset_index(drop=True)
     df_15 = g15_energy(df_15)
     df_15.attrs["idx_15_start"] = idx_15_start
 
@@ -270,18 +259,27 @@ def g115g1(df):
 # =======================================
 
 
-def weather(pasta_saida=None):
-    root = Path(__file__).parent.parent.parent.parent.parent
+def weather(pasta_entrada=None, pasta_saida=None):
+    # Fallbacks para o ambiente de produção
+    if pasta_entrada is None:
+        root = Path(__file__).parent.parent.parent.parent
+        pasta_entrada = root / "Code" / "energy_prediction_system" / "data" / "raw" / "weather"
 
-    base_path = root / "data" / "raw" / "weather"
+    if pasta_saida is None:
+        root = Path(__file__).parent.parent.parent.parent
+        pasta_saida = root / "data" / "raw" / "weather_corrigido"
+
+    pasta_entrada = Path(pasta_entrada)
+    pasta_saida = Path(pasta_saida)
+    pasta_saida.mkdir(parents=True, exist_ok=True)
     datasets = [
-        f"{base_path}/era5_timeseries_2020-01-01_to_2025-12-31.csv",
-        f"{base_path}/reanalysis-era5-land-timeseries-sfc-2m-temperatureauafbxo0.csv",
-        f"{base_path}/reanalysis-era5-land-timeseries-sfc-pressure-precipitationtwpvvkbd.csv",
-        f"{base_path}/reanalysis-era5-land-timeseries-sfc-radiation-heathoyt7mym.csv",
-        f"{base_path}/reanalysis-era5-land-timeseries-sfc-skin-temperaturercarv5g8.csv",
-        f"{base_path}/reanalysis-era5-land-timeseries-sfc-soil-temperatureokgb55eq.csv",
-        f"{base_path}/reanalysis-era5-land-timeseries-sfc-soil-waterp9pn16zx.csv",
+        pasta_entrada / "era5_timeseries_2020-01-01_to_2025-12-31.csv",
+        pasta_entrada / "reanalysis-era5-land-timeseries-sfc-2m-temperatureauafbxo0.csv",
+        pasta_entrada / "reanalysis-era5-land-timeseries-sfc-pressure-precipitationtwpvvkbd.csv",
+        pasta_entrada / "reanalysis-era5-land-timeseries-sfc-radiation-heathoyt7mym.csv",
+        pasta_entrada / "reanalysis-era5-land-timeseries-sfc-skin-temperaturercarv5g8.csv",
+        pasta_entrada / "reanalysis-era5-land-timeseries-sfc-soil-temperatureokgb55eq.csv",
+        pasta_entrada / "reanalysis-era5-land-timeseries-sfc-soil-waterp9pn16zx.csv",
     ]
 
     for arquivo in datasets:
@@ -344,9 +342,7 @@ def time_alignment(df):
 
     # Pega apenas as diferenças válidas e únicas
     diffs_unicos = df["diff"].dropna().unique()
-    logging.debug(
-        "Diferenças encontradas no dataset: %s", [
-            str(d) for d in diffs_unicos])
+    logging.debug("Diferenças encontradas no dataset: %s", [str(d) for d in diffs_unicos])
 
     if len(diffs_unicos) == 1:
         if diffs_unicos[0] == pd.Timedelta(hours=1):
@@ -415,10 +411,7 @@ def missingImputation(df, var):
         if nan_count == 0:
             resultado.append(serie)
         elif nan_count == 1:
-            resultado.append(
-                serie.interpolate(
-                    method="linear",
-                    limit_direction="both"))
+            resultado.append(serie.interpolate(method="linear", limit_direction="both"))
         else:
             if var in ["t2m", "skt", "stl1", "d2m", "strd"]:
                 resultado.append(temp_termicRad_imputation(serie))
@@ -535,14 +528,9 @@ def outliers_treatment(df):
         # Verifica limites físicos
         if var in limites_fisicos:
             limite_min, limite_max = limites_fisicos[var]
-            outliers_reais = outliers_candidatos & (
-                (df[var] < limite_min) | (df[var] > limite_max)
-            )
+            outliers_reais = outliers_candidatos & ((df[var] < limite_min) | (df[var] > limite_max))
             n_outliers_reais = outliers_reais.sum()
-            logging.debug(
-                "%s — Limites físicos: %d outliers reais",
-                var,
-                n_outliers_reais)
+            logging.debug("%s — Limites físicos: %d outliers reais", var, n_outliers_reais)
 
             # outliers fora dos limites físicos
             if n_outliers_reais > 0:
@@ -554,25 +542,20 @@ def outliers_treatment(df):
 
                 elif var in ["ssrd", "tp"]:
                     # média 2 mais próximas
-                    df.loc[outliers_tratar, var] = media_nearest(
-                        df[var], n_nearest=2)
+                    df.loc[outliers_tratar, var] = media_nearest(df[var], n_nearest=2)
 
         elif var in iqr_only:
             if n_candidatos > 0:
                 df.loc[outliers_candidatos, var] = np.nan
                 if var == "strd":
                     # média 2 vizinhos mais próximos
-                    df.loc[outliers_candidatos, var] = media_nearest(
-                        df[var], n_nearest=2
-                    )
+                    df.loc[outliers_candidatos, var] = media_nearest(df[var], n_nearest=2)
                 elif var == "sp":
                     # média 4 prev + 2 next
-                    df.loc[outliers_candidatos, var] = media_custom(
-                        df[var], 4, 2)
+                    df.loc[outliers_candidatos, var] = media_custom(df[var], 4, 2)
                 elif var == "swvl1":
                     # últimas 6
-                    df.loc[outliers_candidatos, var] = media_custom(
-                        df[var], 6, 0)
+                    df.loc[outliers_candidatos, var] = media_custom(df[var], 6, 0)
 
         else:
             logging.debug("%s — sem tratamento de outliers (manter)", var)
@@ -608,18 +591,13 @@ def hourly_aggregation(df):
             hora_atual = df.loc[i, "valid_time"].floor("h")
             indices_hora = []
             # mesma hora
-            while i < len(df) and df.loc[i,
-                                         "valid_time"].floor("h") == hora_atual:
+            while i < len(df) and df.loc[i, "valid_time"].floor("h") == hora_atual:
                 indices_hora.append(i)
                 i += 1
             if len(indices_hora) > 1:
                 primeiro_idx = indices_hora[0]
                 # MÉDIA de TODAS colunas exceto valid_time, latitude, longitude
-                cols_to_average = [
-                    col
-                    for col in df.columns
-                    if col not in ["valid_time", "latitude", "longitude"]
-                ]
+                cols_to_average = [col for col in df.columns if col not in ["valid_time", "latitude", "longitude"]]
                 for col in cols_to_average:
                     df.loc[primeiro_idx, col] = df.loc[indices_hora, col].mean()
                 # Apaga xx:15, xx:30, xx:45
@@ -636,48 +614,54 @@ def hourly_aggregation(df):
 # =======================================
 # JUNTAR DATASETS
 # =======================================
-def cleaning(pasta_energy_corrigido, pasta_weather_corrigido):
-    root = Path(__file__).parent.parent.parent.parent.parent
-    pasta_saida = root / "Code" / "energy_prediction_system" / "data" / "processed"
-    os.makedirs(pasta_saida, exist_ok=True)
+def cleaning(pasta_energy_corrigido, pasta_weather_corrigido, train_data, pasta_saida=None):
+    if pasta_saida is None:
+        root = Path(__file__).parent.parent.parent.parent
+        pasta_saida = root / "Code" / "energy_prediction_system" / "data" / "processed"
+
+    pasta_saida = Path(pasta_saida)
+    pasta_saida.mkdir(parents=True, exist_ok=True)
+
+    pasta_energy_corrigido = Path(pasta_energy_corrigido)
+    pasta_weather_corrigido = Path(pasta_weather_corrigido)
 
     # 1. energy
     dfs_energy = []
-    for f in sorted(os.listdir(pasta_energy_corrigido)):
-        if f.endswith(".csv"):
-            caminho = os.path.join(pasta_energy_corrigido, f)
-            df = pd.read_csv(caminho)
-            df["datetime"] = pd.to_datetime(df["Unnamed: 0"], utc=True)
-            df = df[["datetime", "Load_MW"]]
-            dfs_energy.append(df)
+    # Usando pathlib.glob em vez de os.listdir para pegar apenas CSVs
+    for caminho in sorted(pasta_energy_corrigido.glob("*.csv")):
+        df = pd.read_csv(caminho)
+        df["datetime"] = pd.to_datetime(df["Unnamed: 0"], utc=True)
+        df = df[["datetime", "Load_MW"]]
+        dfs_energy.append(df)
+
+    # Check de segurança para produção
+    if not dfs_energy:
+        logging.error("Nenhum ficheiro CSV de energia encontrado em %s", pasta_energy_corrigido)
+        raise FileNotFoundError(f"Missing energy data in {pasta_energy_corrigido}")
 
     df_energy = pd.concat(dfs_energy, ignore_index=True)
-    df_energy = (
-        df_energy.drop_duplicates("datetime")
-        .sort_values("datetime")
-        .reset_index(drop=True)
-    )
+    df_energy = df_energy.drop_duplicates("datetime").sort_values("datetime").reset_index(drop=True)
     logging.info("Energy: %d registos únicos", len(df_energy))
 
     # 2. weather
     dfs_weather = []
-    cols_excluir = ["latitude", "longitude", "diff"]
+    cols_excluir = {"latitude", "longitude", "diff"}
 
-    for f in sorted(os.listdir(pasta_weather_corrigido)):
-        if f.endswith(".csv"):
-            caminho = os.path.join(pasta_weather_corrigido, f)
-            df = pd.read_csv(caminho)
-            df["datetime"] = pd.to_datetime(df["valid_time"], utc=True)
+    for caminho in sorted(pasta_weather_corrigido.glob("*.csv")):
+        df = pd.read_csv(caminho)
+        df["datetime"] = pd.to_datetime(df["valid_time"], utc=True)
 
-            # Remove colunas indesejadas e mantém só variáveis meteo
-            cols_manter = [
-                col for col in df.columns if col not in cols_excluir]
-            df = df[cols_manter]
-            dfs_weather.append(df)
+        cols_manter = [col for col in df.columns if col not in cols_excluir]
+        df = df[cols_manter]
+        dfs_weather.append(df)
+
+    # Check de segurança para produção
+    if not dfs_weather:
+        logging.error("Nenhum ficheiro CSV de meteorologia encontrado em %s", pasta_weather_corrigido)
+        raise FileNotFoundError(f"Missing weather data in {pasta_weather_corrigido}")
 
     df_weather = pd.concat(dfs_weather, ignore_index=True)
-    df_weather = df_weather.groupby("datetime").mean(
-        numeric_only=True).reset_index()
+    df_weather = df_weather.groupby("datetime").mean(numeric_only=True).reset_index()
     logging.info("Weather: %d registos únicos", len(df_weather))
 
     # 3. juntar
@@ -692,16 +676,19 @@ def cleaning(pasta_energy_corrigido, pasta_weather_corrigido):
         df_final["datetime"].min(),
         df_final["datetime"].max(),
     )
+
     nulos = df_final.isnull().sum()
     if nulos.sum() > 0:
-        logging.warning("Valores em falta no dataset final:\n%s",
-                        nulos[nulos > 0].to_string())
+        logging.warning("Valores em falta no dataset final:\n%s", nulos[nulos > 0].to_string())
     else:
         logging.info("Sem valores em falta no dataset final.")
 
-    nome_final = "dados_finais_completos.csv"
-    caminho_final = os.path.join(pasta_saida, nome_final)
+    # 5. Exportar
+    nome_final = "dados_treino_completos.csv" if train_data else "dados_predicao.csv"
+    caminho_final = pasta_saida / nome_final
+
     df_final.to_csv(caminho_final, index=False)
+    logging.info("Ficheiro guardado com sucesso em: %s", caminho_final)
 
     return df_final
 
@@ -710,22 +697,29 @@ def cleaning(pasta_energy_corrigido, pasta_weather_corrigido):
 # MAIN
 # =======================================
 
-
 if __name__ == "__main__":
-    ROOT = Path(__file__).parent.parent.parent.parent.parent
+    logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(levelname)s - %(message)s")
+
+    ROOT = Path(__file__).parent.parent.parent.parent
     DATA_RAW = ROOT / "Code" / "energy_prediction_system" / "data" / "raw"
 
     caminho_energy = DATA_RAW / "energy"
     caminho_weather = DATA_RAW / "weather"
-    pasta_final = ROOT / "Code" / "energy_prediction_system" / "data" / "processed"
 
     caminho_energy_corrigido = DATA_RAW / "energy_corrigido"
+    caminho_weather_corrigido = DATA_RAW / "weather_corrigido"
+
+    logging.info("Iniciando pipeline de processamento de energia...")
     energy(caminho_energy, pasta_saida=caminho_energy_corrigido)
 
-    caminho_weather_corrigido = DATA_RAW / "weather_corrigido"
-    weather(pasta_saida=caminho_weather_corrigido)
+    logging.info("Iniciando pipeline de processamento de meteorologia...")
+    weather(pasta_entrada=caminho_weather, pasta_saida=caminho_weather_corrigido)
 
-    df_final = cleaning(
+    logging.info("Iniciando junção e limpeza final...")
+
+    cleaning(
         pasta_energy_corrigido=caminho_energy_corrigido,
         pasta_weather_corrigido=caminho_weather_corrigido,
+        train_data=True,
     )
+    logging.info("Pipeline concluído.")
