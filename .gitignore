@@ -220,7 +220,8 @@ Code/energy_prediction_system/data/raw/energy/
 Code/energy_prediction_system/data/raw/weather/
 Code/energy_prediction_system/data/raw/energy_corrigido/
 Code/energy_prediction_system/data/raw/weather_corrigido/
-Code/energy_prediction_system/data/processed/**/.csv
+
+Code/energy_prediction_system/data/processed/
 
 Code/energy_prediction_system/src/**/*.json
 
