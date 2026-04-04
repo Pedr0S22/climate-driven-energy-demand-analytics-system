@@ -221,5 +221,8 @@ Code/energy_prediction_system/data/raw/weather/
 Code/energy_prediction_system/data/raw/energy_corrigido/
 Code/energy_prediction_system/data/raw/weather_corrigido/
 
+Code/energy_prediction_system/src/**/*.json
+
+
 # Management Data
 Management/milestone-progress/data-gitlab/**/*.csv
