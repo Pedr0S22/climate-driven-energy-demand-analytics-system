@@ -46,7 +46,7 @@ coding_style:
     - echo "Checking coding style... "
     - cd $APP_DIR
     - pip install flake8
-    - flake8 --max-line-length=120 --extend-ignore=E203. # Ignoring white space before ':' in list slicing
+    - flake8 --max-line-length=120 --extend-ignore=E203 . # Ignoring white space before ':' in list slicing
   allow_failure: true
 
 code_complexity:
