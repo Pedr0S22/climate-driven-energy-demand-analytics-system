@@ -25,7 +25,7 @@ unit-tests:
     - cd $APP_DIR
     - pip install pytest pytest-cov pandas entsoe-py cdsapi python-dotenv google-api-python-client google-auth-httplib2 google-auth-oauthlib
     - pytest --cov=src --cov-report=term-missing --cov-fail-under=70 --ignore=tests/integration
-  allow_failure: true
+  allow_failure: false
 
 # ========== INTEGRATION TESTING stage ========== #
 
@@ -36,7 +36,7 @@ integration-tests:
     - cd $APP_DIR
     - pip install pytest pytest-cov pandas entsoe-py cdsapi python-dotenv google-api-python-client google-auth-httplib2 google-auth-oauthlib
     - pytest --cov=src --cov-report=term-missing --cov-fail-under=70 --ignore=tests/unit
-  allow_failure: true
+  allow_failure: false
 
 # ========== QUALITY stage ========== #
 
