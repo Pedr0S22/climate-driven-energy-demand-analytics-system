@@ -25,9 +25,8 @@ Below there is a short presentation on what are the UCs, their numeration and ho
     - UC11 - Hourly prediction dashboard
 
     ### Admin Only Options
-- UC9 - Admin analytics dashboard
-- UC12 - App Logging
-- UC13 - Admin Controls
+- UC9 - Admin model management
+- UC12 - App logging
 
 
 
