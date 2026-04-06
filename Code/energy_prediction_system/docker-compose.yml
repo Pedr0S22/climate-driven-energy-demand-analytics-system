@@ -3,11 +3,17 @@ version: '3.8'
 services:
   # --- 1. LAYER: DATABASES ---
   db_server:
+    container_name: energy_db_server
     extends:
       file: src/databases/docker-compose.db.yml
-      service: db_relational
+      service: database
     networks:
       - backend_net
+    environment:
+      - POSTGRES_USER=piacd_energy
+      - POSTGRES_PASSWORD=postgres_Piacd_energy
+      - POSTGRES_DB=energy_db
+  
 
   elasticsearch:
     image: docker.elastic.co/elasticsearch/elasticsearch:8.10.2
@@ -18,6 +24,7 @@ services:
       - "ES_JAVA_OPTS=-Xms512m -Xmx512m"
     networks:
       - backend_net
+      - frontend_net # Permitir acesso do frontend para visualização via Kibana
     volumes:
       - elastic_data:/usr/share/elasticsearch/data
     healthcheck:
@@ -85,18 +92,7 @@ services:
       api:
         condition: service_healthy
 
-  # --- 4. LAYER: DATA PIPELINE (Pipe-Filter) ---
-  pipeline:
-    build: ./src/data-pipeline
-    container_name: energy_pipeline
-    networks:
-      - backend_net
-    volumes:
-      - ./data:/app/data # Escrita permitida para salvar novos modelos
-    depends_on:
-      db_server:
-        condition: service_healthy
-
+  
 networks:
   frontend_net:
   backend_net:

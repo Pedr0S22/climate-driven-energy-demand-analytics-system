@@ -1,13 +1,19 @@
-services:
-  db_server:
-    image: postgres:15
-    volumes:
-      # Mapeia os scripts de inicialização (Read-Only)
-      - ./init-scripts:/docker-entrypoint-initdb.d:ro
-      
-      # Mapeia a pasta de dados real (Persistência)
-      # Nota: 'postgres_data' é um volume gerido pelo Docker
-      - postgres_data:/var/lib/postgresql/data 
 
+services:
+  database: 
+    image: postgres:15
+    environment:
+      - POSTGRES_USER=piacd_energy
+      - POSTGRES_PASSWORD=postgres_Piacd_energy
+      - POSTGRES_DB=energy_db
+    volumes:
+      - ./init-scripts:/docker-entrypoint-initdb.d:ro
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d energy_db"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 10s 
 volumes:
-  postgres_data: # Define o volume persistente
+  - postgres_data:
