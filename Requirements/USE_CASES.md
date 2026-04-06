@@ -1,4 +1,4 @@
-# USE CASE DEFINITIONS - V1.8
+# USE CASE DEFINITIONS - V1.9
 
 This file contains all UCs for the development of this project.
 
@@ -33,15 +33,15 @@ Land Hourly data from 1950 to present" dataset found at [https://cds.climate.cop
 3. The system connects to the ENTSO-E Transparency Platform and retrives the primary target variable which is total electricity load, expressed in megawatts (MW)
 4. The system connects to the Copernicus Climate Data Store (ERA5 dataset) and retrieves meteorological data. Specifically, it extracts:
 
-    * Lake total layer temperature (in Kelvin)
+    * Skin temperature (in Kelvin)
     * 2-meter air temperature (in Kelvin)
     * 2-meter dewpoint temperature (in Kelvin)
-    * soil temperature level1 (in kelvin)
+    * soil temperature level 1 (in kelvin)
     * Surface solar radiation downwards (in J/m²)
-    * Surface latent heat flux (in J/m²)
+    * Surface thermal radiation downwards (in J/m²)
     * Surface pressure (in Pa)
-    * Total evaporation (m of water equivalent )
     * 10-meter wind speed (both Eastward and Northward) (in m/s)
+    * Volumetric soil water layer 1 (in m³/ m³)
     * Total precipitation (in m)
 
     **For further familirization and better explanation regarding the variables mentioend below proceed to the Copernicus Climate Data Store**
@@ -661,25 +661,25 @@ Allow the user to select a specific date and time to obtain the electricity dema
 
 2. The system verifies the user's admin privileges.
 
-3. The system presents the logging dashboard (powered by Kibana/ELK).
+3. The system generates a secure, authenticated session or token for the ELK environment.
 
-4. The Administrator inputs specific search queries, time ranges, or filters (e.g., filtering for "Error" severity or a specific User ID).
+4. The system redirects the Administrator to the Kibana dashboard.
 
-5. The system queries the Elasticsearch database.
+5. The Administrator interacts directly with the Kibana interface to input search queries, time ranges, and filters.
 
-6. The system retrieves and displays the matching log entries and associated visualizations to the Administrator.
+6. Kibana retrieves and displays the matching log entries and visualizations.
 
 **Extensions:**
 
-5. a) The ELK stack service is unreachable or timing out:
+4. a) The ELK stack service is unreachable during redirection:
 
-    - 5a1. The system aborts the query.
+    - 4a1. The system detects a timeout or connection refusal when attempting to route to Kibana.
 
-    - 5a2. The system displays an error message notifying the Administrator that the logging service is temporarily unavailable.
+    - 4a2. The system aborts the redirection.
 
-6. a) The Administrator's query returns no matching logs:
+    - 4a3. The system displays an error message within the app notifying the Administrator that the logging service is temporarily offline.
 
-    - 6a1. The system displays a standard "No logs found for the selected criteria" message.
+**Note:** Kibana natively displays its own "No results found" state.
 
 
 

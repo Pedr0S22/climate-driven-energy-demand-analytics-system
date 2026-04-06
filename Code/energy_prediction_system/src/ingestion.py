@@ -1,7 +1,9 @@
 # for copernicus
+import time
 import os
-import calendar
 import cdsapi
+import zipfile
+import logging
 
 # for entso/e
 import pandas as pd
@@ -11,79 +13,112 @@ from entsoe import EntsoePandasClient
 # for gdrive
 from gdrive_sync import backup_project_data
 
+MAX_RETRIES = 3
 
-def fetch_copernicus_data(year: str):
-    print(f"Fetching Copernicus ERA5-Land data for {year}...")
+
+def fetch_copernicus_data(start_date: str, end_date: str):
+    if pd.Timestamp(start_date) > pd.Timestamp(end_date):
+        raise ValueError("start_date cannot be strictly after end_date.")
+
+    logging.info(f"Fetching Copernicus ERA5-Land timeseries data from {start_date} to {end_date}...")
     SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
     PROJECT_ROOT = os.path.abspath(os.path.join(SCRIPT_DIR, ".."))
 
-    raw_weather_dir = os.path.join(PROJECT_ROOT, "data", "raw", "weather", year)
+    raw_weather_dir = os.path.join(PROJECT_ROOT, "data", "raw", "weather")
     os.makedirs(raw_weather_dir, exist_ok=True)
 
-    dataset = "reanalysis-era5-land"
+    dataset = "reanalysis-era5-land-timeseries"
+
+    # Define paths for both the final CSV and the temporary ZIP
+    output_csv_path = os.path.join(raw_weather_dir, f"era5_timeseries_{start_date}_to_{end_date}.csv")
+    temp_zip_path = os.path.join(raw_weather_dir, f"era5_timeseries_{start_date}_to_{end_date}.zip")
+
+    if os.path.exists(output_csv_path):
+        logging.info(f"Skipping: File already exists: {output_csv_path}")
+        return
+
     client = cdsapi.Client()
 
-    variables = [
-        "2m_dewpoint_temperature",
-        "2m_temperature",
-        "soil_temperature_level_1",
-        "lake_total_layer_temperature",
-        "surface_net_solar_radiation",
-        "surface_sensible_heat_flux",
-        "total_evaporation",
-        "10m_u_component_of_wind",
-        "10m_v_component_of_wind",
-        "surface_pressure",
-        "total_precipitation",
-    ]
+    request = {
+        "variable": [
+            "2m_dewpoint_temperature",
+            "2m_temperature",
+            "surface_pressure",
+            "total_precipitation",
+            "surface_solar_radiation_downwards",
+            "surface_thermal_radiation_downwards",
+            "skin_temperature",
+            "soil_temperature_level_1",
+            "volumetric_soil_water_level_1",
+            "10m_u_component_of_wind",
+            "10m_v_component_of_wind",
+        ],
+        "location": {"longitude": -3.7, "latitude": 40.4},
+        "date": [f"{start_date}/{end_date}"],
+        "data_format": "csv",
+    }
 
-    # Loop through each month
-    for month in range(1, 13):
-        month_str = f"{month:02d}"
+    for attempt in range(MAX_RETRIES):
+        try:
+            logging.info(f"Downloading Copernicus data (saving as ZIP)... [Attempt {attempt + 1}/{MAX_RETRIES}]")
+            # Download to the temporary ZIP path instead of directly to CSV
+            client.retrieve(dataset, request).download(temp_zip_path)
 
-        # Get the exact number of days in this specific month/year
-        _, num_days = calendar.monthrange(int(year), month)
-        valid_days = [f"{d:02d}" for d in range(1, num_days + 1)]
+            logging.info("Extracting ZIP file...")
+            with zipfile.ZipFile(temp_zip_path, "r") as zip_ref:
+                # Get the name of the file inside the zip
+                extracted_file_names = zip_ref.namelist()
+                zip_ref.extractall(raw_weather_dir)
 
-        # Loop through each variable individually
-        for var in variables:
-            print(f" -> Downloading {var} for {year}-{month_str}...")
-            output_path = os.path.join(raw_weather_dir, f"era5_{year}_{month_str}_{var}.nc")
+                # Rename the extracted file to match your desired output name
+                if extracted_file_names:
+                    extracted_file_path = os.path.join(raw_weather_dir, extracted_file_names[0])
+                    if extracted_file_path != output_csv_path:
+                        os.replace(extracted_file_path, output_csv_path)  # os.replace safely overwrites
 
-            # Skip if already downloaded
-            if os.path.exists(output_path):
-                print(f"    [Skipping] File already exists: {output_path}")
-                continue
+            # Clean up the temporary zip file
+            if os.path.exists(temp_zip_path):
+                os.remove(temp_zip_path)
+            logging.info(f"Success: Saved and extracted Copernicus data to {output_csv_path}")
+            break
 
-            request = {
-                "variable": [var],  # Asking for just ONE variable at a time
-                "year": year,
-                "month": month_str,
-                "day": valid_days,  # Only valid days for this month
-                "time": [f"{i:02d}:00" for i in range(24)],
-                "area": [43.79, -9.30, 36.00, 3.33],  # Spain bounding box
-                "data_format": "netcdf",
-                "download_format": "unarchived",
-            }
+        # Catch specifically if the file isn't a ZIP
+        except zipfile.BadZipFile:
+            logging.error("The downloaded file is not a valid ZIP archive. It might be an API error message.")
+            with open(temp_zip_path, "r", errors="ignore") as f:
+                logging.error(f"Server Response snippet: {f.read()[:500]}")
 
-            try:
-                client.retrieve(dataset, request, output_path)
-                print(f"    [Success] Saved to {output_path}")
-            except Exception as e:
-                print(f"    [Error] Failed to fetch {var} for {month_str}: {e}")
+            if attempt < MAX_RETRIES - 1:
+                sleep_time = 2**attempt
+                logging.warning(f"Retrying in {sleep_time} seconds...")
+                time.sleep(sleep_time)
+            else:
+                logging.error("Max retries reached for Copernicus API.")
+
+        except Exception:
+            logging.error("Failed to fetch Copernicus data.", exc_info=True)
+            if attempt < MAX_RETRIES - 1:
+                sleep_time = 2**attempt
+                logging.warning(f"Retrying in {sleep_time} seconds...")
+                time.sleep(sleep_time)
+            else:
+                logging.error("Max retries reached for Copernicus data fetch.")
 
 
-def fetch_entsoe_data(year: str, country_code: str = "ES"):
-    print(f"\nFetching ENTSO-E load data for {country_code} in {year}...")
+def fetch_entsoe_data(start_date: str, end_date: str, country_code: str = "ES"):
+    if pd.Timestamp(start_date) > pd.Timestamp(end_date):
+        raise ValueError("start_date cannot be strictly after end_date.")
+
+    logging.info(f"Fetching ENTSO-E load data for {country_code} from {start_date} to {end_date}...")
     SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
     PROJECT_ROOT = os.path.abspath(os.path.join(SCRIPT_DIR, ".."))
 
     raw_energy_dir = os.path.join(PROJECT_ROOT, "data", "raw", "energy")
     os.makedirs(raw_energy_dir, exist_ok=True)
-    output_path = os.path.join(raw_energy_dir, f"entsoe_{country_code}_load_{year}.csv")
+    output_path = os.path.join(raw_energy_dir, f"entsoe_{country_code}_load_{start_date}_to_{end_date}.csv")
 
     if os.path.exists(output_path):
-        print(f"    [Skipping] File already exists: {output_path}")
+        logging.info(f"Skipping: File already exists: {output_path}")
         return
 
     env_path = os.path.join(SCRIPT_DIR, ".env")
@@ -91,28 +126,46 @@ def fetch_entsoe_data(year: str, country_code: str = "ES"):
     api_key = os.getenv("ENTSOE_API_KEY")
 
     if not api_key:
-        print(f"    [Error] ENTSOE_API_KEY not found! Looked in: {env_path}")
+        logging.error(f"ENTSOE_API_KEY not found! Looked in: {env_path}")
         return
-    try:
-        client = EntsoePandasClient(api_key=api_key)
-        start = pd.Timestamp(f"{year}-01-01", tz="Europe/Madrid")
-        end = pd.Timestamp(f"{int(year)+1}-01-01", tz="Europe/Madrid")
 
-        load_data = client.query_load(country_code, start=start, end=end)
-        load_data.to_csv(output_path, header=["Load_MW"])
-        print(f"    [Success] Saved ENTSO-E data to {output_path}")
+    for attempt in range(MAX_RETRIES):
+        try:
+            logging.info(f"Querying ENTSO-E API... [Attempt {attempt + 1}/{MAX_RETRIES}]")
+            client = EntsoePandasClient(api_key=api_key)
+            start = pd.Timestamp(start_date, tz="Europe/Madrid")
+            end = pd.Timestamp(end_date, tz="Europe/Madrid") + pd.Timedelta(days=1)
 
-    except Exception as e:
-        print(f"    [Error] Failed to fetch ENTSO-E data: {e}")
+            load_data = client.query_load(country_code, start=start, end=end)
+            load_data.to_csv(output_path, header=["Load_MW"])
+            logging.info(f"Success: Saved ENTSO-E data to {output_path}")
+            break
+
+        except Exception:
+            logging.error("Failed to fetch ENTSO-E data.", exc_info=True)
+            if attempt < MAX_RETRIES - 1:
+                sleep_time = 2**attempt
+                logging.warning(f"Retrying in {sleep_time} seconds...")
+                time.sleep(sleep_time)
+            else:
+                logging.error("Max retries reached for ENTSO-E data fetch.")
+
+
+def data_retrieval(start_date: str, end_date: str, country_code: str = "ES"):
+    """Master function to orchestrate data ingestion from multiple sources and backup."""
+    fetch_entsoe_data(start_date, end_date, country_code)
+    fetch_copernicus_data(start_date, end_date)
+    backup_project_data()
 
 
 if __name__ == "__main__":
-    # Define the range of years needed
-    target_years = ["2020", "2021", "2022", "2023", "2024", "2025"]
+    # Configure logging
+    logging.basicConfig(
+        level=logging.INFO,
+        format="%(asctime)s [%(levelname)s] %(message)s",
+        datefmt="%Y-%m-%d %H:%M:%S",
+    )
+    start_date = "2020-01-01"
+    end_date = "2025-12-31"
 
-    # Loop through each year and fetch both datasets
-    for targetyear in target_years:
-        fetch_entsoe_data(targetyear, country_code="ES")
-        fetch_copernicus_data(targetyear)
-
-    backup_project_data()
+    data_retrieval(start_date, end_date, country_code="ES")
