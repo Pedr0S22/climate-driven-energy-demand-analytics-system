@@ -24,7 +24,7 @@ services:
       - "ES_JAVA_OPTS=-Xms512m -Xmx512m"
     networks:
       - backend_net
-      - frontend_net # Permitir acesso do frontend para visualização via Kibana
+      - frontend_net 
     volumes:
       - elastic_data:/usr/share/elasticsearch/data
     healthcheck:
@@ -50,7 +50,7 @@ services:
     ports:
       - "5601:5601"
     networks:
-      - frontend_net # Removida a backend_net por segurança; Kibana só precisa de falar com ES
+      - frontend_net 
     depends_on:
       elasticsearch:
         condition: service_healthy
@@ -59,7 +59,7 @@ services:
   api:
     build: ./src/api
     container_name: energy_api
-    restart: always # QA8: Auto-recovery
+    restart: always 
     environment:
       - DB_HOST=db_server
       - LOGSTASH_HOST=logstash
@@ -68,7 +68,7 @@ services:
       - backend_net
       - frontend_net
     volumes:
-      - ./data:/app/data:ro # Persistência de modelos (Read-Only para a API)
+      - ./data:/app/data:ro 
     depends_on:
       db_server:
         condition: service_healthy
