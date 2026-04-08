@@ -32,7 +32,7 @@ Below there is a short presentation on what are the UCs, their numeration and ho
 
 # Quality Attributes
 
-To complement the Use Cases, we defined some Quality Attributes that this software must obey. Below we have the main topic QAs, followed by their specific QAs:
+To complement the Use Cases, we defined Quality Attributes that this software must obey. Below, we have the main topic QAs followed by their specific QAs:
 
 ### Performance (Latency & Tracking)
 

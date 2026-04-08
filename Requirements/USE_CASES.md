@@ -1,4 +1,4 @@
-# USE CASE DEFINITIONS - V2.0
+# USE CASE DEFINITIONS - V2.1
 
 This file contains all UCs for the development of this project.
 
@@ -22,12 +22,12 @@ Land Hourly data from 1950 to present" dataset found at [https://cds.climate.cop
 **Preconditions:**
 
 1. API credentials for ENTSO-E and Copernicus are securely configured using environment variables.
-2. The system must be configured to target one selected European country and a timeframe of 5 years of data (from 2020 to 2025).
+2. The system must be configured to target one selected European country and a timeframe of 6 years of data (from 2020 to 2025).
 
 
 **Main Success Scenario:**
 
-1. The Developer / Data Scientist executes the data ingestion script via the command line, allowing it to run until all data for the specified 5-year range is retrieved.
+1. The Developer / Data Scientist executes the data ingestion script via the command line, allowing it to run until all data for the specified 6-year range is retrieved.
 2. The system begins measuring the execution time for the data ingestion component.
 3. The system connects to the ENTSO-E Transparency Platform and retrives the primary target variable which is total electricity load, expressed in megawatts (MW)
 4. The system connects to the Copernicus Climate Data Store (ERA5 dataset) and retrieves meteorological data. Specifically, it extracts:
@@ -48,7 +48,7 @@ Land Hourly data from 1950 to present" dataset found at [https://cds.climate.cop
 5. The system stores the unmodified raw climate data into the `Code\energy_prediction_system\data\raw\weather\` directory.
 6. The system stores the unmodified raw electricity data into the `Code\energy_prediction_system\data\raw\energy\` directory.
 7. The system automatically backs up and exports all retrieved raw data directories to a private Google Drive.
-8. The system successfully logs the execution time so it can be summarized in the project documentation.
+8. The system successfully logs all events and the execution time into ELK.
 
 **Extensions:**
 
@@ -56,7 +56,7 @@ Land Hourly data from 1950 to present" dataset found at [https://cds.climate.cop
 
     * 3a1. The system detects that the ENTSO-E Transparency Platform is unreachable or authentication fails.
 
-    * 3a2. The system properly logs the ingestion failure.
+    * 3a2. The system properly logs the ingestion failure to ELK.
 
     * 3a3. The system results in a clean termination of the ingestion script.
 
@@ -68,13 +68,13 @@ Land Hourly data from 1950 to present" dataset found at [https://cds.climate.cop
 
     * 3b3. The system ensures the missing data does not cause an uncontrolled crash.
 
-    * 3b4. The system logs the anomaly and terminates cleanly.
+    * 3b4. The system logs the anomaly to ELK and terminates cleanly .
 
 4. a) API connection failure or authentication error with Copernicus:
 
     * 4a1. The system detects that the Copernicus Climate Data Store is unreachable or authentication fails.
 
-    * 4a2. The system properly logs the ingestion failure.
+    * 4a2. The system properly logs the ingestion failure to ELK.
 
     * 4a3. The system results in a clean termination of the ingestion script.
 
@@ -86,7 +86,7 @@ Land Hourly data from 1950 to present" dataset found at [https://cds.climate.cop
 
     * 4b3. The system ensures the missing data does not cause an uncontrolled crash.
 
-    * 4b4. The system logs the anomaly and terminates cleanly.
+    * 4b4. The system logs the anomaly to ELK and terminates cleanly.
 
 ## UC2: Data Cleaning and Alignment
 
@@ -102,41 +102,43 @@ Land Hourly data from 1950 to present" dataset found at [https://cds.climate.cop
 - Administrator: Needs assurance that raw data remains untouched and that processed data is stored separately under `/data/processed/`.
 
 **Preconditions:**
-- Data must be located in the correct folders from the previous step;
+- Data ingested must be located in the correct folders: `/data/raw/..`;
 - The `/data/processed/` folder must exist;
-- Datasets must contain the mandatory columns required for this process (timestamp, electricity load, temperature, solar radiation, wind speed, precipitation).
 
 
 **Main Success Scenario:**
 1. The use case begins when the data preprocessing module is executed.
 2. The system loads raw data from `/data/raw/weather/` and `/data/raw/energy/`.
 3. The system converts timestamps to the UTC standard and checks for any timezone inconsistencies.
-4. The system handles missing values in the following variables: temperature, wind speed, solar radiation, electricity load, and precipitation.
-5. The system detects outliers using the IQR method for all variables except electricity load. For each detected value, the system verifies whether it is plausible according to the predefined limits.
-6. The system aggregates data every hour, averaging temperature, wind, radiation, and precipitation; for electrical charge, we use the maximum value for that interval.
-7. The system merges both datasets into a single dataset and saves the processed data in the `/data/processed/` folder.
+4. The system handles missing values in the all varibles ingested.
+5. The system handles data types and features conversions.
+6. The system detects outliers using the IQR method for all variables except electricity load. For each detected value, the system verifies whether it is plausible according to the predefined limits.
+7. The system aggregates data every hour, averaging temperature, wind, radiation, and precipitation; for electrical charge, we use the maximum value for that interval.
+8. The system merges both datasets into a single dataset and saves the processed data in the `/data/processed/` folder.
+9. The system logs all events and the execution time to ELK.
+
 
 **Extensions:**
 
 3. a) The system detects that not all expected timestamps (15-minute intervals) exist:
-    * There is a missing time value; what we do is, since the data is for 15 minutes, we add a line for the timestamp that was supposed to be there, and the remaining variables are marked as missing values ​​for later processing.
+    * 3a1.There is a missing time value; what we do is, since the data is for 15 minutes, we add a line for the timestamp that was supposed to be there, and the remaining variables are marked as missing values ​​for later processing.
 
 4. a) Missing Values Detected
-    1.  There is 1 isolated missing value per hour:
+    * 4a1. There is 1 isolated missing value per hour:
         - The system applies linear interpolation between the previous and the next value.
-    2. There is more than 1 missing value within a 1-hour interval:
+    * 4b1. There is more than 1 missing value within a 1-hour interval:
         - The system estimates missing values using statistical methods based on nearby valid observations.
         - For solar radiation, the system considers whether the timestamp corresponds to daytime or nighttime when estimating the value.
         - For precipitation, the system evaluates surrounding observations to determine whether the value should remain zero or be estimated from nearby valid data.
 
-5. a) Outlier detected by IQR
-    1. The value is outside the limits:
+6) a) Outlier detected by IQR
+    * 6a1. The value is outside the limits:
         - The system replaces the value using statistical estimates based on nearby valid observations, taking into account the characteristics of each variable;
-    2. The value is outside the IQR but within plausible limits:
+    * 6a2. The value is outside the IQR but within plausible limits:
         - The system retains the value, considering it a possible outlier.
     
-6. a) The timestamps are not all the same time:
-    * There exists timestamps that do not exactly match xx:00, xx:15, xx:30, or xx:45:
+7. a) The timestamps are not all the same time:
+    * 7a1. There exists timestamps that do not exactly match xx:00, xx:15, xx:30, or xx:45:
         - The system adjusts them to the nearest 15-minute interval before time aggregation.
     
 ## UC3: Feature Engineering
@@ -145,17 +147,7 @@ Land Hourly data from 1950 to present" dataset found at [https://cds.climate.cop
 Data Scientist/Developer
 
 **Scope/Goal**:
-Transform the clean and synchronized data into relevant predictive features (temporal, lagging, rolling, and advanced) to feed the modeling component, from which:
-
-
-* **Mandatorty**:
-    - **Temporal features**: hour, day, season;
-    - At least one **rolling climate feature**;
-    - At least one **lagged demand feature**.
-
-
-* **Optional**:
-    - Derived features.
+Transform the clean and synchronized data into relevant predictive features (temporal, lagging, rolling, and advanced) to feed the modeling component, from which temporal features, such as: hour, day, month, etc; season rolling climate features, lagged demand features and new derived features.
 
 **Level**:
 User goal.
@@ -171,7 +163,7 @@ User goal.
 **Preconditions**:
 1. The Data Cleaning and Alignment stage has been successfully completed.
 
-2. Synchronized data is available in the `/data/processed/ `directory.
+2. Synchronized and cleaned data is available in the `/data/processed/ `directory.
 
 3. The system has validated that all required columns and timestamps are present and reliable.
 
@@ -180,7 +172,7 @@ User goal.
 
 2. The system loads the data available in the `/data/processed/` directory;
 
-3. The system extracts temporal features, including hour of the day, day of the week, and seasonal indicators.
+3. The system extracts temporal features, including hour of the day, day of the week, etc, and seasonal indicators.
 
 4. The developer defines the window size and the overlap, constrained by the dataset timestamps, to ensure the rolling windows are physically meaningful;
 
@@ -205,11 +197,9 @@ User goal.
 
 8. The system validates that the features obtained don't include invalid values generated during the feature extraction process.
 
-9. The system measures and logs the execution time.
+9. The system measures and logs the execution time and total feature count and other events to ELK.
 
-10. The system logs the total feature count.
-
-11. The system saves the full feature set as the primary dataset for the predictive model, ensuring the output format is compatible with the model training pipeline.
+10. The system saves the full feature sets in `/data/processed/feat-engineering/`, ensuring the output format is compatible with the model training pipeline.
 
 **Extensions**:
 
@@ -217,56 +207,61 @@ User goal.
     * 8a1. The system handles them by dropping or imputing the affected rows to maintain dataset quality.
 
     b) Critical domain-context errors detected (e.g., widespread anomalies where feature values are physically implausible):
-    * 8b1. The system logs a domain consistency error and the process terminates to prevent training a model on nonsensical data.
+    * 8b1. The system logs a domain consistency error to ELK and the process terminates to prevent training a model on nonsensical data.
 
     * 8b2. The developer must review the previous extraction logic or source data to identify the source of the contextual mistake.
 
-10) a) High dimensionality detected:
+    c) High dimensionality detected:
 
-    * 10a1. The system performs feature selection (e.g., Fisher Score, ReliefF) to identify the most predictive variables.
+    * 8c1. The system performs feature selection (e.g., Fisher Score, ReliefF) to identify the most predictive variables.
 
-    * 10a2. The system performs dimensionality reduction (e.g., PCA) to compress information.
+    * 8c2. The system performs dimensionality reduction (e.g., PCA) to compress information.
 
-    * 10a3. The system generates and labels these new dataset versions.
+    * 8c3. The system generates and labels these new dataset versions.
 
-    * 10a4. The system saves each resulting dataset version as a separate file to allow for comparative training and evaluation in the next stage.
+    * 8c4. The system saves each resulting dataset version as a separate file to allow for comparative training and evaluation in the next stage.
 
-    * 10a4. The system ensures these new versions are compatible with the model training pipeline.
+    * 8c5. The system ensures these new versions are compatible with the model training pipeline.
 
 
 
 ## UC4: Modeling & Evaluation
 
-**Primary Actor:** Data Scientist with Admin privileges
+**Primary Actor:** Data Scientist
 
 **Scope/Goal:** Use the optimized and reduced datasets from the Feature Engineering module to train regression models, evaluate their statistical performance, and select the best version for production through a temporal splitting strategy.
 
-**Level:** User Goal Level (Sea Level)
+**Level:** User Goal
 
 **Stakeholders and Interests**
 * **Administrator:** Requires a protected interface to trigger training and compare different data variants.
 * **Project Supervisor:** Demands the application of rigorous metrics ($R^{2}$, MAE, RMSE) and the absolute prohibition of shuffling in time-series data.
 
 **Preconditions**
-1.  **Feature Engineering Success:** Datasets with different reduction techniques are available in the `/data/processed/` directory.
-2.  **Data History:** Availability of a 5-year data history to allow for the x-x-x split.
+1.  **Feature Engineering Success:** Datasets with different reduction techniques are available in the `/data/processed/` directory, including data with and without feautre engineering (`/data/processed/feat-engineering`).
+2.  **Data History:** Availability of a 6-year data history processed.
 
 **Main Success Scenario**
-1.  The system loads the processed electricity load and climate data from the `/data/processed/` directory.
-2.  The system applies a **temporal train/test split** to maintain the chronological order of the data;
+1.  The system loads the processed and feature-engineered electricity load and climate data from the `/data/processed/` directory.
+2.  The system applies a 3 different temporal splits (Expanding Window Walk-Forward; The Fixed Rolling Window; Nested Time-Series Split (Walk-Forward + Final Holdout)) to maintain the chronological order of the data;
 3.  For both **Daily** and **Hourly** resolutions, the system executes the training for:
     * **Linear Regression**
     * **Random Forest**
-4.  The system calculates mandatory performance metrics ($MAE$, $RMSE$, and $R^{2}$) for each model at each resolution. **Additional metrics may be computed as needed for further diagnostic purposes.**
+4.  The system calculates mandatory performance metrics ($MAE$, $RMSE$, and $R^{2}$) for each model at each resolution.
+
+    **Note:** Additional metrics may be computed as needed for further diagnostic purposes.
+
 5.  The system performs **residual analysis** to identify potential overfitting.
 6.  The system automatically selects the best-performing model for each tested algorithm (e.g., the best Random Forest and the best Linear Regression) for both daily and hourly resolutions based on the validation metrics.
-7.  The system persists the winning models and logs the training event, including the username and a timestamp.
+7.  The system detects the top-2 drivers for the regression predictions.
+8.  The system persists the winning models, the evaluation metrics and top-2 feature drivers and logs the training event, including the username and a timestamp to ELK.
 
 
 **Extensions**
 * **1a. Inconsistency in data within `/data/processed/`:**
     * 1a1. The system detects a failure in the presence of mandatory columns.
     * 1a2. The system terminates the process gracefully, reporting the error in the log.
+
 * **6a. Failure in statistical tests (e.g., insufficient variance):**
     * 6a1. The system uses the $R^{2}$ metric as a tie-breaker and notifies the Administrator in the report.
 
@@ -312,7 +307,7 @@ User goal.
 
 7. The system stores the new email, username, and the hashed password in the database.
 
-8. The system logs the successful account creation, recording the timestamp and the new user's email and username.
+8. The system logs the successful account creation, recording the timestamp and the new user's email and username to ELK.
 
 9. The system informs the user of a successful registration and redirects them to the authentication/login flow.
 
@@ -348,7 +343,7 @@ User goal.
 
 * **Standard User:** Needs to seamlessly authenticate to execute models, generate predictions, and access evaluation results.
 * **Admin:** Needs to seamlessly authenticate to access all system features, including triggering model training.
-* **Security Administrator:** Needs assurance that all authentication attempts are reliably logged.
+* **Security Admin:** Needs assurance that all authentication attempts are reliably logged.
 
 **Preconditions:**
 
@@ -369,7 +364,7 @@ User goal.
 
 5. The system queries the database to validate the user, hashing the provided password and comparing it against the stored cryptographic hash.
 
-6. The system logs the successful authentication attempt, recording the timestamp and the user's email and username.
+6. The system logs the successful authentication attempt, recording the timestamp and the user's email and username to ELK.
 
 7. The system grants the user access to the app's protected functionalities based on their role.
 
@@ -385,7 +380,7 @@ User goal.
 
     * 4a1. The system catches the invalid input during validation.
 
-    * 4a2. The system logs the failed authentication attempt due to invalid input, recording the timestamp and the attempted email.
+    * 4a2. The system logs the failed authentication attempt due to invalid input, recording the timestamp and the attempted email to ELK.
 
     * 4a3. The system denies access and prompts the user again for their credentials.
 
@@ -395,7 +390,7 @@ User goal.
 
     * 5a2. The system gracefully rejects the request, ensuring no stack traces or internal implementation details are exposed to the user.
 
-    * 5a3. The system logs the failed authentication attempt, recording the timestamp, the attempted email, and the username (considering the email was found in the database).
+    * 5a3. The system logs the failed authentication attempt, recording the timestamp, the attempted email, and the username (considering the email was found in the database) to ELK.
     
     * 5a4. The system denies access and prompts the user again for their credentials.
 
@@ -411,7 +406,7 @@ User goal.
 
 **Stakeholders and Interests**
 * **User:** Seeks fast, accurate predictions to plan consumption or analyze trends.
-* **System Administrator:** Ensures only registered and authenticated users access prediction functionality.
+* **System Admin:** Ensures only registered and authenticated users access prediction functionality.
 
 **Preconditions**
 1.  **Authentication:** The user must be successfully authenticated in the system.
@@ -424,7 +419,7 @@ User goal.
 1.  The user requests a daily prediction using the system's default parameters (3 historical days and 7 forecast days).
 2. The system retrieves the corresponding historical energy and climate data from the processed data directory.
 3.  The system utilizes the active daily model to calculate the demand prediction and dynamically identifies the top 2 variables (drivers) most heavily influencing this specific forecast.
-4.  The system logs the action, including the username, timestamp, and input parameters.
+4.  The system logs the action, including the username, timestamp, and input parameters to ELK.
 5.  The system delivers the calculated prediction result to the user, including the forecast values and the top 2 drivers, via the dashboard described in UC10.
 
 **Extensions**
@@ -439,7 +434,7 @@ User goal.
 
     * 3a1. The system catches the execution error.
 
-    * 3a2. The system logs the failure details.
+    * 3a2. The system logs the failure details to ELK.
 
     * 3a3. The system displays a generic error message to the user stating the prediction service is currently unavailable.
 
@@ -447,7 +442,7 @@ User goal.
 
     * 3b1. The system catches the execution error.
 
-    * 3b2. The system logs the failure details.
+    * 3b2. The system logs the failure detailst o ELK.
 
     * 3b3. The system displays the error in a pop-up described in UC10 (extension 8).
 
@@ -478,7 +473,7 @@ User goal.
 1.  The user requests an hourly prediction using the system's default parameters (3 historical hours and 12 forecast hours).
 2. The system retrieves the corresponding historical energy and climate data from the processed data directory.
 3.  The system utilizes the active hourly model to calculate the demand prediction and dynamically identifies the top 2 variables (drivers) most heavily influencing this specific forecast.
-4.  The system logs the action, including the username, timestamp, and input parameters.
+4.  The system logs the action, including the username, timestamp, and input parameters to ELK.
 5.  The system delivers the calculated prediction result to the user, including the forecast values and the top 2 drivers, via the dashboard described in UC11.
 
 **Extensions**
@@ -493,7 +488,7 @@ User goal.
 
     * 3a1. The system catches the execution error.
 
-    * 3a2. The system logs the failure details.
+    * 3a2. The system logs the failure details to ELK.
 
     * 3a3. The system displays a generic error message to the user stating the prediction service is currently unavailable.
 
@@ -501,7 +496,7 @@ User goal.
 
     * 3b1. The system catches the execution error.
 
-    * 3b2. The system logs the failure details.
+    * 3b2. The system logs the failure details to ELK.
 
     * 3b3. The system displays the error in a pop-up described in UC11 (extension 8).
 
@@ -554,6 +549,8 @@ User goal.
 
 10. The system displays a success confirmation pop-up message to the Administrator and the visual active models modifications.
 
+11. The System logs every event into ELK.
+
 **Extensions:**
 
 2. a. The system encounters an error connecting to the database while fetching models:
@@ -605,6 +602,7 @@ Allow the user to access a dashboard to view the time series of the daily electr
 6. The user adjusts the parameters for the chart, changing the historical context (between 1 to 5 days) and the forecast horizon (between 1 to 14 days).
 7. The user asks for a new prediction based on the new parameters.
 8. The system retrieves the recalculated prediction and smoothly updates the chart and top 2 drivers.
+9. The System logs every event into ELK.
 
 
 **Extensions:**
@@ -647,6 +645,7 @@ Allow the user to access a dashboard to view the time series of the hourly elect
 6. The user adjusts the parameters for the chart, changing the historical context (between 1 to 5 hours) and the forecast horizon (between 1 to 24 hours).
 7. The user asks for a new prediction based on the new parameters.
 8. The system retrieves the recalculated prediction and smoothly updates the chart and top 2 drivers.
+9. The System logs every event into ELK.
 
 
 **Extensions:**
