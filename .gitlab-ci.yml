@@ -43,19 +43,19 @@ integration-tests:
 coding_style:
   stage: quality
   script:
-    - echo "Checking coding style... "
+    - echo "Checking coding style with Ruff... "
     - cd $APP_DIR
-    - pip install flake8
-    - flake8 --max-line-length=120 --extend-ignore=E203 . # Ignoring white space before ':' in list slicing
+    - pip install -r requirements-dev.txt
+    - ruff check .
   allow_failure: true
 
 code_complexity:
   stage: quality
   script:
-    - echo "Checking code complexity... "
+    - echo "Checking code complexity with Ruff (McCabe)... "
     - cd $APP_DIR
-    - pip install xenon
-    - xenon -b C -m C -a C --ignore='venv' .
+    - pip install -r requirements-dev.txt
+    - ruff check --select C90 .
   allow_failure: true
 
 
@@ -64,8 +64,8 @@ code_complexity:
 security:
   stage: security
   script:
-    - echo "Running security tests at application level... "
+    - echo "Running security tests with Ruff... "
     - cd $APP_DIR
-    - pip install bandit
-    - bandit -r . -ll # (medium and high level of severity)
+    - pip install -r requirements-dev.txt
+    - ruff check --select S .
   allow_failure: false # security should NEVER be compromised
