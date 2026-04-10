@@ -1,28 +1,28 @@
+import numpy as np
+import pandas as pd
+import pytest
 from cleaning import (
-    ajust15_energy,
-    fill_nan_energy,
     aggregate_hour,
-    g15_energy,
-    time_alignment_energy,
-    g115g1,
-    g15min,
     ajust15,
+    ajust15_energy,
+    convert_era5_units,
+    fill_nan_energy,
+    g15_energy,
+    g15min,
+    g115g1,
+    hourly_aggregation,
+    media_custom,
+    media_nearest,
     missingValuesFind,
-    temp_termicRad_imputation,
-    wind_imputation,
-    solar_imputation,
+    outliers_treatment,
     precip_imputation,
     pressure_imputation,
     soil_imputation,
-    media_custom,
-    outliers_treatment,
-    media_nearest,
-    hourly_aggregation,
-    convert_era5_units,
+    solar_imputation,
+    temp_termicRad_imputation,
+    time_alignment_energy,
+    wind_imputation,
 )
-import pytest
-import pandas as pd
-import numpy as np
 
 # =======================================
 # DADOS ENERGY

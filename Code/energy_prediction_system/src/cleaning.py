@@ -1,8 +1,9 @@
-import pandas as pd
-import os
-import numpy as np
-from pathlib import Path
 import logging
+import os
+from pathlib import Path
+
+import numpy as np
+import pandas as pd
 
 # =======================================
 # DADOS ENERGY
@@ -405,7 +406,7 @@ def missingImputation(df, var):
     hourly_groups = df.groupby(df.index.floor("1h"))
     resultado = []
 
-    for hora, group in hourly_groups:
+    for _hora, group in hourly_groups:
         serie = group[var]
         nan_count = serie.isna().sum()
         if nan_count == 0:

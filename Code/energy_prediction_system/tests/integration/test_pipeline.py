@@ -1,17 +1,18 @@
-from ingestion import fetch_entsoe_data, fetch_copernicus_data
-from cleaning import (
-    energy,
-    weather,
-    cleaning,
-)
+import logging
 import os
 import shutil
 import tempfile
+from pathlib import Path
+from unittest.mock import patch
+
 import numpy as np
 import pandas as pd
-from unittest.mock import patch
-import logging
-from pathlib import Path
+from cleaning import (
+    cleaning,
+    energy,
+    weather,
+)
+from ingestion import fetch_copernicus_data, fetch_entsoe_data
 
 PROJECT_ROOT = Path(__file__).parent.parent.parent.parent.parent.parent
 

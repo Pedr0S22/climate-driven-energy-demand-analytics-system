@@ -14,6 +14,8 @@ def test_for_mixed():
     assert our_sub(-2, 3) == -5, "Should be -5"
 
 
-@pytest.mark.parametrize("a, b, result", [(10, 5, 5), (2, 4, -2), (0, 7, -7), (-4, -8, 4)])
+@pytest.mark.parametrize(
+    "a, b, result", [(10, 5, 5), (2, 4, -2), (0, 7, -7), (-4, -8, 4)]
+)
 def test_multiples(a, b, result):
     assert result == our_sub(a, b)
