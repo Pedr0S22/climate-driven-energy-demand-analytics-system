@@ -23,7 +23,7 @@ unit-tests:
   script:
     - echo "Assessing unit test coverage... "
     - cd $APP_DIR
-    - pip install pytest pytest-cov pandas entsoe-py cdsapi python-dotenv google-api-python-client google-auth-httplib2 google-auth-oauthlib
+    - pip install -r requirements-dev.txt
     - pytest --cov=src --cov-report=term-missing --cov-fail-under=70 --ignore=tests/integration
   allow_failure: false
 
@@ -34,7 +34,7 @@ integration-tests:
   script:
     - echo "Assessing test coverage... "
     - cd $APP_DIR
-    - pip install pytest pytest-cov pandas entsoe-py cdsapi python-dotenv google-api-python-client google-auth-httplib2 google-auth-oauthlib
+    - pip install -r requirements-dev.txt
     - pytest --cov=src --cov-report=term-missing --cov-fail-under=70 --ignore=tests/unit
   allow_failure: false
 
@@ -45,7 +45,7 @@ coding_style:
   script:
     - echo "Checking coding style with Ruff... "
     - cd $APP_DIR
-    - pip install -r requirements-dev.txt
+    - pip install ruff==0.3.5
     - ruff check --verbose .
   allow_failure: true
 
@@ -54,7 +54,7 @@ code_complexity:
   script:
     - echo "Checking code complexity with Ruff (McCabe)... "
     - cd $APP_DIR
-    - pip install -r requirements-dev.txt
+    - pip install ruff==0.3.5
     - ruff check --select C90 --verbose .
   allow_failure: true
 
@@ -66,6 +66,6 @@ security:
   script:
     - echo "Running security tests with Ruff... "
     - cd $APP_DIR
-    - pip install -r requirements-dev.txt
+    - pip install ruff==0.3.5
     - ruff check --select S --verbose .
   allow_failure: false # security should NEVER be compromised
