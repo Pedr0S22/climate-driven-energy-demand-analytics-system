@@ -169,4 +169,8 @@ if __name__ == "__main__":
     start_date = "2020-01-01"
     end_date = "2025-12-31"
 
+    start_time = time.time()
     data_retrieval(start_date, end_date, country_code="ES")
+    end_time = time.time()
+    elapsed_time = end_time - start_time
+    logging.info(f"Total execution time of Ingestion Module: {elapsed_time:.2f} seconds")
