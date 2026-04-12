@@ -1,4 +1,4 @@
-# QUALITY ATTRIBUTES DEFINITION - V1.6
+# QUALITY ATTRIBUTES DEFINITION - V2.0
 
 This file contains all QAs for the development of this project.
 
@@ -8,7 +8,7 @@ This file contains all QAs for the development of this project.
 
 * **Source of stimulus:** System Operator and/or Automated Pipeline.
 
-* **Stimulus:** The initiation of data processing workflows (data ingestion, feature engineering, and model training).
+* **Stimulus:** The initiation of data processing workflows (data ingestion, cleaning, feature engineering, and model/evaluation modules).
 
 * **Environment:** Normal operating conditions during a routine data update or model training cycle.
 
@@ -16,27 +16,12 @@ This file contains all QAs for the development of this project.
 
 * **Response:** The system executes the requested components and systematically records the start and end times, calculating total execution time for each phase, and writes this data to the system logs.
 
-* **Response measure:** Execution times for 100% of the key components (ingestion, feature engineering, and training) are successfully logged with a timestamp precision of at most 1s.
+* **Response measure:** Execution times for 100% of the key components are successfully logged with a timestamp precision of at most 1s.
 
 
 
-## QA2: Starting App - Initial Data Sync
 
-* **Source of stimulus:** Application Launcher or System Initialization Process.
-
-* **Stimulus:** The application is launched for the first time (or after a cleared cache) and detects that required historical climate and energy data is missing from the local environment.
-
-* **Environment:** Normal operational environment with an active network connection.
-
-* **Artifact:** The Data Synchronization Module (Background Worker) and the User Interface.
-
-* **Response:** The system immediately loads the primary user interface (before login) while delegating the mass data retrieval to a background thread. It displays a non-intrusive loading indicator showing sync progress.
-
-* **Response measure:** The main user interface becomes fully interactive within 5.0 seconds of the app launch, and the background process successfully retrieves 100% of the missing data without causing any UI freezes or blocking the main execution thread.
-
-
-
-## QA3: Prediction Latency
+## QA2: Prediction Latency
 
 * **Source of stimulus:** End User or Client Application.
 
@@ -48,19 +33,54 @@ This file contains all QAs for the development of this project.
 
 * **Response:** The system parses the request, processes the input through the trained machine learning models, and returns the predicted energy demand to the user/application.
 
-* **Response measure:** 95% of all prediction requests are processed and successfully returned to the requester within 1.0 seconds.
+* **Response measure:** All prediction requests are processed and successfully returned to the requester within 1.0 seconds.
+
+
 
 
 # Reliability
 
 
-## QA4: Client Network Resilience
+
+
+## QA3: Initial Data Catch-up and Fault Tolerance
+* **Source of stimulus:** System Initialization or Live Data Scheduler.
+
+* **Stimulus:** Detection of a data gap exceeding 2 hours between local storage and current API state (e.g., after a long downtime).
+
+* **Environment:** System startup or recovery mode.
+
+* **Artifact:** Live Data Scheduler / Data Pipeline.
+
+* **Response:** The system triggers an asynchronous background sync. If the external API is unreachable, the system times out gracefully, logs the error, and permits the application to continue using the most recent available local data.
+
+* **Response measure:** Successful data retrieval and feature generation occur at a rate of at least 2h of data per 30 seconds of background processing and the application UI and existing Prediction Service remains 100% accessible during the sync attempt.
+
+
+
+
+## QA4: Real-Time Incremental Ingestion
+
+* **Source of stimulus:** Live Data Scheduler (Timer-based).
+
+* **Stimulus:** Arrival of a new hourly timestamp.
+
+* **Environment:** Normal steady-state operation.
+
+* **Artifact:** Live Data Scheduler / Data Pipeline.
+
+* **Response:** The system wakes up a background worker to fetch the single most recent data point, clean it, and update rolling averages.
+
+* **Response measure:** The incremental update completes in under 20 seconds, and the primary Prediction Service experiences 0% interruption (no locks or latency spikes) during the update.
+
+
+## QA5: Client Network Resilience
 
 * **Source of stimulus:** End User or Client Application.
 
 * **Stimulus:** A request is submitted for an energy demand prediction, but the network connection between the client and the backend server drops or times out.
 
-* **Environment:** Unstable network conditions on the user's end (e.g., poor Wi-Fi or cellular signal).
+* **Environment:** Unstable network conditions on the user's end.
 
 * **Artifact:** The Client Application.
 
@@ -71,7 +91,7 @@ This file contains all QAs for the development of this project.
 
 
 
-## QA5: Request Rate Limiting
+## QA6: Request Rate Limiting
 
 * **Source of stimulus:** End Users or Client Applications.
 
@@ -87,7 +107,7 @@ This file contains all QAs for the development of this project.
 
 
 
-## QA6: Pipeline Source Failure
+## QA7: Pipeline Source Failure
 
 * **Source of stimulus:** Automated Pipeline Scheduler / Data Ingestion Component.
 
@@ -99,19 +119,19 @@ This file contains all QAs for the development of this project.
 
 * **Response:** The ingestion module detects the API failure, logs the error, safely aborts the current fetch task to prevent system hanging, and triggers a retry mechanism (e.g., exponential backoff) while the rest of the system continues using the last successfully retrieved data.
 
-* **Response measure:** The pipeline gracefully times out the failed fetch attempt within 5.0 seconds, logging the error and queuing a retry without halting or crashing the overall analytics engine.
+* **Response measure:** The pipeline gracefully times out the failed fetch attempt within 5.0 seconds, logging the error and retrying 3 times after the first failed attempt to fetch data without halting or crashing the overall system.
 
 
 
-## QA7: Graceful Data Degradation
+## QA8: Graceful Data Degradation
 
-* **Source of stimulus:** Data Ingestion and Storage.
+* **Source of stimulus:** Data Pipeline and Storage.
 
 * **Stimulus:** A dataset containing missing, null, or malformed climate/energy values is passed into the data cleaning pipeline.
 
 * **Environment:** Normal data processing and feature engineering phase.
 
-* **Artifact:** The Data Preprocessing and Cleaning Component.
+* **Artifact:** The Data Ingestion and Cleaning Component.
 
 * **Response:** The system catches the data anomalies, applies predefined fallback rules, logs a data quality warning, and continues the pipeline execution without throwing unhandled exceptions.
 
@@ -119,7 +139,7 @@ This file contains all QAs for the development of this project.
 
 
 
-## QA8: Auto-Recovery from Internal Crash
+## QA9: Auto-Recovery from Internal Crash
 
 * **Source of stimulus:** Internal System Error (e.g., unhandled exception, Out of Memory error) or OS-level fault.
 
@@ -129,16 +149,16 @@ This file contains all QAs for the development of this project.
 
 * **Artifact:** The Analytics Backend Service and its Process Manager (Docker restart policies).
 
-* **Response:** The process manager detects that the service has failed, automatically restarts the application container/process, and the system re-initializes by loading the most recently saved ML model and cached data from disk without requiring manual human intervention.
+* **Response:** The process manager detects that the service has failed and automatically restarts the application container. During this downtime, the API Gateway actively returns an HTTP 503 (Service Unavailable) to any incoming requests. The system re-initializes by loading the most recently saved ML model and cached data from disk without requiring manual human intervention.
 
-* **Response measure:** The backend service is successfully restarted, re-loads its models, and is ready to serve new prediction requests within 1 minute of the initial crash detection.
+* **Response measure:** The backend service is successfully restarted, re-loads its models, and is ready to serve new prediction requests within 10 minutes of the initial crash detection. 100% of requests received during the downtime are cleanly rejected with an HTTP 503 status.
 
 
 
 # Security
 
 
-## QA9: Secure Error Handling
+## QA10: Secure Error Handling
 
 * **Source of stimulus:** Unauthenticated User or Automated Scanner.
 
@@ -155,7 +175,7 @@ This file contains all QAs for the development of this project.
 
 
 
-## QA10: Secrets Management
+## QA11: Secrets Management
 
 * **Source of stimulus:** Developer and/or data scientist/engineer.
 
@@ -172,7 +192,7 @@ This file contains all QAs for the development of this project.
 
 
 
-## QA11: Input Validation
+## QA12: Input Validation
 
 * **Source of stimulus:** End User, API Client, or Malicious Actor.
 
@@ -189,28 +209,29 @@ This file contains all QAs for the development of this project.
 
 
 
-## QA12: Brute Force Protection & Auditing
+## QA13: Brute Force Protection & Auditing
 
 * **Source of stimulus:** Malicious Actor or Automated Bot.
 
-* **Stimulus:** Repeatedly submits invalid login credentials or validation-failing payloads, that is, more than 3 failed attempts within 5 minute.
+* **Stimulus:** Repeatedly submits invalid login credentials or validation-failing payloads, that is, more than 3 failed attempts within 1 minute.
 
 * **Environment:** Public-facing production environment under active targeted attack.
 
 * **Artifact:** The Authentication Layer.
 
-* **Response:** The system detects the abnormal failure rate, temporarily locks the targeted account or blocks the offending IP address, and generates a high-priority security alert in the system logs.
+* **Response:** The system detects the abnormal failure rate, temporarily locks the targeted account or blocks the offending user account, and generates a high-priority security alert in the system logs.
 
-* **Response measure:** The Account lockout is enforced immediately upon breaching the threshold on the 4th attempt, and the security alert is generated within 1.0 second, preventing further automated guessing.
-
-
+* **Response measure:** The Account lockout is enforced immediately upon breaching the threshold on the 4th attempt for 5 minutes, and the security alert is generated within 1.0 second, preventing further automated guessing.
 
 
-## QA13: Strict Role-Based Access Control
+
+
+## QA14: Strict Role-Based Access Control
 
 * **Source of stimulus:** Authenticated Standard User.
 
-* **Stimulus:** Attempts to access a restricted API endpoint, trigger a manual pipeline rerun, or modify a trained ML model without possessing the required "Admin" or "System Operator" role.
+* **Stimulus:** Attempts to access a restricted API endpoint without possessing the required "Admin" role.
+
 * **Environment:** Normal operational environment.
 
 * **Artifact:** The API Gateway and Role-Based Access Control (RBAC) Module.
@@ -224,7 +245,7 @@ This file contains all QAs for the development of this project.
 # Usability
 
 
-## QA14: Navigation Efficiency (3-Click Rule)
+## QA15: Navigation Efficiency (3-Click Rule)
 
 * **Source of stimulus:** End User or Admin.
 
@@ -240,35 +261,20 @@ This file contains all QAs for the development of this project.
 
 
 
-## QA15: Interface Familiarity and Learnability
 
-* **Source of stimulus:** New User.
-
-* **Stimulus:** The user interacts with the system for the first times to interpret a climate-driven energy demand prediction.
-
-* **Environment:** Initial system onboarding without a formal training manual.
-
-* **Artifact:** The Frontend User Interface (Typography, Layout, and Icons).
-
-* **Response:** The system utilizes standard UI patterns (e.g., top/side navigation bars, industry-standard icons for "download" or "settings," and high-contrast readable typography) to reduce cognitive load.
-
-* **Response measure:** In a controlled usability test, a new user can successfully navigate to and trigger a prediction request within 90 seconds of their first login without external assistance.
-
-
-
-## QA16: Data Visualization Clarity
+## QA16: Data Visualization Interactivity
 
 * **Source of stimulus:** End User (Energy Analyst).
 
-* **Stimulus:** The user receives a prediction result and needs to interpret the results.
+* **Stimulus:** The user initiates a request to view a completed prediction result, triggering the frontend dashboard.
 
 * **Environment:** Post-prediction analysis phase.
 
-* **Artifact:** The Data Visualization Module.
+* **Artifact:** The Data Visualization Module (Frontend).
 
-* **Response:** The system renders charts that allow users to hover over data points to see exact values and provides a clear legend/labeling system for all climate features used in the model.
+* **Response:** The system renders interactive time-series charts of the prediction data, including a comprehensive legend mapped to climate features, and interactive data points.
 
-* **Response measure:** In a usability test, 90% of participants can correctly identify the primary climate driver for a specific prediction spike within 15 seconds of viewing the results chart.
+* **Response measure:** The system renders the complete chart within 1.0 second of the frontend receiving the prediction data payload from the backend API. Additionally, hovering over any data point under 100ms displays a tooltip containing the exact numerical prediction value and the primary climate feature contributing to that point.
 
 
 
@@ -288,7 +294,7 @@ This file contains all QAs for the development of this project.
 
 * **Response:** The system provides a comprehensive test suite that can be executed with a single command, verifying that the new code functions as expected and that existing features remain intact.
 
-* **Response measure:** Automated tests (unit and integration) cover at least 70% of the codebase's core logic, and the full suite completes execution in under 8 minutes, providing immediate feedback on regression errors.
+* **Response measure:** Automated tests (unit and integration) cover at least 70% of the codebase's core logic, and the full suite completes execution in under 8 minutes, providing feedback on regression errors.
 
 
 
@@ -303,42 +309,22 @@ This file contains all QAs for the development of this project.
 
 * **Artifact:** The CI Pipeline Configuration and Build Environment.
 
-* **Response:** The CI pipeline automatically triggers, installs all necessary dependencies, lint-checks the code, and runs the entire test suite to validate the integrity of the branch.
+* **Response:** The CI pipeline automatically triggers, installs all necessary dependencies and runs the entire test suite to validate the integrity of the branch.
 
-* **Response measure:** 100% of code pushes to the main or develop branches trigger a CI run, and the pipeline provides a "Success" or "Failure" status within 10 minutes of the push.
+* **Response measure:** 100% of code pushes to the main or develop branches trigger a CI run, and the pipeline provides a "Success" or "Failure" status within 12 minutes of the push.
 
 
 
 
 ## QA19: Traceability and Code Review
+**Source of stimulus:** System Maintainer.
 
-* **Source of stimulus:** System Maintainer.
+**Stimulus:** A developer attempts to push code directly to the "main" production branch.
 
-* **Stimulus:** A bug is discovered in production, or a specific change needs to be audited to understand why a certain model parameter was modified.
+**Environment:** Git Repository (GitLab/GitHub).
 
-* **Environment:** Git Repository (GitLab).
+**Artifact:** The Repository Branch Protection Rules.
 
-* **Artifact:** The Git Commit History and Merge Request Documentation.
+**Response:** The repository automatically rejects direct pushes to the main branch, forcing the developer to open a Merge Request.
 
-* **Response:** The system's structured branching strategy and mandatory Merge Request (MR) process ensure that every change is documented, peer-reviewed, and linked to a specific issue or rationale.
-
-* **Response measure:** 100% of changes to the "main" branch are introduced via Merge Requests with at least one approval, and the commit history follows a consistent naming convention that allows a maintainer to trace any line of code to its origin within 5 minutes.
-
-
-
-# Functionality
-
-
-## QA20: E2E Completeness
-
-* **Source of stimulus:** Developer or Data Scientist.
-
-* **Stimulus:** A new functional component (e.g., a new climate feature, a different ML algorithm, or a new API endpoint) is submitted for integration.
-
-* **Environment:** Integration testing environment / CI Pipeline.
-
-* **Artifact:** The entire Climate-Driven Energy Demand Analytics System (End-to-End).
-
-* **Response:** The system executes an end-to-end integration test suite that simulates a real-world user flow: ingesting raw data, performing transformations, generating a prediction, and verifying the output against a known ground-truth value.
-
-* **Response measure:** 100% of the defined "acceptance criteria" for the new feature are met, and the end-to-end test passes successfully without manual intervention before the code is permitted to merge into the `main` branch.
+**Response measure:** The main branch protection rules are configured to automatically block 100% of direct pushes to main and strictly require at least 1 approving review before the "Merge" button is unlocked.

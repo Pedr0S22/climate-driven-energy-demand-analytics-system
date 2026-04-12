@@ -37,41 +37,36 @@ To complement the Use Cases, we defined Quality Attributes that this software mu
 ### Performance (Latency & Tracking)
 
 - QA1: Data Pipeline Execution Tracking
-- QA2: Starting App - Initial Data Sync
-- QA3: Prediction Latency
+- QA2: Prediction Latency
 
 ### Reliability (Fault tolerance & Recovery)
 
-- QA4: Client Network Resilience
-- QA5: Request Rate Limiting
-- QA6: Pipeline Source Failure
-- QA7: Graceful Data Degradation
-- QA8: Auto-Recovery from Internal Crash
+- QA3: Initial Data Catch-up and Fault Tolerance
+- QA4: Real-Time Incremental Ingestion
+- QA5: Client Network Resilience
+- QA6: Request Rate Limiting
+- QA7: Pipeline Source Failure
+- QA8: Graceful Data Degradation
+- QA9: Auto-Recovery from Internal Crash
 
 ### Security (Auth & Validation)
 
-- QA9: Secure Error Handling
-- QA10: Secrets Management
-- QA11: Input Validation
-- QA12: Brute Force Protection & Auditing
-- QA13: Strict Role-Based Access Control
+- QA10: Secure Error Handling
+- QA11: Secrets Management
+- QA12: Input Validation
+- QA13: Brute Force Protection & Auditing
+- QA14: Strict Role-Based Access Control
 
 ### Usability (UX & Viz)
 
-- QA14: Navigation Efficiency (3-Click Rule)
-- QA15: Interface Familiarity and Learnability
-- QA16: Data Visualization Clarity
+- QA15: Navigation Efficiency (3-Click Rule)
+- QA16: Data Visualization Interactivity
 
 ### Maintainability (CI/CD & Testing)
 
 - QA17: Automated Test Coverage and Regression
 - QA18: Continuous Integration Efficiency
 - QA19: Traceability and Code Review
-
-### Functionality (E2E Completeness)
-
-- QA20: E2E Completeness
-
 
 
 # Test Cases

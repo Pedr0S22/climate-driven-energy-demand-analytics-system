@@ -229,7 +229,3 @@ The system explicitly addresses performance, reliability, and security and other
 * **Continuous Integration:** A GitLab CI pipeline is configured to automatically install dependencies and run the full test suite on every code push, ensuring that new additions do not break existing functionality.
 
 * **Version Control:** All development utilizes Git with a structured branching strategy and merge requests to maintain a clean and readable commit history.
-
-### 6.6. Functionality
-
-* **End-to-End Completeness:** Any new functionality introduced to the system — whether it is a new data transformation step, a predictive model, or an endpoint — must be fully operational and successfully fulfill its intended purpose before being merged into the main branch.
