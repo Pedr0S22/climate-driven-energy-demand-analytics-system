@@ -1,5 +1,6 @@
 import logging
 import os
+import time
 from pathlib import Path
 
 import numpy as np
@@ -710,6 +711,8 @@ if __name__ == "__main__":
     caminho_energy_corrigido = DATA_RAW / "energy_corrigido"
     caminho_weather_corrigido = DATA_RAW / "weather_corrigido"
 
+    start_time = time.time()
+
     logging.info("Iniciando pipeline de processamento de energia...")
     energy(caminho_energy, pasta_saida=caminho_energy_corrigido)
 
@@ -723,4 +726,6 @@ if __name__ == "__main__":
         pasta_weather_corrigido=caminho_weather_corrigido,
         train_data=True,
     )
-    logging.info("Pipeline concluído.")
+    end_time = time.time()
+    elapsed_time = end_time - start_time
+    logging.info("Tempo de processamento do Módulo da Limpeza: %.2f segundos", elapsed_time)
