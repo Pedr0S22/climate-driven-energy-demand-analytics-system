@@ -1,4 +1,4 @@
-# QUALITY ATTRIBUTES DEFINITION - V2.0
+# QUALITY ATTRIBUTES DEFINITION - V2.1
 
 This file contains all QAs for the development of this project.
 
@@ -317,14 +317,15 @@ This file contains all QAs for the development of this project.
 
 
 ## QA19: Traceability and Code Review
-**Source of stimulus:** System Maintainer.
 
-**Stimulus:** A developer attempts to push code directly to the "main" production branch.
+* **Source of stimulus:** System Maintainer.
 
-**Environment:** Git Repository (GitLab/GitHub).
+* **Stimulus:** A developer attempts to push code directly to the "main" production branch.
 
-**Artifact:** The Repository Branch Protection Rules.
+* **Environment:** Git Repository (GitLab/GitHub).
 
-**Response:** The repository automatically rejects direct pushes to the main branch, forcing the developer to open a Merge Request.
+* **Artifact:** The Repository Branch Protection Rules.
 
-**Response measure:** The main branch protection rules are configured to automatically block 100% of direct pushes to main and strictly require at least 1 approving review before the "Merge" button is unlocked.
+* **Response:** The repository automatically rejects direct pushes to the main branch, forcing the developer to open a Merge Request.
+
+* **Response measure:** The main branch protection rules are configured to automatically block 100% of direct pushes to main and strictly require at least 1 approving review before the "Merge" button is unlocked.
