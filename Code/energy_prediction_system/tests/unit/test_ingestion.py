@@ -1,10 +1,10 @@
-import pytest
-import pandas as pd
 import zipfile
-from unittest.mock import patch, MagicMock, mock_open
+from unittest.mock import MagicMock, mock_open, patch
 
-from ingestion import fetch_copernicus_data, fetch_entsoe_data
+import pandas as pd
+import pytest
 from gdrive_sync import backup_project_data, upload_file_to_drive
+from ingestion import fetch_copernicus_data, fetch_entsoe_data
 
 
 @pytest.fixture

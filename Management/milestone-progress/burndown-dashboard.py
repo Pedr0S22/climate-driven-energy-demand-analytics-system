@@ -55,7 +55,10 @@ def generate_burndown(m_df, title, is_sprint, y_axis_label):
     max_created = m_df["Created At (UTC)"].max()
 
     # Establish 'Today' anchor using the latest activity in the data
-    today_dt = max(max_closed if pd.notna(max_closed) else kickoff, max_created if pd.notna(max_created) else kickoff)
+    today_dt = max(
+        max_closed if pd.notna(max_closed) else kickoff,
+        max_created if pd.notna(max_created) else kickoff,
+    )
     today = pd.to_datetime(today_dt.date())
 
     deadline = pd.to_datetime(max_closed.date()) if pd.notna(max_closed) else kickoff
@@ -74,22 +77,38 @@ def generate_burndown(m_df, title, is_sprint, y_axis_label):
         scope_df = m_df[m_df["Created At (UTC)"] <= eod]
         total_scope = scope_df["Size"].sum()
 
-        closed_df = scope_df[scope_df["Closed At (UTC)"].notna() & (scope_df["Closed At (UTC)"] <= eod)]
+        closed_df = scope_df[
+            scope_df["Closed At (UTC)"].notna() & (scope_df["Closed At (UTC)"] <= eod)
+        ]
         total_completed = closed_df["Size"].sum()
         remaining = total_scope - total_completed
 
         # Stop actuals logic specifically for 100% completed deliverables
         if all_closed and current_date > pd.to_datetime(max_closed.date()):
-            daily_data.append({"Date": current_date, "Remaining": 0, "Total Scope": total_scope})
+            daily_data.append(
+                {"Date": current_date, "Remaining": 0, "Total Scope": total_scope}
+            )
         elif current_date <= today:
-            daily_data.append({"Date": current_date, "Remaining": remaining, "Total Scope": total_scope})
+            daily_data.append(
+                {
+                    "Date": current_date,
+                    "Remaining": remaining,
+                    "Total Scope": total_scope,
+                }
+            )
         else:
-            daily_data.append({"Date": current_date, "Remaining": None, "Total Scope": total_scope})
+            daily_data.append(
+                {"Date": current_date, "Remaining": None, "Total Scope": total_scope}
+            )
 
     bd_df = pd.DataFrame(daily_data)
 
     # 1. Ideal Trendline
-    day_1_scope = bd_df.iloc[0]["Total Scope"] if bd_df.iloc[0]["Total Scope"] > 0 else bd_df["Total Scope"].max()
+    day_1_scope = (
+        bd_df.iloc[0]["Total Scope"]
+        if bd_df.iloc[0]["Total Scope"] > 0
+        else bd_df["Total Scope"].max()
+    )
     bd_df["Ideal"] = np.linspace(day_1_scope, 0, len(bd_df))
 
     # 2. Extract Actual points
@@ -115,8 +134,22 @@ def generate_burndown(m_df, title, is_sprint, y_axis_label):
     sns.set_theme(style="whitegrid")
     plt.figure(figsize=(12, 6))
 
-    plt.plot(actuals["Date"], actuals["Remaining"], marker="o", color="#1f77b4", linewidth=3, label="Actual Burndown")
-    plt.plot(bd_df["Date"], bd_df["Ideal"], linestyle="--", color="gray", linewidth=2, label="Ideal Burndown")
+    plt.plot(
+        actuals["Date"],
+        actuals["Remaining"],
+        marker="o",
+        color="#1f77b4",
+        linewidth=3,
+        label="Actual Burndown",
+    )
+    plt.plot(
+        bd_df["Date"],
+        bd_df["Ideal"],
+        linestyle="--",
+        color="gray",
+        linewidth=2,
+        label="Ideal Burndown",
+    )
 
     if not all_closed:
         plt.plot(
@@ -203,8 +236,12 @@ def process_milestones(df, target_milestones):
         print("Error: Missing Size metrics ('Weight' or 'Time Estimate').")
         return
 
-    df["Created At (UTC)"] = pd.to_datetime(df["Created At (UTC)"], errors="coerce").dt.tz_localize(None)
-    df["Closed At (UTC)"] = pd.to_datetime(df["Closed At (UTC)"], errors="coerce").dt.tz_localize(None)
+    df["Created At (UTC)"] = pd.to_datetime(
+        df["Created At (UTC)"], errors="coerce"
+    ).dt.tz_localize(None)
+    df["Closed At (UTC)"] = pd.to_datetime(
+        df["Closed At (UTC)"], errors="coerce"
+    ).dt.tz_localize(None)
 
     for item in target_milestones:
         m_df = df[df["Milestone"] == item].copy()
@@ -213,7 +250,9 @@ def process_milestones(df, target_milestones):
             continue
 
         # Differentiate between a Tactical Sprint and a Strategic Milestone based on Name
-        is_sprint = any(keyword.lower() in str(item).lower() for keyword in SPRINT_KEYWORDS)
+        is_sprint = any(
+            keyword.lower() in str(item).lower() for keyword in SPRINT_KEYWORDS
+        )
 
         generate_burndown(m_df, item, is_sprint, y_axis_label)
 
@@ -227,7 +266,9 @@ def main():
     # 1. File Input & Error Handling
     df = None
     while df is None:
-        filename = input("Enter the CSV file name and extension(e.g., data.csv): ").strip()
+        filename = input(
+            "Enter the CSV file name and extension(e.g., data.csv): "
+        ).strip()
         file_path = ROOT_MILESTONE_PROGESS / DATA_GITLAB_FOLDER / filename
 
         if not file_path.exists():

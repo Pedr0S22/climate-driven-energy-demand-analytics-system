@@ -3,9 +3,8 @@ repos:
     # Ruff version.
     rev: v0.3.5
     hooks:
-      # Run the linter and auto-fix, allowing 120 chars
+      # Run the linter and auto-fix
       - id: ruff
-        args: [ --fix, --line-length=120 ]
-      # Run the formatter, allowing 120 chars
+        args: [ --fix, --verbose ]
+      # Run the formatter
       - id: ruff-format
-        args: [ --line-length=120 ]

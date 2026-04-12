@@ -216,11 +216,17 @@ __marimo__/
 .streamlit/secrets.toml
 
 # Data
-Code/energy_prediction_system/data/raw/weather/**/*.csv
-Code/energy_prediction_system/data/raw/weather/**/*.rar
-Code/energy_prediction_system/data/raw/weather/**/*.zip
-Code/energy_prediction_system/data/raw/energy/**/*.csv
+Code/energy_prediction_system/data/raw/energy/
+Code/energy_prediction_system/data/raw/weather/
+Code/energy_prediction_system/data/raw/energy_corrigido/
+Code/energy_prediction_system/data/raw/weather_corrigido/
+
+Code/energy_prediction_system/data/processed/feat-engineering/*.csv
+Code/energy_prediction_system/data/processed/*.csv
+
+
 Code/energy_prediction_system/src/**/*.json
+
 
 # Management Data
 Management/milestone-progress/data-gitlab/**/*.csv

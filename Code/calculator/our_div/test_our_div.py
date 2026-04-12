@@ -18,7 +18,13 @@ def test_div_by_zero():
 
 
 @pytest.mark.parametrize(
-    "a, b, result", [(10, 2, 5), (20, 5, 4), (0, 10, 0), pytest.param(10, 0, ZeroDivisionError, id="div_by_zero")]
+    "a, b, result",
+    [
+        (10, 2, 5),
+        (20, 5, 4),
+        (0, 10, 0),
+        pytest.param(10, 0, ZeroDivisionError, id="div_by_zero"),
+    ],
 )
 def test_multiples(a, b, result):
     if result == ZeroDivisionError:

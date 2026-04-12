@@ -1,9 +1,10 @@
 # for copernicus
-import time
-import os
-import cdsapi
-import zipfile
 import logging
+import os
+import time
+import zipfile
+
+import cdsapi
 
 # for entso/e
 import pandas as pd
@@ -85,7 +86,7 @@ def fetch_copernicus_data(start_date: str, end_date: str):
         # Catch specifically if the file isn't a ZIP
         except zipfile.BadZipFile:
             logging.error("The downloaded file is not a valid ZIP archive. It might be an API error message.")
-            with open(temp_zip_path, "r", errors="ignore") as f:
+            with open(temp_zip_path, errors="ignore") as f:
                 logging.error(f"Server Response snippet: {f.read()[:500]}")
 
             if attempt < MAX_RETRIES - 1:
@@ -168,4 +169,8 @@ if __name__ == "__main__":
     start_date = "2020-01-01"
     end_date = "2025-12-31"
 
+    start_time = time.time()
     data_retrieval(start_date, end_date, country_code="ES")
+    end_time = time.time()
+    elapsed_time = end_time - start_time
+    logging.info(f"Total execution time of Ingestion Module: {elapsed_time:.2f} seconds")

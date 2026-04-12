@@ -1,4 +1,4 @@
-# USE CASE DEFINITIONS - V1.8
+# USE CASE DEFINITIONS - V2.1
 
 This file contains all UCs for the development of this project.
 
@@ -8,9 +8,8 @@ This file contains all UCs for the development of this project.
 
 **Primary Actor:** Data Scientist / Developer
 
-
 **Scope/Goal:** The data ingestion layer of the Climate-Driven Energy Demand Analytics System.The goal is to retrieve electricity demand data from "ENTSO-E" dataset found at [https://transparency.entsoe.eu/]  and climate data from "ERA5
-Land Hourly data from 1950 to present" dataset found at [https://cds.climate.copernicus.eu/datasets/reanalysis-era5-land?tab=overview]. The ingestion process must be reproducible and executable through code, not manual steps.
+Land Hourly data from 1950 to present" dataset found at [https://cds.climate.copernicus.eu/datasets/reanalysis-era5-land?tab=overview]. The ingestion process must be reproducible and executable through code.
 
 **Level:** User Goal
 
@@ -23,12 +22,12 @@ Land Hourly data from 1950 to present" dataset found at [https://cds.climate.cop
 **Preconditions:**
 
 1. API credentials for ENTSO-E and Copernicus are securely configured using environment variables.
-2. The system must be configured to target one selected European country and a timeframe of 5 years of data (from 2020 to 2025).
+2. The system must be configured to target one selected European country and a timeframe of 6 years of data (from 2020 to 2025).
 
 
 **Main Success Scenario:**
 
-1. The Developer / Data Scientist executes the data ingestion script via the command line, allowing it to run until all data for the specified 5-year range is retrieved.
+1. The Developer / Data Scientist executes the data ingestion script via the command line, allowing it to run until all data for the specified 6-year range is retrieved.
 2. The system begins measuring the execution time for the data ingestion component.
 3. The system connects to the ENTSO-E Transparency Platform and retrives the primary target variable which is total electricity load, expressed in megawatts (MW)
 4. The system connects to the Copernicus Climate Data Store (ERA5 dataset) and retrieves meteorological data. Specifically, it extracts:
@@ -49,7 +48,7 @@ Land Hourly data from 1950 to present" dataset found at [https://cds.climate.cop
 5. The system stores the unmodified raw climate data into the `Code\energy_prediction_system\data\raw\weather\` directory.
 6. The system stores the unmodified raw electricity data into the `Code\energy_prediction_system\data\raw\energy\` directory.
 7. The system automatically backs up and exports all retrieved raw data directories to a private Google Drive.
-8. The system successfully logs the execution time so it can be summarized in the project documentation.
+8. The system successfully logs all events and the execution time into ELK.
 
 **Extensions:**
 
@@ -57,7 +56,7 @@ Land Hourly data from 1950 to present" dataset found at [https://cds.climate.cop
 
     * 3a1. The system detects that the ENTSO-E Transparency Platform is unreachable or authentication fails.
 
-    * 3a2. The system properly logs the ingestion failure.
+    * 3a2. The system properly logs the ingestion failure to ELK.
 
     * 3a3. The system results in a clean termination of the ingestion script.
 
@@ -69,13 +68,13 @@ Land Hourly data from 1950 to present" dataset found at [https://cds.climate.cop
 
     * 3b3. The system ensures the missing data does not cause an uncontrolled crash.
 
-    * 3b4. The system logs the anomaly and terminates cleanly.
+    * 3b4. The system logs the anomaly to ELK and terminates cleanly .
 
 4. a) API connection failure or authentication error with Copernicus:
 
     * 4a1. The system detects that the Copernicus Climate Data Store is unreachable or authentication fails.
 
-    * 4a2. The system properly logs the ingestion failure.
+    * 4a2. The system properly logs the ingestion failure to ELK.
 
     * 4a3. The system results in a clean termination of the ingestion script.
 
@@ -87,7 +86,7 @@ Land Hourly data from 1950 to present" dataset found at [https://cds.climate.cop
 
     * 4b3. The system ensures the missing data does not cause an uncontrolled crash.
 
-    * 4b4. The system logs the anomaly and terminates cleanly.
+    * 4b4. The system logs the anomaly to ELK and terminates cleanly.
 
 ## UC2: Data Cleaning and Alignment
 
@@ -100,70 +99,62 @@ Land Hourly data from 1950 to present" dataset found at [https://cds.climate.cop
 **Stakeholders/Interests:**
 - User: Wants to ensure the system uses clean and consistent data to generate reliable forecasts.
 - Developer/ Data Analyst: Require reliable and consistent data to ensure robustness in the models and subsequent steps.
-- Administrador: Needs assurance that raw data remains untouched and that processed data is stored separately under `/data/processed/`.
+- Administrator: Needs assurance that raw data remains untouched and that processed data is stored separately under `/data/processed/`.
 
 **Preconditions:**
-- Data must be located in the correct folders from the previous step;
+- Data ingested must be located in the correct folders: `/data/raw/..`;
 - The `/data/processed/` folder must exist;
-- Datasets must contain the mandatory columns required for this process (timestamp, electricity load, temperature, solar radiation, wind speed, precipitation).
 
 
 **Main Success Scenario:**
 1. The use case begins when the data preprocessing module is executed.
 2. The system loads raw data from `/data/raw/weather/` and `/data/raw/energy/`.
 3. The system converts timestamps to the UTC standard and checks for any timezone inconsistencies.
-4. The system handles missing values in the following variables: temperature, wind speed, solar radiation, electricity load, and precipitation.
-5. The system detects outliers using the IQR method for all variables except electricity load. For each detected value, the system verifies whether it is plausible according to the predefined limits.
-6. The system aggregates data every hour, averaging temperature, wind, radiation, and precipitation; for electrical charge, we use the maximum value for that interval.
-7. The system merges both datasets into a single dataset and saves the processed data in the `/data/processed/` folder.
+4. The system handles missing values in the all varibles ingested.
+5. The system handles data types and features conversions.
+6. The system detects outliers using the IQR method for all variables except electricity load. For each detected value, the system verifies whether it is plausible according to the predefined limits.
+7. The system aggregates data every hour, averaging temperature, wind, radiation, and precipitation; for electrical charge, we use the maximum value for that interval.
+8. The system merges both datasets into a single dataset and saves the processed data in the `/data/processed/` folder.
+9. The system logs all events and the execution time to ELK.
+
 
 **Extensions:**
 
 3. a) The system detects that not all expected timestamps (15-minute intervals) exist:
-    * There is a missing time value; what we do is, since the data is for 15 minutes, we add a line for the timestamp that was supposed to be there, and the remaining variables are marked as missing values ​​for later processing.
+    * 3a1.There is a missing time value; what we do is, since the data is for 15 minutes, we add a line for the timestamp that was supposed to be there, and the remaining variables are marked as missing values ​​for later processing.
 
 4. a) Missing Values Detected
-    1.  There is 1 isolated missing value per hour:
+    * 4a1. There is 1 isolated missing value per hour:
         - The system applies linear interpolation between the previous and the next value.
-    2. There is more than 1 missing value within a 1-hour interval:
+    * 4b1. There is more than 1 missing value within a 1-hour interval:
         - The system estimates missing values using statistical methods based on nearby valid observations.
         - For solar radiation, the system considers whether the timestamp corresponds to daytime or nighttime when estimating the value.
         - For precipitation, the system evaluates surrounding observations to determine whether the value should remain zero or be estimated from nearby valid data.
 
-5. a) Outlier detected by IQR
-    1. The value is outside the limits:
+6) a) Outlier detected by IQR
+    * 6a1. The value is outside the limits:
         - The system replaces the value using statistical estimates based on nearby valid observations, taking into account the characteristics of each variable;
-    2. The value is outside the IQR but within plausible limits:
+    * 6a2. The value is outside the IQR but within plausible limits:
         - The system retains the value, considering it a possible outlier.
     
-6. a) The timestamps are not all the same time:
-    * There exists timestamps that do not exactly match xx:00, xx:15, xx:30, or xx:45:
+7. a) The timestamps are not all the same time:
+    * 7a1. There exists timestamps that do not exactly match xx:00, xx:15, xx:30, or xx:45:
         - The system adjusts them to the nearest 15-minute interval before time aggregation.
     
-## UC3: Feature Engeneering
+## UC3: Feature Engineering
 
 **Primary actor**:
 Data Scientist/Developer
 
 **Scope/Goal**:
-Transform the clean and sincronized data into relevant predictive features (temporal, lagging, rolling, and advanced) to feed the modeling component, from which:
-
-
-* **Mandatorty**:
-    - **Temporal features**: hour, day, season;
-    - At least one **rolling climate feature**;
-    - At least one **lagged demand feature**.
-
-
-* **Optional**:
-    - Derived features.
+Transform the clean and synchronized data into relevant predictive features (temporal, lagging, rolling, and advanced) to feed the modeling component, from which temporal features, such as: hour, day, month, etc; season rolling climate features, lagged demand features and new derived features.
 
 **Level**:
 User goal.
 
 **Stakeholders and Interests**:
 
-* **Data cientist**: Expects to obtain relevant features that capture trends, seasonality, and complex climate-energy relationships to improve model performance.
+* **Data Scientist**: Expects to obtain relevant features that capture trends, seasonality, and complex climate-energy relationships to improve model performance.
 
 * **Data Engineer**: Expects an efficient, modular transformation process that is well-integrated into the system's pipeline.
 
@@ -172,7 +163,7 @@ User goal.
 **Preconditions**:
 1. The Data Cleaning and Alignment stage has been successfully completed.
 
-2. Synchronized data is available in the `/data/processed/ `directory.
+2. Synchronized and cleaned data is available in the `/data/processed/ `directory.
 
 3. The system has validated that all required columns and timestamps are present and reliable.
 
@@ -181,7 +172,7 @@ User goal.
 
 2. The system loads the data available in the `/data/processed/` directory;
 
-3. The system extracts temporal features, including hour of the day, day of the week, and seasonal indicators.
+3. The system extracts temporal features, including hour of the day, day of the week, etc, and seasonal indicators.
 
 4. The developer defines the window size and the overlap, constrained by the dataset timestamps, to ensure the rolling windows are physically meaningful;
 
@@ -206,11 +197,9 @@ User goal.
 
 8. The system validates that the features obtained don't include invalid values generated during the feature extraction process.
 
-9. The system measures and logs the execution time.
+9. The system measures and logs the execution time and total feature count and other events to ELK.
 
-10. The system logs the total feature count.
-
-11. The system saves the full feature set as the primary dataset for the predictive model, ensuring the output format is compatible with the model training pipeline.
+10. The system saves the full feature sets in `/data/processed/feat-engineering/`, ensuring the output format is compatible with the model training pipeline.
 
 **Extensions**:
 
@@ -218,56 +207,61 @@ User goal.
     * 8a1. The system handles them by dropping or imputing the affected rows to maintain dataset quality.
 
     b) Critical domain-context errors detected (e.g., widespread anomalies where feature values are physically implausible):
-    * 8b1. The system logs a domain consistency error and the process terminates to prevent training a model on nonsensical data.
+    * 8b1. The system logs a domain consistency error to ELK and the process terminates to prevent training a model on nonsensical data.
 
     * 8b2. The developer must review the previous extraction logic or source data to identify the source of the contextual mistake.
 
-10) a) High dimensionality detected:
+    c) High dimensionality detected:
 
-    * 10a1. The system performs feature selection (e.g., Fisher Score, ReliefF) to identify the most predictive variables.
+    * 8c1. The system performs feature selection (e.g., Fisher Score, ReliefF) to identify the most predictive variables.
 
-    * 10a2. The system performs dimensionality reduction (e.g., PCA) to compress information.
+    * 8c2. The system performs dimensionality reduction (e.g., PCA) to compress information.
 
-    * 10a3. The system generates and labels these new dataset versions.
+    * 8c3. The system generates and labels these new dataset versions.
 
-    * 10a4. The system saves each resulting dataset version as a separate file to allow for comparative training and evaluation in the next stage.
+    * 8c4. The system saves each resulting dataset version as a separate file to allow for comparative training and evaluation in the next stage.
 
-    * 10a4. The system ensures these new versions are compatible with the model training pipeline.
+    * 8c5. The system ensures these new versions are compatible with the model training pipeline.
 
 
 
 ## UC4: Modeling & Evaluation
 
-**Primary Actor:** Data Scientist with Admin privileges
+**Primary Actor:** Data Scientist
 
 **Scope/Goal:** Use the optimized and reduced datasets from the Feature Engineering module to train regression models, evaluate their statistical performance, and select the best version for production through a temporal splitting strategy.
 
-**Level:** User Goal Level (Sea Level)
+**Level:** User Goal
 
 **Stakeholders and Interests**
 * **Administrator:** Requires a protected interface to trigger training and compare different data variants.
 * **Project Supervisor:** Demands the application of rigorous metrics ($R^{2}$, MAE, RMSE) and the absolute prohibition of shuffling in time-series data.
 
 **Preconditions**
-1.  **Feature Engineering Success:** Datasets with different reduction techniques are available in the `/data/processed/` directory.
-2.  **Data History:** Availability of a x-year data history to allow for the x-x-x split.
+1.  **Feature Engineering Success:** Datasets with different reduction techniques are available in the `/data/processed/` directory, including data with and without feautre engineering (`/data/processed/feat-engineering`).
+2.  **Data History:** Availability of a 6-year data history processed.
 
 **Main Success Scenario**
-1.  The system loads the processed electricity load and climate data from the `/data/processed/` directory.
-2.  The system applies a **temporal train/test split** to maintain the chronological order of the data;
+1.  The system loads the processed and feature-engineered electricity load and climate data from the `/data/processed/` directory.
+2.  The system applies a 3 different temporal splits (Expanding Window Walk-Forward; The Fixed Rolling Window; Nested Time-Series Split (Walk-Forward + Final Holdout)) to maintain the chronological order of the data;
 3.  For both **Daily** and **Hourly** resolutions, the system executes the training for:
     * **Linear Regression**
     * **Random Forest**
-4.  The system calculates mandatory performance metrics ($MAE$, $RMSE$, and $R^{2}$) for each model at each resolution. **Additional metrics may be computed as needed for further diagnostic purposes.**
+4.  The system calculates mandatory performance metrics ($MAE$, $RMSE$, and $R^{2}$) for each model at each resolution.
+
+    **Note:** Additional metrics may be computed as needed for further diagnostic purposes.
+
 5.  The system performs **residual analysis** to identify potential overfitting.
-6.  The system automatically selects the best-performing models (one for daily and one for hourly) based on the validation metrics.
-7.  The system persists the winning models and logs the training event, including the username and a timestamp.
+6.  The system automatically selects the best-performing model for each tested algorithm (e.g., the best Random Forest and the best Linear Regression) for both daily and hourly resolutions based on the validation metrics.
+7.  The system detects the top-2 drivers for the regression predictions.
+8.  The system persists the winning models, the evaluation metrics and top-2 feature drivers and logs the training event, including the username and a timestamp to ELK.
 
 
 **Extensions**
 * **1a. Inconsistency in data within `/data/processed/`:**
     * 1a1. The system detects a failure in the presence of mandatory columns.
     * 1a2. The system terminates the process gracefully, reporting the error in the log.
+
 * **6a. Failure in statistical tests (e.g., insufficient variance):**
     * 6a1. The system uses the $R^{2}$ metric as a tie-breaker and notifies the Administrator in the report.
 
@@ -313,7 +307,7 @@ User goal.
 
 7. The system stores the new email, username, and the hashed password in the database.
 
-8. The system logs the successful account creation, recording the timestamp and the new user's email and username.
+8. The system logs the successful account creation, recording the timestamp and the new user's email and username to ELK.
 
 9. The system informs the user of a successful registration and redirects them to the authentication/login flow.
 
@@ -349,7 +343,7 @@ User goal.
 
 * **Standard User:** Needs to seamlessly authenticate to execute models, generate predictions, and access evaluation results.
 * **Admin:** Needs to seamlessly authenticate to access all system features, including triggering model training.
-* **Security Administrator:** Needs assurance that all authentication attempts are reliably logged.
+* **Security Admin:** Needs assurance that all authentication attempts are reliably logged.
 
 **Preconditions:**
 
@@ -370,7 +364,7 @@ User goal.
 
 5. The system queries the database to validate the user, hashing the provided password and comparing it against the stored cryptographic hash.
 
-6. The system logs the successful authentication attempt, recording the timestamp and the user's email and username.
+6. The system logs the successful authentication attempt, recording the timestamp and the user's email and username to ELK.
 
 7. The system grants the user access to the app's protected functionalities based on their role.
 
@@ -386,7 +380,7 @@ User goal.
 
     * 4a1. The system catches the invalid input during validation.
 
-    * 4a2. The system logs the failed authentication attempt due to invalid input, recording the timestamp and the attempted email.
+    * 4a2. The system logs the failed authentication attempt due to invalid input, recording the timestamp and the attempted email to ELK.
 
     * 4a3. The system denies access and prompts the user again for their credentials.
 
@@ -396,7 +390,7 @@ User goal.
 
     * 5a2. The system gracefully rejects the request, ensuring no stack traces or internal implementation details are exposed to the user.
 
-    * 5a3. The system logs the failed authentication attempt, recording the timestamp, the attempted email, and the username (considering the email was found in the database).
+    * 5a3. The system logs the failed authentication attempt, recording the timestamp, the attempted email, and the username (considering the email was found in the database) to ELK.
     
     * 5a4. The system denies access and prompts the user again for their credentials.
 
@@ -404,51 +398,65 @@ User goal.
 
 ## UC7: Daily Prediction Generation
 
-**Primary Actor:** Authenticated User
+**Primary Actor:** User
 
-**Scope/Goal:** Allow the user to obtain electricity demand predictions (in MW) for a specific period (day or hour) using trained models, accompanied by graphical visualizations and future projections.
+**Scope/Goal:** Allow the user to obtain electricity demand predictions (in MW) for a specific period in days using trained models.
 
-**Level:** User Goal Level (Sea Level)
+**Level:** User Goal
 
 **Stakeholders and Interests**
 * **User:** Seeks fast, accurate predictions to plan consumption or analyze trends.
-* **System Administrator:** Ensures only registered and authenticated users access prediction functionality.
+* **System Admin:** Ensures only registered and authenticated users access prediction functionality.
 
 **Preconditions**
 1.  **Authentication:** The user must be successfully authenticated in the system.
-2.  **Model Availability:** Two distinct sets of models must be trained and persisted: one optimized for **daily** evaluation.
+2.  **Model Availability:** A daily prediction model must be trained, persisted and accessible for prediction.
 3.  **Data Infrastructure:** The `/data/processed/` directory must contain the necessary climate and energy features to support lag and rolling calculations.
 
 
 **Main Success Scenario**
 
-1.  The authenticated user provides a specific date (e.g., `YYYY-MM-DD`).
-2.  The system validates the input and retrieves the corresponding meteorological features.
-3.  The system utilizes the **daily-optimized model** to calculate the demand.
-4.  The system logs the action, including the username, timestamp, and input parameters.
-5.  The result is delivered to the user in under 1 second.
+1.  The user requests a daily prediction using the system's default parameters (3 historical days and 7 forecast days).
+2. The system retrieves the corresponding historical energy and climate data from the processed data directory.
+3.  The system utilizes the active daily model to calculate the demand prediction and dynamically identifies the top 2 variables (drivers) most heavily influencing this specific forecast.
+4.  The system logs the action, including the username, timestamp, and input parameters to ELK.
+5.  The system delivers the calculated prediction result to the user, including the forecast values and the top 2 drivers, via the dashboard described in UC10.
 
 **Extensions**
 
-* **1a. Unauthenticated User:**
-    * 1a1. The system denies access to the prediction interface.
-    * 1a2. The system logs the unauthorized attempt.
-* **2a. Missing Data:**
-    * 2a1. The system identifies the missing input and notifies the user that the prediction cannot be generated.
-    * 2a2. The system terminates the process gracefully without exposing internal implementation details.
-* **3a. Input Validation Failure:**
-    * 3a1. The system detects an incorrect date format or invalid characters.
-    * 3a2. The system returns a clear error message and prompts for corrected input.
+1. a. User requests a custom prediction timeframe:
+
+    * 1a1. The user selects a custom number of historical days (between 1 to 5) and/or forecast days (between 1 to 14).
+
+    * 1a2. The system proceeds to Step 2 using the newly specified parameters.
+
+3) a. Prediction model fails to execute for the first time after opening the application with default parameters values:
+
+    * 3a1. The system catches the execution error.
+
+    * 3a2. The system logs the failure details to ELK.
+
+    * 3a3. The system displays a generic error message to the user stating the prediction service is currently unavailable.
+
+3. b. Prediction model fails to execute after the user requests a new prediction with custom parameter values:
+
+    * 3b1. The system catches the execution error.
+
+    * 3b2. The system logs the failure detailst o ELK.
+
+    * 3b3. The system displays the error in a pop-up described in UC10 (extension 8).
+
+
 
 
 
 ## UC8: Hourly Prediction Generation
 
-**Primary Actor:** Authenticated User
+**Primary Actor:** User
 
-**Scope/Goal:** Allow the user to obtain electricity demand predictions (in MW) for a specific period (day or hour) using trained models, accompanied by graphical visualizations and future projections.
+**Scope/Goal:** Allow the user to obtain electricity demand predictions (in MW) for a specific period in hours using trained models.
 
-**Level:** User Goal Level (Sea Level)
+**Level:** User Goal
 
 **Stakeholders and Interests**
 * **User:** Seeks fast, accurate predictions to plan consumption or analyze trends.
@@ -456,87 +464,111 @@ User goal.
 
 **Preconditions**
 1.  **Authentication:** The user must be successfully authenticated in the system.
-2.  **Model Availability:** Two distinct sets of models must be trained and persisted: one optimized for **hourly** evaluation.
+2.  **Model Availability:** An hourly prediction model must be trained, persisted and accessible for prediction.
 3.  **Data Infrastructure:** The `/data/processed/` directory must contain the necessary climate and energy features to support lag and rolling calculations.
+
 
 **Main Success Scenario**
 
-1.  The authenticated user provides a specific date and hour (e.g., `YYYY-MM-DD HH:00`).
-2.  The system validates the input format.
-3.  The system utilizes the **hourly-optimized model** to generate a point prediction in Megawatts (MW).
-4.  The system logs the action, including the username, timestamp, and input parameters.
-5.  The result is delivered to the user in under 1 second.
+1.  The user requests an hourly prediction using the system's default parameters (3 historical hours and 12 forecast hours).
+2. The system retrieves the corresponding historical energy and climate data from the processed data directory.
+3.  The system utilizes the active hourly model to calculate the demand prediction and dynamically identifies the top 2 variables (drivers) most heavily influencing this specific forecast.
+4.  The system logs the action, including the username, timestamp, and input parameters to ELK.
+5.  The system delivers the calculated prediction result to the user, including the forecast values and the top 2 drivers, via the dashboard described in UC11.
 
 **Extensions**
 
-* **1a. Unauthenticated User:**
-    * 1a1. The system denies access to the prediction interface.
-    * 1a2. The system logs the unauthorized attempt.
-* **2a. Missing Data:**
-    * 2a1. The system identifies the missing input and notifies the user that the prediction cannot be generated.
-    * 2a2. The system terminates the process gracefully without exposing internal implementation details.
-* **3a. Input Validation Failure:**
-    * 3a1. The system detects an incorrect date format or invalid characters.
-    * 3a2. The system returns a clear error message and prompts for corrected input.
+1. a. User requests a custom prediction timeframe:
+
+    * 1a1. The user selects a custom number of historical hours (between 1 to 5) and/or forecast hours (between 1 to 24).
+
+    * 1a2. The system proceeds to Step 2 using the newly specified parameters.
+
+3) a. Prediction model fails to execute for the first time after opening the application with default parameters values:
+
+    * 3a1. The system catches the execution error.
+
+    * 3a2. The system logs the failure details to ELK.
+
+    * 3a3. The system displays a generic error message to the user stating the prediction service is currently unavailable.
+
+3. b. Prediction model fails to execute after the user requests a new prediction with custom parameter values:
+
+    * 3b1. The system catches the execution error.
+
+    * 3b2. The system logs the failure details to ELK.
+
+    * 3b3. The system displays the error in a pop-up described in UC11 (extension 8).
 
 
 
 
-## UC9: Admin Analytics Dashboard
-**Primary Actor**:
-Admin
+## UC9: Administrative Model Management
 
-**Scope/Goal**: The goal is to present a dashboard to an admin user, consolidating results from multiple background processes (e.g: prediction) into a single location to facilitate data queries and the visualization of key interests.
+**Primary Actor:** Administrator (admin)
 
-**Level**:
-User Goal
+**Scope/Goal:** To allow the Administrator to view all available machine learning models in the database, evaluate their performance metrics, and select which specific models will be active and utilized by the system for generating daily and hourly predictions.
 
-**Stakeholders and Interests**:
-* **Data cientist/engineer**: Wants to quickly consult information through a simple and intuitive interface, without running manual scripts.
+**Level:** User Goal
 
-* **Security administrator**: Needs to ensure that only users who passed the authentication can view the data.
+**Stakeholders and Interests:**
 
-* **Admin**: Wants to ensure that the complex logic of the backend is presented clearly and correctly to the end-user.
+* **Administrator:** Wants a reliable and data-driven options to compare model accuracy and assign active models without requiring code changes or deployments.
 
-**Preconditions**:
-1. The admin has successfully logged into the system.
+* **Data Scientists:** Want the models they train, evaluate, and push to the database to be visible and selectable for production use.
 
-2. The entire data pipeline, from automated ingestion and cleaning to the predictive model execution, is fully functional.
+* **Regular User:** Relies on the system to seamlessly use the most accurate, Admin-approved models when they request their predictions.
 
-**Main Success Scenario**:
-1. The use case starts when the authorized admin accesses the Dashboard section.
+**Preconditions:**
 
-2. The system presents a unified view containing information about the data and system status, such as:
+1. The user has successfully authenticated into the application and has an "Admin" role.
 
-    - Climate-Energy correlations and relevant features: Visualizations of how weather variables impacted past demand.
+2. The user has navigated to the "Model Management" section.
 
-    - Forecast summaries: Expected energy peaks and trends for the upcoming period.
+3. Evaluated prediction models, along with their baseline training metrics (e.g., MAE, RMSE, R-squared), are stored and available in the database.
 
-    - Last query/request history: a dedicated visualization/section showing the parameters (date range,variables) of the most recent query performed by the user.
+**Main Success Scenario:**
 
-3. The system provides filtering and query tools, allowing the admin to isolate specific dates or climate conditions.
+1. The Administrator requests access to the Model Management.
 
-4. The admin reviews the integrated information to gain insights into the energy-climate relationship.
+2. The system fetches and displays a list of all available daily and hourly prediction models (the winning algorithms saved from UC4) from the database.
 
-5. The system logs the execution time for the operation chosen by the admin.
+3. The system presents the models in a comparative view (e.g., a table or by row) for each hourly and daily model-types, displaying their respective performance metrics (MAE, RMSE, R-squared) side-by-side.
+
+4. The system visually indicates which models are currently set as "active" for daily and hourly predictions.
+
+5. The Administrator reviews the metrics to determine the most accurate models.
+
+6. The Administrator selects a newly desired model from the list to be the active model for daily and/or hourly predictions.
+
+7. The Administrator saves/submits the changes.
+
+8. The system updates the global configuration in the database.
+
+9. The system applies the selected models to all future prediction requests across the application.
+
+10. The system displays a success confirmation pop-up message to the Administrator and the visual active models modifications.
+
+11. The System logs every event into ELK.
 
 **Extensions:**
 
-2.  a) No previous query history found:
+2. a. The system encounters an error connecting to the database while fetching models:
 
-    * 2a1. The system displays a "no history found" message.
+    * 2a1. The system catches the error and aborts the loading process.
 
-    * 2a2. The system suggests a default visualization (e.g., the last 24 hours).
+    * 2a2. The system displays an error message notifying the Administrator that the model list cannot be loaded.
 
-    b) No data available to display:
-    
-    * 2b1. The system informs the admin that the pipeline needs to be executed before results can be shown.
+6) a. The Administrator wants to update only the daily or hourly prediction model:
 
-    * 2b2. The system may provide a button to trigger the data update process considering the admin has the required permissions.
+    * 6a1. The Administrator changes the daily or hourly model, leaves the other model selection unchanged, and proceeds to Step 7.
 
-3.  a) Incompatibility with current data:
 
-    * 3a1. The last query used a date range that isn´t available in the memory or cache: the system notifies the admin and suggests the nearest available period.
+8. a. The system encounters an error saving the configuration to the database:
+
+    * 8a1. The system aborts the update to ensure no active models are broken (rollback).
+
+    * 8a2. The system displays an error message pop-up notifying the Administrator that the changes were not saved.
 
 
 
@@ -546,47 +578,40 @@ User Goal
 
 
 **Scope/Goal:**
-Allow the user to select a specific date to obtain the forecast of total electricity demand for that day, as well as view the demand projection for the following days and the main factors associated with the forecast.
+Allow the user to access a dashboard to view the time series of the daily electricity demand prediction, comparing the recent actual data with the upcoming forecast, and identifying the main variables driving the trend.
 
 
 **Level:** User Goal
 
 **Stakeholders and Interests:**
-- User: Wants to check the electricity demand forecast for a specific day and the following days, for planning or analysis purposes.
-- Administrador: Wants to ensure that the system correctly calculates the daily forecast and future projections.
+- User: Wants to check the daily electricity demand forecast and adjust the timeframe for planning or analysis purposes.
+- Administrator: Wants to ensure that the dashboard loads efficiently and that prediction requests do not overload the backend.
 
 
 **Preconditions:**
 1. The user must already be authenticated.
-2. The daily regression model is trained and available.
-3. The dashboard is accessible.
+2. The daily prediction (3 days actual / 7 days forecast default) is available.
 
 
 **Main Success Scenario:**
-1. The user accesses the daily dashboard page.
-2. The system has a component that allows the user to select a date.
-3. The user selects the desired date.
-4. The system updates the dashboard and displays the projected value prominently.
-5. The system displays visual indicators with the main variables associated with the forecast for that day.
-6. The system displays a graph with future projections, showing the demand forecast for the next X days from the selected date.
-7. The user can interact with the projection chart to view detailed values ​​for each day.
+1. The user accesses the daily prediction dashboard page.
+2. The system uses the default electricity demand prediction (last 3 days actual, next 7 days forecast).
+3. The system renders a time series chart displaying the continuous trend from actual values to predicted values.
+4. The system displays visual indicators with the main 2 variables associated with the forecast.
+5. The user hovers or interacts with the chart to view the precise demand values for specific individual days.
+6. The user adjusts the parameters for the chart, changing the historical context (between 1 to 5 days) and the forecast horizon (between 1 to 14 days).
+7. The user asks for a new prediction based on the new parameters.
+8. The system retrieves the recalculated prediction and smoothly updates the chart and top 2 drivers.
+9. The System logs every event into ELK.
 
 
 **Extensions:**
 
-3.  a) Selecting a date:
-    
-    * 3a1. The user selects a past date, the system informs them that there are actual values ​​available for that day.
+8) a. The system fails to retrieve the recalculated prediction (e.g., network error or backend failure):
 
-4.  a) Data Visualization:
-    
-    * 4a1.When the selected date is earlier than the current date, the dashboard displays both the actual value and the projected value for comparison.
+    * 8a1. The system displays a brief error message pop-up notifying the user that the custom timeframe prediction could not be loaded.
 
-6)  a) Future Projection Failure:
-    
-    * 6a1. The system is able to calculate the forecast for the selected day but cannot generate the projection for the following days; the system displays a message on the graph indicating that it was not possible to load the future projection.
-
-    * 6a2. The system detects potentially anomalous or unrealistic projection values ​​and displays a warning indicating that the projection may be uncertain for that period.
+    * 8a2. The system retains the currently displayed chart data without breaking the UI.
 
 
 
@@ -596,42 +621,40 @@ Allow the user to select a specific date to obtain the forecast of total electri
 
 
 **Scope/Goal:**
-Allow the user to select a specific date and time to obtain the electricity demand forecast for that period, as well as generate projections for the following hours, presenting the results visually on the dashboard.
+Allow the user to access a dashboard to view the time series of the hourly electricity demand prediction, comparing the recent actual data with the upcoming forecast, and identifying the main variables driving the trend.
 
 
 **Level:** User Goal
 
 **Stakeholders and Interests:**
-- User: Wants to get forecasts for the selected specific time as well as for the following hours, and view the results clearly.
-- Administrador: Wants to ensure that the hourly forecast model works correctly and that the generated predictions are reliable.
+- User: Wants to check the hourly electricity demand forecast and adjust the timeframe for planning or analysis purposes.
+- Administrator: Wants to ensure that the dashboard loads efficiently and that prediction requests do not overload the backend.
 
 
 **Preconditions:**
 1. The user must already be authenticated.
-2. The hourly forecast model is trained and available.
-3. The dashboard is accessible.
+2. The hourly prediction (3 hours actual / 12 hours forecast default) is available.
 
 
 **Main Success Scenario:**
-1. The user accesses the hourly dashboard.
-2. The system presents a component to select date and time.
-3. The user selects the desired date and time.
-4. The system displays the predicted value as a visual indicator on the dashboard.
-5. The system shows the projection for the next X hours in a chart
-6. The user can interact with the projection chart to view detailed values ​​for each hour.
+1. The user accesses the hourly prediction dashboard page.
+2. The system uses the default electricity demand prediction (last 3 hours actual, next 12 hours forecast).
+3. The system renders a time series chart displaying the continuous trend from actual values to predicted values.
+4. The system displays visual indicators with the main 2 variables associated with the forecast.
+5. The user hovers or interacts with the chart to view the precise demand values for specific individual hours.
+6. The user adjusts the parameters for the chart, changing the historical context (between 1 to 5 hours) and the forecast horizon (between 1 to 24 hours).
+7. The user asks for a new prediction based on the new parameters.
+8. The system retrieves the recalculated prediction and smoothly updates the chart and top 2 drivers.
+9. The System logs every event into ELK.
+
 
 **Extensions:**
 
-3. a) Selected Hour:
-    * 3a1. The user selected a time prior to the current time, and the system indicates that actual values are available for that time/day.
+8) a. The system fails to retrieve the recalculated prediction (e.g., network error or backend failure):
 
-4. a) Data visualization:
-    * 4a1. The user selects a time prior to the current time, the system displays both the actual value and the forecast for that time.
+    * 8a1. The system displays a brief error message pop-up notifying the user that the custom timeframe prediction could not be loaded.
 
-5)  a) Future Projection Failure:
-    * 5a1. The system is unable to display the forecast for the following hours and shows a message indicating that the future projection cannot be loaded.
-    
-    * 5a2. If the projected values ​​for the next few hours appear anomalous, the system displays a warning indicating that the forecast may be uncertain for that period.
+    * 8a2. The system retains the currently displayed chart data without breaking the UI.
 
 
 
@@ -661,78 +684,22 @@ Allow the user to select a specific date and time to obtain the electricity dema
 
 2. The system verifies the user's admin privileges.
 
-3. The system presents the logging dashboard (powered by Kibana/ELK).
+3. The system generates a secure, authenticated session or token for the ELK environment.
 
-4. The Administrator inputs specific search queries, time ranges, or filters (e.g., filtering for "Error" severity or a specific User ID).
+4. The system redirects the Administrator to the Kibana dashboard.
 
-5. The system queries the Elasticsearch database.
+5. The Administrator interacts directly with the Kibana interface to input search queries, time ranges, and filters.
 
-6. The system retrieves and displays the matching log entries and associated visualizations to the Administrator.
-
-**Extensions:**
-
-5. a) The ELK stack service is unreachable or timing out:
-
-    - 5a1. The system aborts the query.
-
-    - 5a2. The system displays an error message notifying the Administrator that the logging service is temporarily unavailable.
-
-6. a) The Administrator's query returns no matching logs:
-
-    - 6a1. The system displays a standard "No logs found for the selected criteria" message.
-
-
-
-
-## UC13: Administrative Controls
-
-**Primary Actor:** Administrator (admin)
-
-**Scope/Goal:** To allow the Administrator to view all available machine learning models in the database and select which specific models will be active and utilized by the system for generating daily and hourly predictions for all users.
-
-**Level:** User Goal
-
-**Stakeholders and Interests:**
-
-* **Administrator:** Wants a reliable and intuitive interface to manage, switch, and assign active models without requiring code changes or deployments.
-
-* **Data Scientists:** Want the models they train, evaluate, and push to the database to be visible and selectable for production use.
-
-* **Regular User:** Relies on the system to seamlessly use the most accurate, Admin-approved models when they request their predictions.
-
-**Preconditions:**
-
-1. The user has successfully authenticated into the application and has an "Admin" role.
-
-2. The user has navigated to the "Commands" section.
-
-3. Evaluated prediction models are stored and available in the database.
-
-**Main Success Scenario:**
-
-1. The system fetches and displays a list of all available daily and hourly prediction models from the database.
-
-2. The system visually indicates which models are currently set as "active" for daily and hourly predictions.
-
-3. The Administrator selects a newly desired model from the list to be the active model for daily or/and hourly predictions.
-
-4. The Administrator saves/submits the changes.
-
-5. The system updates the global configuration in the database.
-
-6. The system applies the selected models to all future prediction requests across the application.
-
-7. The system displays a success confirmation message to the Administrator.
+6. Kibana retrieves and displays the matching log entries and visualizations.
 
 **Extensions:**
 
-3. a) The Administrator wants to update only the daily or hourly prediction model:
+4. a) The ELK stack service is unreachable during redirection:
 
-    * 3a1. The Administrator changes the daily or hourly model, leaves the hourly or daily model selection unchanged, respectively, and proceeds to step 4.
+    - 4a1. The system detects a timeout or connection refusal when attempting to route to Kibana.
 
+    - 4a2. The system aborts the redirection.
 
-5) a) The system encounters an error connecting to the database or saving the configuration:
+    - 4a3. The system displays an error message within the app notifying the Administrator that the logging service is temporarily offline.
 
-    * 5a1. The system aborts the update to ensure no models are broken (roll-back).
-
-    * 5a2. The system displays an error message notifying the Administrator that the changes were not saved.
+**Note:** Kibana natively displays its own "No results found" state.

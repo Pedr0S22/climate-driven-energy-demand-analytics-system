@@ -2,81 +2,184 @@
 
 This document captures the low-level system design decisions, technical stack, database schemas, and API contracts for the project. It serves as the living technical blueprint for the development team.
 
+## System Desing Index
+
+### 1. Technology Stack
+* #### 1.1. Backend & Machine Learning Stack
+* #### 1.2. Frontend & Visualization Stack
+* #### 1.3. Infrastructure & Telemetry Stack
+
+### 2. Data Pipeline Design
+* #### 2.1. Ingestion Module
+* #### 2.2. Cleaning & Temporal Alignment Module
+* #### 2.3. Feature Engineering Module
+* #### 2.4. Training & Evaluation
+
+### 3. Core Backend Services Design
+* #### 3.1.Authentication/Registration & Security Services
+* #### 3.2. Prediction Inference Service
+* #### 3.3. Administrator & Management Services
+* #### 3.4. Live Data Scheduler Service
+
+### 4. Databases & Data Storage Design
+* #### 4.1. Relational Database - PostgreSQL
+* #### 4.2. File Storage System
+* #### 4.3. Log Storage ELK
+
+### 5. Frontend UI & Dashboard Design
+* #### 5.1. Application State Management
+* #### 5.2. View Layouts & Navigation
+* #### 5.3. Data Visualization
+
+### 6. Telemetry & Observability Design
+* #### 6.1. Application Log Formatting
+* #### 6.2. Logstash Parsing Rules
+
+
 ## 1. Technology Stack
 
+The technology stack used in the project is described below. Also FILE X and FILE Y ....
+
+### 1.1. Backend & Machine Learning Stack
+
 * **Backend Framework:** Python with FastAPI
-* **Data Manipulation & ML:** Pandas, NumPy, SciPy, Scikit-Learn, Optuna
 * **Database Engine:** PostgreSQL; [`TODO`] Files for ML models; ELK stack for logging.
 * **Authentication/Security:** JWT for sessions, bcrypt for password hashing.
-* **Testing Framework:** pytest framework.
+* **Data Manipulation & ML:** Pandas, NumPy, SciPy, Scikit-Learn, Optuna
+* **Testing Framework:** pytest.
+
+### 1.2. Frontend & Visualization Stack
+
 * **Frontend/UI:**  Python PyQt6.
 * **Dashboards:** D3.js integrated with PyQt6.
 
----
+### 1.3. Infrastructure & Telemetry Stack
 
-## 2. Data Pipeline Internals
+* **Monitoring:** [`TODO`] ELK
+
+
+## 2. Data Pipeline Design
 
 Details on the specific classes and scripts executing the machine learning pipeline.
 
 ### 2.1. Ingestion Module
-* **Target APIs:** ENTSO-E Transparency Platform (Energy Demand) & Copernicus Climate Data Store ERA5-Land (Meteorological Data).
+
+The primary objective of Ingestion Module is to reliably, securely, and reproducibly acquire external raw data and safely land it into the system's storage without altering its original state.
+
+* **Target APIs Data Extraction:** ENTSO-E Transparency Platform (Energy Demand) & Copernicus Climate Data Store ERA5-Land (Meteorological Data).
 * **Orchestration:** Driven by a master `data_retrieval(start_date, end_date, country_code)` function that sequentially triggers energy data fetching, weather data fetching, and finally, cloud backup.
-* **Core Logic & Mechanisms:**
-  - **Input Validation & Idempotency:** The module strictly validates that `start_date` is not strictly after `end_date`. It features an idempotency check: before querying external APIs, the script checks if the target CSV already exists in the local directories (`/data/raw/weather/` and `/data/raw/energy/`). If it does, the expensive API call is skipped to save time and quota.
-  - **Resilience & Exponential Backoff:** Both fetching mechanisms are wrapped in a robust retry loop (configured globally via `MAX_RETRIES = 3`). If an API connection fails, times out, or returns a corrupted file, the script applies an exponential backoff (`2^attempt` seconds) before retrying, preventing rapid-fire failures and handling temporary network drops gracefully.
+
+### 2.1.1. Core Logic & Mechanisms:
+
+  - **Input Validation & Idempotency:** The module strictly validates that `start_date` is not strictly after `end_date`. It features an idempotency check: before querying external APIs, the script checks if the target CSV already exists in the local directories (`/data/raw/weather/` and `/data/raw/energy/`).
+    - **Engineering Why:** API quotas are restricted and calls are computationally/network expensive; skipping redundant fetches ensures resource efficiency and faster development cycles.
+
+  - **Resilience & Exponential Backoff:** Both fetching mechanisms are wrapped in a robust retry loop (configured globally via `MAX_RETRIES = 3`).
+    - **Engineering Why:** External APIs frequently experience transient outages or rate-limiting; exponential backoff (`2^attempt` seconds) allows the remote server to recover while preventing "thundering herd" failures from our system.
+
   - **ENTSO-E (Energy Data):**
     - Utilizes the `EntsoePandasClient` authenticated via an API key loaded from a `.env` file.
     - Automatically localizes timestamps to the `Europe/Madrid` timezone.
-    - Applies a mathematically precise `+ 1 day` timedelta to the user-supplied `end_date` to ensure the API captures the absolute final hours of the requested boundary.
-    - Renames the output column to `Load_MW` and saves the raw output as a CSV specifically tagged with the target country code (e.g., `ES` for Spain).
+    - Applies a mathematically precise `+ 1 day` timedelta to the user-supplied `end_date`.
+    - **Engineering Why:** Due to timezone offsets (UTC vs Europe/Madrid) and potential sampling overlaps at the end of the day, fetching an extra 24 hours ensures that the absolute final hours of the requested boundary are captured without truncation.
+
   - **Copernicus ERA5-Land (Weather Data):**
-    - Uses the `cdsapi.Client()` to fetch 11 specific meteorological variables (e.g., 2m temperature, skin temperature, 10m wind components, solar radiation) for a fixed geographical bounding box (longitude: -3.7, latitude: 40.4).
-    - The CDS API natively returns data packaged in a `.zip` archive. The script safely downloads this to a temporary local path (`temp_zip_path`), unpacks it into memory, renames the inner contents to match the project's standardized naming convention, and automatically purges the `.zip` residue.
-    - **Edge Case Handling:** Explicitly catches `zipfile.BadZipFile` exceptions. The Copernicus API is known to return plain-text HTML/JSON error messages (like queue timeouts or quota limits) masked as an HTTP 200 ZIP download. The script safely traps this, reads the error snippet for the log, and falls back to the retry mechanism.
+    - Uses the `cdsapi.Client()` to fetch 11 specific meteorological variables for a fixed geographical bounding box.
+    - Handles temporary ZIP archives, memory-efficient unpacking, and standardized renaming.
+    - **Edge Case Handling:** Explicitly catches `zipfile.BadZipFile`.
+    - **Engineering Why:** The Copernicus API sometimes returns plain-text HTML error messages (e.g., "Queue full") masked as an HTTP 200 ZIP download. Catching this allows the system to log the actual server error and trigger a retry rather than crashing on a corrupted ZIP parse.
+
   - **Data Backup (`gdrive_sync.py`):**
     - Once local CSVs are securely written, the module triggers `backup_project_data()`.
     - Authenticates with Google Drive via OAuth 2.0 (`credentials.json` and `token.json`).
     - Scans both local raw directories and queries the target Google Drive folders (`WEATHER_DRIVE_FOLDER_ID` and `ENERGY_DRIVE_FOLDER_ID`).
     - Prevents redundant uploads by verifying if the exact file name already exists in the destination Drive folder before initiating the chunked, resumable media upload.
-* **Observability:** All stages execute using Python's standard `logging` library (INFO, WARNING, ERROR levels) rather than raw print statements. This ensures execution flow and exceptions (complete with stack traces) can be audited effectively.
+    - **Engineering Why:** Redundancy is critical for research reproducibility. By syncing to Google Drive, the team maintains a shared, persistent source of truth for raw data that survives local environment resets.
 
-### 2.2. Cleaning Module
-* **Target:** Reads from `/data/raw/`, outputs to `/data/processed/`.
-* **Logic:** [`TODO`: Define exact Pandas functions used. e.g., df.interpolate() for missing values, timezone localization logic].
+
+### 2.2. Cleaning & Temporal Alignment Module
+
+The primary objective of the Cleaning & Temporal Alignment Module is to transform raw, heterogeneous energy and meteorological data into a synchronized, clean, and hourly-aggregated dataset ready for feature engineering. It bridges the gap between raw API outputs (often containing gaps, outliers, or mixed frequencies) and the strict requirements of time-series modeling.
+
+*   **Target:** Reads from `/data/raw/energy/` and `/data/raw/weather/`, outputs to `/data/processed/`.
+*   **Core Logic & Mechanisms:**
+
+    - **Energy Data Processing:**
+        - **Frequency Detection & Alignment:** Automatically identifies 1h, 15-min, or mixed sampling. Standardizes the grid by filling missing timestamps.
+        - **Intelligent Imputation:** Missing `Load_MW` values are handled based on the gap size:
+            - **Single-point gaps:** Linear interpolation (`df.interpolate(method="linear")`).
+            - **Multi-point gaps:** Mean of the 6 preceding valid observations.
+            - **Engineering Why:** Linear interpolation handles isolated missing points smoothly. For larger gaps, the mean of the last 6 observations (1.5 hours) provides a "local steady-state" estimate that avoids creating artificial trends (which interpolation would do) or introducing future-leakage (which backfilling would do).
+        - **Max-Aggregation:** Collapses 15-minute intervals into hourly grains using the **maximum** load value.
+          - **Engineering Why:** In energy demand forecasting, resource planning is driven by **peak load**. Averaging 15-min peaks would smooth out the highest demand signals, leading to an under-estimation of system stress.
+
+    - **Weather Data Normalization:**
+        - **Unit Conversion:** Standardizes raw ERA5-Land units (e.g., Kelvin to Celsius, Pa to hPa, J/m² to W/m²).
+          - **Engineering Why:** Standardizes features to physically intuitive scales and numerically stable ranges, facilitating faster model convergence and better interpretability.
+        - **Outlier Detection (Dual-Pass):** IQR filtering (1.5 * IQR) combined with hard domain-specific boundaries.
+          - **Engineering Why:** Statistical IQR is sensitive to extremes. Physical limits (e.g., temperature between -40°C and 55°C) ensure that we don't discard legitimate extreme weather events (like heatwaves) unless they are truly physically impossible.
+        - **Variable-Specific Imputation:**
+            - *Thermal/Radiation:* Mean of 4 preceding and 2 subsequent values.
+            - *Wind/Pressure/Soil:* Rolling mean of 3 to 6 preceding observations.
+            - *Solar:* Forced to zero during night hours (22h-04h); daytime gaps use local window means.
+              - **Engineering Why:** Solar sensors often report noisy non-zero values at night. Hard-coding zero reflects physical reality and removes noise.
+        - **Mean-Aggregation:** 15-minute weather readings are averaged to produce representative hourly values.
+          - **Engineering Why:** Unlike energy demand (peak-driven), weather impacts on energy are cumulative/ambient. A mean temperature better represents the sustained thermal load on the grid.
+
+    - **Dataset Synchronization:**
+        - **Inner Join logic:** The module performs a strict `inner join` on the standardized `datetime` column (UTC).
+          - **Engineering Why:** The machine learning model requires a complete feature vector to make a prediction. Observations where one source is missing are unusable for training and would introduce bias if naively filled.
+        - **Output Generation:** Persists the final synchronized dataframe to `/data/processed/` as `dados_treino_completos.csv` or `dados_predicao.csv`.
+
 
 ### 2.3. Feature Engineering Module
 * **Target:** Reads from `/data/processed/`, outputs to `/data/feat-engineering/`.
 * **Logic:** [`TODO`: Define the exact formulas/functions for the rolling window features and lagged features].
 
+
 ### 2.4. Training & Evaluation Module
 * **Target:** Reads from `/data/feat-engineering/`, saves to ModelDB.
 * **Logic:** [`TODO`Uses TimeSeriesSplit (No random shuffling allowed). Evaluates using MAE, RMSE, R2. Saves output as a serialized model file...]
 
----
 
-## 3. API Contracts
 
-This section defines the RESTful endpoints the Interface Layer uses to communicate with the Backend Services.
+## 3. Core Backend Services Design
 
-### 3.1. Authentication Layer
-* **`POST /api/auth/register`**
-  * **Payload:** `{"username": "...", "email": "...", "password": "..."}`
+### 3.1.Authentication/Registration & Security Services
+[`TODO`] - (JWT lifecycle, Bcrypt salting details)
+
+#### 3.1.1 API Contrancts for Authentication/Registration [`TODO`]
+
+* **Registration: `POST /api/auth/register`**
+
+  * **Payload:** `{"username": "...", "email": "...", "password": "...", timestamp: "xxx", role: "ROLE_USER"}`
   * **Response:** `201 Created` or `400 Bad Request` (Validation failed).
-* **`POST /api/auth/login`**
-  * **Payload:** `{"email": "...", "password": "..."}`
-  * **Response:** `200 OK` with `{"access_token": "...", "role": "..."}` or `401 Unauthorized` (Generic error).
 
-### 3.2. Prediction Interface
-* **`GET /api/predict/daily`**
+* **Authentication: `POST /api/auth/login`**
+  * **Payload:** `{"email": "...", "password": "...", timestamp: "xxx"}`
+  * **Response:** `200 OK` with `{"status": "access_token": "...", "role": "...",}` or `401 Unauthorized` (Generic error).
+
+### 3.2. Prediction Inference Service
+[`TODO`] - (How the backend loads model binaries into memory without blocking API threads)
+
+### 3.2.1 API Contracts for Prediction Service [`TODO`]
+
+* **Preditction using daily model: `GET /api/predict/daily`**
   * **Headers:** `Authorization: Bearer <token>`
   * **Query Params:** `?date=YYYY-MM-DD`
   * **Response:** `200 OK` with `{"date": "...", "predicted_mw": 4500.5, "features_used": {...}}`
-* **`GET /api/predict/hourly`**
+
+* **Prediction using hourly model:`GET /api/predict/hourly`**
   * **Headers:** `Authorization: Bearer <token>`
   * **Query Params:** `?datetime=YYYY-MM-DDTHH:00`
   * **Response:** `200 OK` with `{"datetime": "...", "predicted_mw": 4200.1, "features_used": {...}}`
 
-### 3.3. Admin Controls
+
+### 3.3. Administrator & Management Services - [`TODO`]
+
+
+### 3.3.1 API Contrancts for Admin/Management Service [`TODO`]
+
 * **`GET /api/admin/models`**
   * **Headers:** `Authorization: Bearer <token>` (Admin Only)
   * **Response:** List of all trained models and their metrics.
@@ -85,13 +188,21 @@ This section defines the RESTful endpoints the Interface Layer uses to communica
   * **Payload:** `{"model_id": "..."}`
   * **Response:** `200 OK` (Updates global configuration).
 
----
+### 3.4. Live Data Scheduler Service
+[`TODO`] - (Technical implementation: What library runs it? How does it avoid race conditions with the database?)
 
-## 4. Relational Database Schemas
+* **Target:** Runs asynchronously behind the scenes to fetch up-to-date data for the live prediction requests.
+* **Logic:** A dedicated background thread or task scheduler periodically triggers a lightweight version of the Ingestion, Cleaning and Feature Engineering pipeline modules. It fetches only the most recent hours/days of data required (that the systems does not have) to satisfy the rolling windows and lag features needed for real-time inference, ensuring the models always have fresh inputs without requiring manual intervention.
+
+
+## 4. Databases & Data Storage Design
+
+### 4.1. Relational Database - PostgreSQL
+[`TODO`] - EDIT
 
 The system relies on three logical databases/tables: `UserDB`, `ModelDB`, and `PredDB`, as defined in the Architecture.
 
-### 4.1. `users` Table
+### Table `users`
 Stores user credentials and roles. Passwords must be hashed, with a minimum length of 8 characters and maximum of 20 characters enforced before insertion.
 
 | Column Name | Data Type | Constraints | Description |
@@ -103,7 +214,7 @@ Stores user credentials and roles. Passwords must be hashed, with a minimum leng
 | `role` | String / Enum | Default: 'user' | Defines access level ('user' or 'admin'). |
 | `created_at` | Timestamp | Auto-generated| Account creation time. |
 
-### 4.2. `models` Table
+### Table `models`
 Stores metadata for trained models available in the system.
 
 | Column Name | Data Type | Constraints | Description |
@@ -116,8 +227,8 @@ Stores metadata for trained models available in the system.
 | `is_active` | Boolean | Default: False | Admin flag denoting if this is the active prod model. |
 | `created_at` | Timestamp | Auto-generated| When the model was trained. |
 
-```
-### 4.3. `predictions_log` Table (OR ELK)
+
+### Table `predictions`
 Logs user actions and historical predictions.
 
 | Column Name | Data Type | Constraints | Description |
@@ -128,4 +239,31 @@ Logs user actions and historical predictions.
 | `target_datetime` | Timestamp | Not Null | The date/time being predicted. |
 | `predicted_mw` | Float | Not Null | The predicted electricity load. |
 | `executed_at` | Timestamp | Auto-generated| When the request was made. |
-```
+
+[`TODO`]
+
+### 4.2. File Storage System
+[`TODO`] - (Directory structures for raw/processed data, and .pkl/joblib model binary storage rules)
+
+### 4.3. Log Storage ELK
+[`TODO`] - (What indices you are using for logs if any!!)
+
+
+## 5. Frontend UI & Dashboard Design
+
+### 5.1. Application State Management
+[`TODO`] - (How the app remembers the user's JWT and current active view)
+
+### 5.2. View Layouts & Navigation
+[`TODO`] - (Main Dashboard, Admin Panel, Prediction Views)
+
+### 5.3. Data Visualization
+[`TODO`] - (D3.js Integration) (How the Python backend passes JSON data to the D3.js components embedded in PyQt6)
+
+### 6. Telemetry & Observability Design
+
+### 6.1. Application Log Formatting
+[`TODO`] - (Standardized JSON log payloads for FastAPI)
+
+### 6.2. Logstash Parsing Rules
+[`TODO`] - (How ELK ingests the Python logs)
