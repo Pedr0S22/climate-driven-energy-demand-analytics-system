@@ -66,34 +66,70 @@ Details on the specific classes and scripts executing the machine learning pipel
 
 The primary objective of Ingestion Module is to reliably, securely, and reproducibly acquire external raw data and safely land it into the system's storage without altering its original state.
 
-* **Target APIs Data Extractiion:** ENTSO-E Transparency Platform (Energy Demand) & Copernicus Climate Data Store ERA5-Land (Meteorological Data).
+* **Target APIs Data Extraction:** ENTSO-E Transparency Platform (Energy Demand) & Copernicus Climate Data Store ERA5-Land (Meteorological Data).
 * **Orchestration:** Driven by a master `data_retrieval(start_date, end_date, country_code)` function that sequentially triggers energy data fetching, weather data fetching, and finally, cloud backup.
+
 ### 2.1.1. Core Logic & Mechanisms:
 
-  - **Input Validation & Idempotency:** The module strictly validates that `start_date` is not strictly after `end_date`. It features an idempotency check: before querying external APIs, the script checks if the target CSV already exists in the local directories (`/data/raw/weather/` and `/data/raw/energy/`). If it does, the expensive API call is skipped to save time and quota.
+  - **Input Validation & Idempotency:** The module strictly validates that `start_date` is not strictly after `end_date`. It features an idempotency check: before querying external APIs, the script checks if the target CSV already exists in the local directories (`/data/raw/weather/` and `/data/raw/energy/`).
+    - **Engineering Why:** API quotas are restricted and calls are computationally/network expensive; skipping redundant fetches ensures resource efficiency and faster development cycles.
 
-  - **Resilience & Exponential Backoff:** Both fetching mechanisms are wrapped in a robust retry loop (configured globally via `MAX_RETRIES = 3`). If an API connection fails, times out, or returns a corrupted file, the script applies an exponential backoff (`2^attempt` seconds) before retrying, preventing rapid-fire failures and handling temporary network drops gracefully.
+  - **Resilience & Exponential Backoff:** Both fetching mechanisms are wrapped in a robust retry loop (configured globally via `MAX_RETRIES = 3`).
+    - **Engineering Why:** External APIs frequently experience transient outages or rate-limiting; exponential backoff (`2^attempt` seconds) allows the remote server to recover while preventing "thundering herd" failures from our system.
 
   - **ENTSO-E (Energy Data):**
     - Utilizes the `EntsoePandasClient` authenticated via an API key loaded from a `.env` file.
     - Automatically localizes timestamps to the `Europe/Madrid` timezone.
-    - Applies a mathematically precise `+ 1 day` timedelta to the user-supplied `end_date` to ensure the API captures the absolute final hours of the requested boundary.
-    - Renames the output column to `Load_MW` and saves the raw output as a CSV specifically tagged with the target country code (for now, `ES` for Spain).
+    - Applies a mathematically precise `+ 1 day` timedelta to the user-supplied `end_date`.
+    - **Engineering Why:** Due to timezone offsets (UTC vs Europe/Madrid) and potential sampling overlaps at the end of the day, fetching an extra 24 hours ensures that the absolute final hours of the requested boundary are captured without truncation.
 
   - **Copernicus ERA5-Land (Weather Data):**
-    - Uses the `cdsapi.Client()` to fetch 11 specific meteorological variables (e.g., 2m temperature, skin temperature, 10m wind components, solar radiation) for a fixed geographical bounding box (longitude: -3.7, latitude: 40.4).
-    - The CDS API natively returns data packaged in a `.zip` archive. The script safely downloads this to a temporary local path (`temp_zip_path`), unpacks it into memory, renames the inner contents to match the project's standardized naming convention, and automatically purges the `.zip` residue.
-    - **Edge Case Handling:** Explicitly catches `zipfile.BadZipFile` exceptions. The Copernicus API is known to return plain-text HTML/JSON error messages (like queue timeouts or quota limits) masked as an HTTP 200 ZIP download. The script safely traps this, reads the error snippet for the log, and falls back to the retry mechanism.
+    - Uses the `cdsapi.Client()` to fetch 11 specific meteorological variables for a fixed geographical bounding box.
+    - Handles temporary ZIP archives, memory-efficient unpacking, and standardized renaming.
+    - **Edge Case Handling:** Explicitly catches `zipfile.BadZipFile`.
+    - **Engineering Why:** The Copernicus API sometimes returns plain-text HTML error messages (e.g., "Queue full") masked as an HTTP 200 ZIP download. Catching this allows the system to log the actual server error and trigger a retry rather than crashing on a corrupted ZIP parse.
+
   - **Data Backup (`gdrive_sync.py`):**
     - Once local CSVs are securely written, the module triggers `backup_project_data()`.
     - Authenticates with Google Drive via OAuth 2.0 (`credentials.json` and `token.json`).
     - Scans both local raw directories and queries the target Google Drive folders (`WEATHER_DRIVE_FOLDER_ID` and `ENERGY_DRIVE_FOLDER_ID`).
     - Prevents redundant uploads by verifying if the exact file name already exists in the destination Drive folder before initiating the chunked, resumable media upload.
+    - **Engineering Why:** Redundancy is critical for research reproducibility. By syncing to Google Drive, the team maintains a shared, persistent source of truth for raw data that survives local environment resets.
 
 
 ### 2.2. Cleaning & Temporal Alignment Module
-* **Target:** Reads from `/data/raw/`, outputs to `/data/processed/`.
-* **Logic:** [`TODO`: Define exact Pandas functions used. e.g., df.interpolate() for missing values, timezone localization logic].
+
+The primary objective of the Cleaning & Temporal Alignment Module is to transform raw, heterogeneous energy and meteorological data into a synchronized, clean, and hourly-aggregated dataset ready for feature engineering. It bridges the gap between raw API outputs (often containing gaps, outliers, or mixed frequencies) and the strict requirements of time-series modeling.
+
+*   **Target:** Reads from `/data/raw/energy/` and `/data/raw/weather/`, outputs to `/data/processed/`.
+*   **Core Logic & Mechanisms:**
+
+    - **Energy Data Processing:**
+        - **Frequency Detection & Alignment:** Automatically identifies 1h, 15-min, or mixed sampling. Standardizes the grid by filling missing timestamps.
+        - **Intelligent Imputation:** Missing `Load_MW` values are handled based on the gap size:
+            - **Single-point gaps:** Linear interpolation (`df.interpolate(method="linear")`).
+            - **Multi-point gaps:** Mean of the 6 preceding valid observations.
+            - **Engineering Why:** Linear interpolation handles isolated missing points smoothly. For larger gaps, the mean of the last 6 observations (1.5 hours) provides a "local steady-state" estimate that avoids creating artificial trends (which interpolation would do) or introducing future-leakage (which backfilling would do).
+        - **Max-Aggregation:** Collapses 15-minute intervals into hourly grains using the **maximum** load value.
+          - **Engineering Why:** In energy demand forecasting, resource planning is driven by **peak load**. Averaging 15-min peaks would smooth out the highest demand signals, leading to an under-estimation of system stress.
+
+    - **Weather Data Normalization:**
+        - **Unit Conversion:** Standardizes raw ERA5-Land units (e.g., Kelvin to Celsius, Pa to hPa, J/m² to W/m²).
+          - **Engineering Why:** Standardizes features to physically intuitive scales and numerically stable ranges, facilitating faster model convergence and better interpretability.
+        - **Outlier Detection (Dual-Pass):** IQR filtering (1.5 * IQR) combined with hard domain-specific boundaries.
+          - **Engineering Why:** Statistical IQR is sensitive to extremes. Physical limits (e.g., temperature between -40°C and 55°C) ensure that we don't discard legitimate extreme weather events (like heatwaves) unless they are truly physically impossible.
+        - **Variable-Specific Imputation:**
+            - *Thermal/Radiation:* Mean of 4 preceding and 2 subsequent values.
+            - *Wind/Pressure/Soil:* Rolling mean of 3 to 6 preceding observations.
+            - *Solar:* Forced to zero during night hours (22h-04h); daytime gaps use local window means.
+              - **Engineering Why:** Solar sensors often report noisy non-zero values at night. Hard-coding zero reflects physical reality and removes noise.
+        - **Mean-Aggregation:** 15-minute weather readings are averaged to produce representative hourly values.
+          - **Engineering Why:** Unlike energy demand (peak-driven), weather impacts on energy are cumulative/ambient. A mean temperature better represents the sustained thermal load on the grid.
+
+    - **Dataset Synchronization:**
+        - **Inner Join logic:** The module performs a strict `inner join` on the standardized `datetime` column (UTC).
+          - **Engineering Why:** The machine learning model requires a complete feature vector to make a prediction. Observations where one source is missing are unusable for training and would introduce bias if naively filled.
+        - **Output Generation:** Persists the final synchronized dataframe to `/data/processed/` as `dados_treino_completos.csv` or `dados_predicao.csv`.
 
 
 ### 2.3. Feature Engineering Module
@@ -126,7 +162,7 @@ The primary objective of Ingestion Module is to reliably, securely, and reproduc
 ### 3.2. Prediction Inference Service
 [`TODO`] - (How the backend loads model binaries into memory without blocking API threads)
 
-### 3.2.1 API Contrancts for Prediction Service [`TODO`]
+### 3.2.1 API Contracts for Prediction Service [`TODO`]
 
 * **Preditction using daily model: `GET /api/predict/daily`**
   * **Headers:** `Authorization: Bearer <token>`
