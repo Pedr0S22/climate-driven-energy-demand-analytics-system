@@ -8,9 +8,7 @@ version = "0.1.0"
 description = "Climate-Driven Energy Demand Analytics System for Spain"
 readme = "README.md"
 requires-python = ">=3.11"
-authors = [
-    { name = "Project Team", email = "pedro@example.com" }
-]
+
 dependencies = [
     # Data Processing & ML
     "pandas>=2.0.0",
