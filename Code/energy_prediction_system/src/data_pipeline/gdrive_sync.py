@@ -13,7 +13,7 @@ load_dotenv(find_dotenv())
 # Keep full access just to be safe
 SCOPES = ["https://www.googleapis.com/auth/drive"]
 SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
-PROJECT_ROOT = os.path.abspath(os.path.join(SCRIPT_DIR, ".."))
+PROJECT_ROOT = os.path.abspath(os.path.join(SCRIPT_DIR, "..", ".."))
 
 
 def authenticate_gdrive():

@@ -8,11 +8,11 @@ import cdsapi
 
 # for entso/e
 import pandas as pd
-from dotenv import load_dotenv
-from entsoe import EntsoePandasClient
 
 # for gdrive
-from gdrive_sync import backup_project_data
+from data_pipeline.gdrive_sync import backup_project_data
+from dotenv import load_dotenv
+from entsoe import EntsoePandasClient
 
 MAX_RETRIES = 3
 
@@ -23,7 +23,7 @@ def fetch_copernicus_data(start_date: str, end_date: str):
 
     logging.info(f"Fetching Copernicus ERA5-Land timeseries data from {start_date} to {end_date}...")
     SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
-    PROJECT_ROOT = os.path.abspath(os.path.join(SCRIPT_DIR, ".."))
+    PROJECT_ROOT = os.path.abspath(os.path.join(SCRIPT_DIR, "..", ".."))
 
     raw_weather_dir = os.path.join(PROJECT_ROOT, "data", "raw", "weather")
     os.makedirs(raw_weather_dir, exist_ok=True)
@@ -112,7 +112,7 @@ def fetch_entsoe_data(start_date: str, end_date: str, country_code: str = "ES"):
 
     logging.info(f"Fetching ENTSO-E load data for {country_code} from {start_date} to {end_date}...")
     SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
-    PROJECT_ROOT = os.path.abspath(os.path.join(SCRIPT_DIR, ".."))
+    PROJECT_ROOT = os.path.abspath(os.path.join(SCRIPT_DIR, "..", ".."))
 
     raw_energy_dir = os.path.join(PROJECT_ROOT, "data", "raw", "energy")
     os.makedirs(raw_energy_dir, exist_ok=True)
@@ -122,7 +122,7 @@ def fetch_entsoe_data(start_date: str, end_date: str, country_code: str = "ES"):
         logging.info(f"Skipping: File already exists: {output_path}")
         return
 
-    env_path = os.path.join(SCRIPT_DIR, ".env")
+    env_path = os.path.join(SCRIPT_DIR, "..", ".env")
     load_dotenv(env_path)
     api_key = os.getenv("ENTSOE_API_KEY")
 
