@@ -8,9 +8,9 @@ Below there is a short presentation on what are the UCs, their numeration and ho
 
 ### Data Pipeline
 - UC1 - Data Ingestion from exterior sources
-- UC2 - Data cleaning, tranformation and alignment
+- UC2 - Data cleaning, transformation and alignment
 - UC3 - Feature Engineering
-- UC4 - Modeling and Evalutation
+- UC4 - Modeling and Evaluation
 
 ### Application
 - UC5 - User registration

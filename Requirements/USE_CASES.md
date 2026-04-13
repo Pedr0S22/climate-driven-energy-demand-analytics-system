@@ -29,7 +29,7 @@ Land Hourly data from 1950 to present" dataset found at [https://cds.climate.cop
 
 1. The Developer / Data Scientist executes the data ingestion script via the command line, allowing it to run until all data for the specified 6-year range is retrieved.
 2. The system begins measuring the execution time for the data ingestion component.
-3. The system connects to the ENTSO-E Transparency Platform and retrives the primary target variable which is total electricity load, expressed in megawatts (MW)
+3. The system connects to the ENTSO-E Transparency Platform and retrieves the primary target variable which is total electricity load, expressed in megawatts (MW)
 4. The system connects to the Copernicus Climate Data Store (ERA5 dataset) and retrieves meteorological data. Specifically, it extracts:
 
     * Skin temperature (in Kelvin)
@@ -43,7 +43,7 @@ Land Hourly data from 1950 to present" dataset found at [https://cds.climate.cop
     * Volumetric soil water layer 1 (in m³/ m³)
     * Total precipitation (in m)
 
-    **For further familirization and better explanation regarding the variables mentioend below proceed to the Copernicus Climate Data Store**
+    **For further familiarization and better explanation regarding the variables mentioend below proceed to the Copernicus Climate Data Store**
 
 5. The system stores the unmodified raw climate data into the `Code\energy_prediction_system\data\raw\weather\` directory.
 6. The system stores the unmodified raw electricity data into the `Code\energy_prediction_system\data\raw\energy\` directory.
@@ -110,7 +110,7 @@ Land Hourly data from 1950 to present" dataset found at [https://cds.climate.cop
 1. The use case begins when the data preprocessing module is executed.
 2. The system loads raw data from `/data/raw/weather/` and `/data/raw/energy/`.
 3. The system converts timestamps to the UTC standard and checks for any timezone inconsistencies.
-4. The system handles missing values in the all varibles ingested.
+4. The system handles missing values in the all variables ingested.
 5. The system handles data types and features conversions.
 6. The system detects outliers using the IQR method for all variables except electricity load. For each detected value, the system verifies whether it is plausible according to the predefined limits.
 7. The system aggregates data every hour, averaging temperature, wind, radiation, and precipitation; for electrical charge, we use the maximum value for that interval.
@@ -238,7 +238,7 @@ User goal.
 * **Project Supervisor:** Demands the application of rigorous metrics ($R^{2}$, MAE, RMSE) and the absolute prohibition of shuffling in time-series data.
 
 **Preconditions**
-1.  **Feature Engineering Success:** Datasets with different reduction techniques are available in the `/data/processed/` directory, including data with and without feautre engineering (`/data/processed/feat-engineering`).
+1.  **Feature Engineering Success:** Datasets with different reduction techniques are available in the `/data/processed/` directory, including data with and without feature engineering (`/data/processed/feat-engineering`).
 2.  **Data History:** Availability of a 6-year data history processed.
 
 **Main Success Scenario**
@@ -442,7 +442,7 @@ User goal.
 
     * 3b1. The system catches the execution error.
 
-    * 3b2. The system logs the failure detailst o ELK.
+    * 3b2. The system logs the failure details to ELK.
 
     * 3b3. The system displays the error in a pop-up described in UC10 (extension 8).
 
