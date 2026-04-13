@@ -131,10 +131,65 @@ The primary objective of the Cleaning & Temporal Alignment Module is to transfor
           - **Engineering Why:** The machine learning model requires a complete feature vector to make a prediction. Observations where one source is missing are unusable for training and would introduce bias if naively filled.
         - **Output Generation:** Persists the final synchronized dataframe to `/data/processed/` as `dados_treino_completos.csv` or `dados_predicao.csv`.
 
+    - **Cleaned Data Dictionary:**
+
+| Variable | Description | Unit | Aggregation (Hourly) |
+| :--- | :--- | :--- | :--- |
+| `datetime` | Standardized timestamp (UTC) | ISO 8601 | Join Key |
+| `Load_MW` | Actual electricity demand | MW | **Maximum** |
+| `t2m` | 2m Air Temperature | °C | Mean |
+| `skt` | Skin Temperature | °C | Mean |
+| `d2m` | 2m Dewpoint Temperature | °C | Mean |
+| `stl1` | Soil Temperature Level 1 | °C | Mean |
+| `ssrd` | Surface Solar Radiation Downwards | W/m² | Mean |
+| `strd` | Surface Thermal Radiation Downwards | W/m² | Mean |
+| `sp` | Surface Pressure | hPa | Mean |
+| `tp` | Total Precipitation | mm | Mean |
+| `u10` | 10m U-component of Wind | m/s | Mean |
+| `v10` | 10m V-component of Wind | m/s | Mean |
+| `swvl1` | Volumetric Soil Water Layer 1 | m³/m³ | Mean |
+
 
 ### 2.3. Feature Engineering Module
-* **Target:** Reads from `/data/processed/`, outputs to `/data/feat-engineering/`.
-* **Logic:** [`TODO`: Define the exact formulas/functions for the rolling window features and lagged features].
+
+The primary objective of the Feature Engineering Module is to transform synchronized hourly data into a high-dimensional feature set that captures temporal patterns, climate inertia, and physics-based demand drivers.
+
+*   **Target:** Reads from `/data/processed/dados_treino_completos.csv`, outputs to `/data/processed/feat-engineering/` (Full, Selected, and PCA versions).
+*   **Core Logic & Mechanisms:**
+
+    - **Temporal Decomposition:**
+        - Extracts `hour`, `day_of_week`, `month`, `year`, and `season` (1:Winter to 4:Autumn).
+        - **Engineering Why:** Captures multi-scale seasonality (daily cycles, weekend vs. weekday patterns, and annual trends) essential for non-stationary energy demand.
+
+    - **Rolling Climate Features (24h Window):**
+        - Calculates `mean`, `std`, `median`, `var`, `skew`, and `kurt` for all climate variables.
+        - Computes **RMS (Root Mean Square)** and **Deriv (Rate of Change)** for key variables (`t2m`, `skt`, `ssrd`, `tp`).
+        - Uses **Rolling IQR** for `t2m` as a robust measure of thermal volatility.
+        - **Engineering Why:** A 24-hour window represents a full solar/diurnal cycle. RMS captures the "energy" of weather signals, while the derivative identifies rapid cooling or heating events that trigger immediate spikes in HVAC usage.
+
+    - **Lagged Demand Features:**
+        - Extracts `L1` (momentum), `L24` (daily seasonality), and `L168` (weekly seasonality) from `Load_MW`.
+        - **Engineering Why:** Energy demand is highly auto-regressive. Today's load at 2 PM is historically the best predictor for tomorrow's load at 2 PM.
+
+    - **Physics-Derived Indicators:**
+        - **HDD/CDD (Base 18°C):** Heating and Cooling Degree Hours calculated in Celsius.
+        - **Thermal Anomalies:** Deviation of current temperature from the monthly mean.
+        - **72h Persistent Extremes:** Binary flags for Heatwaves and Coldwaves, triggered only if temperatures stay in the top/bottom 10th percentile for 72 consecutive hours.
+        - **Engineering Why:** 18°C is the standard "neutral" temperature where neither heating nor cooling is typically required. The 72h persistence flag captures the "cumulative heat stress" on buildings, where demand remains high even if the temperature dips slightly after a long hot spell.
+
+    - **Handling Early Records (Gaps in Rolling/Lags):**
+        - **Hybrid Imputation:** The module uses `.ffill().bfill()` to handle the $N-1$ initial rows where rolling windows or lags are incomplete.
+        - **Zero-Filling:** Flags like `heatwave_flag` use `.fillna(0)` to default to a "no-event" state when data is insufficient.
+        - **Engineering Why:** Using `bfill()` (back-filling) ensures that the first records of the dataset are not discarded. This maintains the maximum possible training size and keeps the dataset aligned with the original 52k+ row count, which is critical for time-series continuity.
+
+    - **Redundancy & Dimensionality Management:**
+        - **Association-Based Filter (0.6 Threshold):** Removes highly collinear variables. Uses **Spearman** for continuous-continuous, **Lambda** for categorical-categorical, and **Logistic Regression Accuracy** for categorical-continuous associations.
+        - **Automated PCA Elbow Detection:** Uses the **Knee Point method** (maximum distance to the secant line) to automatically select the optimal number of components for the PCA dataset.
+        - **Engineering Why:** Climate data is notoriously collinear (e.g., skin temp vs. air temp). A 0.6 threshold is conservative, ensuring we retain distinct signals while reducing noise. PCA Elbow detection allows the system to compress features without manual tuning as new variables are added.
+
+    - **Persistence:**
+        - Saves fitted `StandardScaler`, `PCA`, and `selected_features` list to `/models/feat-engineering/` using `joblib`.
+        - **Engineering Why:** Essential for the **Live Data Scheduler**, ensuring that real-time inference data is transformed using the exact same statistical parameters as the training data.
 
 
 ### 2.4. Training & Evaluation Module
