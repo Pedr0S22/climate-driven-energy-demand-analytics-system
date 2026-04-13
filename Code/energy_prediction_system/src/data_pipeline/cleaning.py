@@ -264,12 +264,12 @@ def g115g1(df):
 def weather(pasta_entrada=None, pasta_saida=None):
     # Fallbacks para o ambiente de produção
     if pasta_entrada is None:
-        root = Path(__file__).parent.parent.parent.parent
+        root = Path(__file__).parent.parent.parent.parent.parent
         pasta_entrada = root / "Code" / "energy_prediction_system" / "data" / "raw" / "weather"
 
     if pasta_saida is None:
-        root = Path(__file__).parent.parent.parent.parent
-        pasta_saida = root / "data" / "raw" / "weather_corrigido"
+        root = Path(__file__).parent.parent.parent.parent.parent
+        pasta_saida = root / "Code" / "energy_prediction_system" / "data" / "raw" / "weather_corrigido"
 
     pasta_entrada = Path(pasta_entrada)
     pasta_saida = Path(pasta_saida)

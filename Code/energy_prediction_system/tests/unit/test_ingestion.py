@@ -3,8 +3,8 @@ from unittest.mock import MagicMock, mock_open, patch
 
 import pandas as pd
 import pytest
-from gdrive_sync import backup_project_data, upload_file_to_drive
-from ingestion import fetch_copernicus_data, fetch_entsoe_data
+from data_pipeline.gdrive_sync import backup_project_data, upload_file_to_drive
+from data_pipeline.ingestion import fetch_copernicus_data, fetch_entsoe_data
 
 
 @pytest.fixture
@@ -14,8 +14,8 @@ def mock_env_vars(monkeypatch):
     monkeypatch.setenv("ENERGY_DRIVE_FOLDER_ID", "fake_energy_id")
 
 
-@patch("ingestion.os.path.exists")
-@patch("ingestion.EntsoePandasClient")
+@patch("data_pipeline.ingestion.os.path.exists")
+@patch("data_pipeline.ingestion.EntsoePandasClient")
 def test_fetch_entsoe_single_day(mock_entsoe_client, mock_exists, mock_env_vars):
     """Test single day ingestion logic (start_date == end_date)"""
     mock_exists.return_value = False
@@ -36,8 +36,8 @@ def test_fetch_entsoe_single_day(mock_entsoe_client, mock_exists, mock_env_vars)
     mock_df.to_csv.assert_called_once()
 
 
-@patch("ingestion.os.path.exists")
-@patch("ingestion.EntsoePandasClient")
+@patch("data_pipeline.ingestion.os.path.exists")
+@patch("data_pipeline.ingestion.EntsoePandasClient")
 def test_fetch_entsoe_date_range(mock_entsoe_client, mock_exists, mock_env_vars):
     """Test small/large date range ingestion logic"""
     mock_exists.return_value = False
@@ -53,9 +53,9 @@ def test_fetch_entsoe_date_range(mock_entsoe_client, mock_exists, mock_env_vars)
     assert kwargs["end"] == pd.Timestamp("2023-01-01", tz="Europe/Madrid")
 
 
-@patch("ingestion.time.sleep", return_value=None)
-@patch("ingestion.os.path.exists")
-@patch("ingestion.EntsoePandasClient")
+@patch("data_pipeline.ingestion.time.sleep", return_value=None)
+@patch("data_pipeline.ingestion.os.path.exists")
+@patch("data_pipeline.ingestion.EntsoePandasClient")
 def test_fetch_entsoe_retry_mechanism(mock_entsoe_client, mock_exists, mock_sleep, mock_env_vars):
     """Test that the script retries 3 times upon failure with exponential backoff"""
     mock_exists.return_value = False
@@ -73,11 +73,11 @@ def test_fetch_entsoe_retry_mechanism(mock_entsoe_client, mock_exists, mock_slee
     assert mock_sleep.call_count == 2
 
 
-@patch("ingestion.os.path.exists")
-@patch("ingestion.zipfile.ZipFile")
-@patch("ingestion.cdsapi.Client")
-@patch("ingestion.os.remove")
-@patch("ingestion.os.replace")
+@patch("data_pipeline.ingestion.os.path.exists")
+@patch("data_pipeline.ingestion.zipfile.ZipFile")
+@patch("data_pipeline.ingestion.cdsapi.Client")
+@patch("data_pipeline.ingestion.os.remove")
+@patch("data_pipeline.ingestion.os.replace")
 def test_fetch_copernicus_data_success(mock_replace, mock_remove, mock_cds_client, mock_zip, mock_exists):
     """Test successful fetch, ZIP extraction, and cleanup for Copernicus data"""
     # Ensure it passes the initial 'file exists' check
@@ -102,9 +102,9 @@ def test_fetch_copernicus_data_success(mock_replace, mock_remove, mock_cds_clien
     mock_replace.assert_called_once()
 
 
-@patch("gdrive_sync.upload_file_to_drive")
-@patch("gdrive_sync.os.listdir")
-@patch("gdrive_sync.os.path.exists")
+@patch("data_pipeline.gdrive_sync.upload_file_to_drive")
+@patch("data_pipeline.gdrive_sync.os.listdir")
+@patch("data_pipeline.gdrive_sync.os.path.exists")
 def test_backup_project_data(mock_exists, mock_listdir, mock_upload, mock_env_vars):
     """Test the GDrive backup logic correctly loops over directories and uploads files"""
     mock_exists.return_value = True
@@ -115,7 +115,7 @@ def test_backup_project_data(mock_exists, mock_listdir, mock_upload, mock_env_va
         ["weather_test.csv"],  # Yielded for /raw/weather
     ]
 
-    with patch("gdrive_sync.authenticate_gdrive", return_value=MagicMock()):
+    with patch("data_pipeline.gdrive_sync.authenticate_gdrive", return_value=MagicMock()):
         backup_project_data()
 
     # Verify upload was called twice (once for each file)
@@ -127,42 +127,42 @@ def test_backup_project_data(mock_exists, mock_listdir, mock_upload, mock_env_va
 # ==========================================
 
 
-@patch("ingestion.os.path.exists")
+@patch("data_pipeline.ingestion.os.path.exists")
 def test_fetch_entsoe_skips_if_exists(mock_exists):
     """Test ENTSO-E skips if file already exists"""
     mock_exists.return_value = True
-    with patch("ingestion.EntsoePandasClient") as mock_client:
+    with patch("data_pipeline.ingestion.EntsoePandasClient") as mock_client:
         fetch_entsoe_data("2023-01-01", "2023-01-01")
         mock_client.assert_not_called()
 
 
-@patch("ingestion.os.getenv", return_value=None)
-@patch("ingestion.os.path.exists", return_value=False)
+@patch("data_pipeline.ingestion.os.getenv", return_value=None)
+@patch("data_pipeline.ingestion.os.path.exists", return_value=False)
 def test_fetch_entsoe_no_api_key(mock_exists, mock_getenv):
     """Test ENTSO-E aborts if API key is missing"""
-    with patch("ingestion.EntsoePandasClient") as mock_client:
+    with patch("data_pipeline.ingestion.EntsoePandasClient") as mock_client:
         fetch_entsoe_data("2023-01-01", "2023-01-01")
         mock_client.assert_not_called()
 
 
-@patch("ingestion.os.path.exists")
+@patch("data_pipeline.ingestion.os.path.exists")
 def test_fetch_copernicus_skips_if_exists(mock_exists):
     """Test Copernicus skips if file already exists"""
     mock_exists.return_value = True
-    with patch("ingestion.cdsapi.Client") as mock_client:
+    with patch("data_pipeline.ingestion.cdsapi.Client") as mock_client:
         fetch_copernicus_data("2023-01-01", "2023-01-01")
         mock_client.assert_not_called()
 
 
-@patch("ingestion.time.sleep", return_value=None)
-@patch("ingestion.os.path.exists", return_value=False)
-@patch("ingestion.cdsapi.Client")
+@patch("data_pipeline.ingestion.time.sleep", return_value=None)
+@patch("data_pipeline.ingestion.os.path.exists", return_value=False)
+@patch("data_pipeline.ingestion.cdsapi.Client")
 def test_fetch_copernicus_bad_zip_file(mock_cds_client, mock_exists, mock_sleep):
     """Test Copernicus API quotas/messages handling as BadZipFile"""
     mock_client_instance = MagicMock()
     mock_cds_client.return_value = mock_client_instance
 
-    with patch("ingestion.zipfile.ZipFile") as mock_zip:
+    with patch("data_pipeline.ingestion.zipfile.ZipFile") as mock_zip:
         mock_zip.side_effect = zipfile.BadZipFile("Not a zip")
         with patch("builtins.open", mock_open(read_data="API Error Details")):
             fetch_copernicus_data("2023-01-01", "2023-01-01")
@@ -175,7 +175,7 @@ def test_backup_project_data_missing_ids(monkeypatch):
     """Test GDrive backup aborts if folder IDs are missing"""
     monkeypatch.delenv("WEATHER_DRIVE_FOLDER_ID", raising=False)
     monkeypatch.delenv("ENERGY_DRIVE_FOLDER_ID", raising=False)
-    with patch("gdrive_sync.authenticate_gdrive"):
+    with patch("data_pipeline.gdrive_sync.authenticate_gdrive"):
         with pytest.raises(ValueError, match="Missing Drive Folder IDs!"):
             backup_project_data()
 

@@ -7,12 +7,12 @@ from unittest.mock import patch
 
 import numpy as np
 import pandas as pd
-from cleaning import (
+from data_pipeline.cleaning import (
     cleaning,
     energy,
     weather,
 )
-from ingestion import fetch_copernicus_data, fetch_entsoe_data
+from data_pipeline.ingestion import fetch_copernicus_data, fetch_entsoe_data
 
 PROJECT_ROOT = Path(__file__).parent.parent.parent.parent.parent.parent
 
@@ -149,8 +149,8 @@ def mock_copernicus_data(start_date, end_date):
 # 4. teste de integração
 
 
-@patch("ingestion.cdsapi.Client")
-@patch("ingestion.EntsoePandasClient")
+@patch("data_pipeline.ingestion.cdsapi.Client")
+@patch("data_pipeline.ingestion.EntsoePandasClient")
 def test_full_pipeline_integration(mock_entsoe, mock_cds):
     (
         base_dir_path,
@@ -196,7 +196,7 @@ def test_full_pipeline_integration(mock_entsoe, mock_cds):
                     return original_read_csv(fake_file, *args, **kwargs)
                 return original_read_csv(path, *args, **kwargs)
 
-            with patch("cleaning.pd.read_csv", side_effect=fake_read_csv):
+            with patch("data_pipeline.cleaning.pd.read_csv", side_effect=fake_read_csv):
                 weather(pasta_saida=weather_clean)
 
         # 6. limpeza e junção final
@@ -296,8 +296,8 @@ def mock_copernicus_data_15min_with_outliers_and_nan(start_date, end_date):
 # 7. teste de integração com 15 min, outliers e NaN
 
 
-@patch("ingestion.cdsapi.Client")
-@patch("ingestion.EntsoePandasClient")
+@patch("data_pipeline.ingestion.cdsapi.Client")
+@patch("data_pipeline.ingestion.EntsoePandasClient")
 def test_full_pipeline_integration_15min_with_outliers_and_nan(mock_entsoe, mock_cds):
     (
         base_dir_path,
@@ -413,8 +413,8 @@ def mock_copernicus_data_1h_clean(start_date, end_date):
 # 10. teste integraçao 1h limpo
 
 
-@patch("ingestion.cdsapi.Client")
-@patch("ingestion.EntsoePandasClient")
+@patch("data_pipeline.ingestion.cdsapi.Client")
+@patch("data_pipeline.ingestion.EntsoePandasClient")
 def test_full_pipeline_integration_1h_clean(mock_entsoe, mock_cds):
     (
         base_dir_path,
@@ -460,7 +460,7 @@ def test_full_pipeline_integration_1h_clean(mock_entsoe, mock_cds):
                     return original_read_csv(fake_file, *args, **kwargs)
                 return original_read_csv(path, *args, **kwargs)
 
-            with patch("cleaning.pd.read_csv", side_effect=fake_read_csv):
+            with patch("data_pipeline.cleaning.pd.read_csv", side_effect=fake_read_csv):
                 weather(pasta_saida=weather_clean)
 
         # 6. limpeza e junção final
@@ -549,8 +549,8 @@ def mock_copernicus_data_1h_with_outliers(start_date, end_date):
 # 13. teste integraçao 1h com outliers
 
 
-@patch("ingestion.cdsapi.Client")
-@patch("ingestion.EntsoePandasClient")
+@patch("data_pipeline.ingestion.cdsapi.Client")
+@patch("data_pipeline.ingestion.EntsoePandasClient")
 def test_full_pipeline_integration_1h_with_outliers(mock_entsoe, mock_cds):
     (
         base_dir_path,
@@ -596,7 +596,7 @@ def test_full_pipeline_integration_1h_with_outliers(mock_entsoe, mock_cds):
                     return original_read_csv(fake_file, *args, **kwargs)
                 return original_read_csv(path, *args, **kwargs)
 
-            with patch("cleaning.pd.read_csv", side_effect=fake_read_csv):
+            with patch("data_pipeline.cleaning.pd.read_csv", side_effect=fake_read_csv):
                 weather(pasta_saida=weather_clean)
 
         # 6. limpeza e junção final
@@ -716,8 +716,8 @@ def mock_copernicus_data_mixed_granularity_clean(start_date, end_date):
 # 16.
 
 
-@patch("ingestion.cdsapi.Client")
-@patch("ingestion.EntsoePandasClient")
+@patch("data_pipeline.ingestion.cdsapi.Client")
+@patch("data_pipeline.ingestion.EntsoePandasClient")
 def test_full_pipeline_integration_mixed_granularity_datasets_clean(mock_entsoe, mock_cds):
     (
         base_dir_path,
@@ -763,7 +763,7 @@ def test_full_pipeline_integration_mixed_granularity_datasets_clean(mock_entsoe,
                     return original_read_csv(fake_file, *args, **kwargs)
                 return original_read_csv(path, *args, **kwargs)
 
-            with patch("cleaning.pd.read_csv", side_effect=fake_read_csv):
+            with patch("data_pipeline.cleaning.pd.read_csv", side_effect=fake_read_csv):
                 weather(pasta_saida=weather_clean)
 
         # 6. limpeza e junção final
@@ -903,8 +903,8 @@ def mock_copernicus_data_mixed_granularity_15min_outliers_nan(start_date, end_da
 # 19.
 
 
-@patch("ingestion.cdsapi.Client")
-@patch("ingestion.EntsoePandasClient")
+@patch("data_pipeline.ingestion.cdsapi.Client")
+@patch("data_pipeline.ingestion.EntsoePandasClient")
 def test_full_pipeline_integration_mixed_granularity_datasets_with_outliers_nan(mock_entsoe, mock_cds):
     (
         base_dir_path,
@@ -950,7 +950,7 @@ def test_full_pipeline_integration_mixed_granularity_datasets_with_outliers_nan(
                     return original_read_csv(fake_file, *args, **kwargs)
                 return original_read_csv(path, *args, **kwargs)
 
-            with patch("cleaning.pd.read_csv", side_effect=fake_read_csv):
+            with patch("data_pipeline.cleaning.pd.read_csv", side_effect=fake_read_csv):
                 weather(pasta_saida=weather_clean)
 
         # 6. limpeza e junção final
