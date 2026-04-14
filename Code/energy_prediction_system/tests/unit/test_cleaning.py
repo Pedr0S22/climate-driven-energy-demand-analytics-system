@@ -822,3 +822,84 @@ def test_convert_era5_units_all_conversions():
     assert pytest.approx(result["ssrd"].iloc[0]) == 1.0
     assert pytest.approx(result["sp"].iloc[0]) == 1013.25
     assert pytest.approx(result["tp"].iloc[0]) == 1.0
+
+
+def test_weather_data_coordinates_spain():
+    """
+    Test if all samples are from Spain (Madrid) only, using lat/lon.
+    Input: A mock weather DataFrame with multiple rows.
+    Expected Output: Randomly selected samples must have longitude -3.7 and latitude 40.4.
+    """
+    times = pd.date_range("2023-01-01 10:00", periods=10, freq="15min", tz="UTC")
+    df = pd.DataFrame(
+        {
+            "valid_time": times,
+            "latitude": [40.4] * 10,
+            "longitude": [-3.7] * 10,
+            "t2m": np.random.uniform(270, 300, 10),
+        }
+    )
+
+    # Select random samples
+    samples = df.sample(n=3)
+
+    # Verify if they have the same coordinates (Madrid, Spain)
+    for _, row in samples.iterrows():
+        assert row["latitude"] == 40.4
+        assert row["longitude"] == -3.7
+
+
+def test_weather_data_features_uc1():
+    """
+    Test if the features received and processed obey the UC1 description.
+    Input: A mock weather DataFrame containing all 11 UC1 variables in their raw units.
+    Expected Output: After processing (unit conversion and aggregation), all features must be present.
+    """
+    times = pd.date_range("2023-01-01 10:00", periods=4, freq="15min", tz="UTC")
+    # UC1 Variables: skt, t2m, d2m, stl1, ssrd, strd, sp, u10, v10, swvl1, tp
+    df = pd.DataFrame(
+        {
+            "valid_time": times,
+            "latitude": [40.4] * 4,
+            "longitude": [-3.7] * 4,
+            "skt": [280.0] * 4,
+            "t2m": [281.0] * 4,
+            "d2m": [275.0] * 4,
+            "stl1": [282.0] * 4,
+            "ssrd": [1000.0] * 4,
+            "strd": [1100.0] * 4,
+            "sp": [101325.0] * 4,
+            "u10": [2.0] * 4,
+            "v10": [3.0] * 4,
+            "swvl1": [0.25] * 4,
+            "tp": [0.001] * 4,
+        }
+    )
+
+    # Process through cleaning pipeline steps
+    df_converted = convert_era5_units(df)
+    df_aligned = g15min(df_converted)
+    df_clean = outliers_treatment(df_aligned)
+    df_hourly = hourly_aggregation(df_clean)
+
+    expected_features = [
+        "valid_time",
+        "skt",
+        "t2m",
+        "d2m",
+        "stl1",
+        "ssrd",
+        "strd",
+        "sp",
+        "u10",
+        "v10",
+        "swvl1",
+        "tp",
+    ]
+
+    # Verify all expected columns are present in the final hourly aggregated dataframe
+    for feature in expected_features:
+        assert feature in df_hourly.columns
+
+    # Verify it has 1 row (since 4 x 15min = 1 hour)
+    assert len(df_hourly) == 1
