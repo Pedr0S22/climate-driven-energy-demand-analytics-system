@@ -1,12 +1,10 @@
-# Code Folder
+# Core Folder
 
-In this folder you can find 3 components of software development:
+This directory organizes the core software systems and educational sub-projects of the repository.
 
-- **energy_prediction_system**
-    - The main project of this repository, described in the root [README](../README.md).
+## Main Application
+*   **[`energy_prediction_system`](energy_prediction_system/)**: The primary machine learning system for climate-driven energy demand analytics. Refer to the root [`README`](../README.md) for full project details.
 
-- **calculator folder**
-    - This sub-project was a tutorial on how to test pieces of software (unit and integration testing).
-
-- **poems folder**
-    - `poems` sub-project was a crash tutorial on how to work with git and gitlab
+## Educational Projects
+*   **[`calculator`](calculator/)**: A sub-project demonstrating unit and integration testing methodologies.
+*   **[`poems`](poems/)**: A sub-project used as a tutorial for Git and GitLab version control workflows.
