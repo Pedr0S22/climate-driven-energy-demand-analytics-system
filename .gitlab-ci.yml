@@ -26,7 +26,11 @@ unit-tests:
     - echo "Assessing unit test coverage... "
     - cd $APP_DIR
     - pip install -r requirements-dev.txt
-    - pytest --cov=src --cov-report=term-missing --cov-fail-under=70 --ignore=tests/integration
+    - pytest --cov=src --cov-report=term-missing --cov-report=html:../../Testing/automated_tests/unit --cov-fail-under=70 --ignore=tests/integration
+  artifacts:
+    paths:
+      - Testing/automated_tests/unit/
+    expire_in: 1 week
   allow_failure: false
 
 # ========== INTEGRATION TESTING stage ========== #
@@ -37,7 +41,11 @@ integration-tests:
     - echo "Assessing test coverage... "
     - cd $APP_DIR
     - pip install -r requirements-dev.txt
-    - pytest --cov=src --cov-report=term-missing --cov-fail-under=70 --ignore=tests/unit
+    - pytest --cov=src --cov-report=term-missing --cov-report=html:../../Testing/automated_tests/integration --cov-fail-under=70 --ignore=tests/unit
+  artifacts:
+    paths:
+      - Testing/automated_tests/integration/
+    expire_in: 1 week
   allow_failure: false
 
 # ========== QUALITY stage ========== #
