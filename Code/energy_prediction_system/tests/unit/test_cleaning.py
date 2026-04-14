@@ -827,10 +827,13 @@ def test_convert_era5_units_all_conversions():
 def test_weather_data_coordinates_spain():
     """
     Test if all samples are from Spain (Madrid) only, using lat/lon.
+    The coordinates must be within the bounding box defined by the four points provided.
     Input: A mock weather DataFrame with multiple rows.
-    Expected Output: Randomly selected samples must have longitude -3.7 and latitude 40.4.
+    Expected Output: Randomly selected samples must have latitude between 37.002745 and 43.327864,
+    and longitude between -8.6538900 and -3.048508.
     """
     times = pd.date_range("2023-01-01 10:00", periods=10, freq="15min", tz="UTC")
+    # Using Madrid coordinates as the sample point, which is within the requested range
     df = pd.DataFrame(
         {
             "valid_time": times,
@@ -840,13 +843,17 @@ def test_weather_data_coordinates_spain():
         }
     )
 
+    # Range defined by user points
+    min_lat, max_lat = 37.002745, 43.327864
+    min_lon, max_lon = -8.6538900, -3.048508
+
     # Select random samples
     samples = df.sample(n=3)
 
-    # Verify if they have the same coordinates (Madrid, Spain)
+    # Verify if they are within the bounding box
     for _, row in samples.iterrows():
-        assert row["latitude"] == 40.4
-        assert row["longitude"] == -3.7
+        assert min_lat <= row["latitude"] <= max_lat
+        assert min_lon <= row["longitude"] <= max_lon
 
 
 def test_weather_data_features_uc1():
