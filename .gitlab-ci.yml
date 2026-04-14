@@ -4,6 +4,8 @@ variables:
   BUILD_TYPE: draft                             # Change it e.g. to "release" when the time comes
   APP_DIR: "Code/energy_prediction_system"      # Project path in the repository
   PIP_CACHE_DIR: "$CI_PROJECT_DIR/.cache/pip"   # Tell pip to use a cache directory inside the project workspace
+  PIP_ROOT_USER_ACTION: ignore                  # Suppress the root user warning in Docker
+  PIP_DISABLE_PIP_VERSION_CHECK: "1"            # Suppress the "new version available" notice
 
 # Cache pip downloads to speed up subsequent jobs and pipeline runs
 cache:
