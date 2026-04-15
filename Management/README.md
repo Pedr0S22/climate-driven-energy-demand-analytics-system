@@ -1,4 +1,4 @@
-# Project Management & Analytics
+# Project Management & Analytics Folder
 
 This directory contains essential tools and information for tracking the team's progress and individual contributions throughout the project.
 
