@@ -1,4 +1,4 @@
-# USE CASE DEFINITIONS - V2.1
+# USE CASE DEFINITIONS - V3.0
 
 This file contains all UCs for the development of this project.
 
@@ -703,3 +703,58 @@ Allow the user to access a dashboard to view the time series of the hourly elect
     - 4a3. The system displays an error message within the app notifying the Administrator that the logging service is temporarily offline.
 
 **Note:** Kibana natively displays its own "No results found" state.
+
+
+## UC13: Scenario Simulation
+
+**Primary Actor:** User
+
+**Scope/Goal:** Allow the user to run "What-if" simulations by manually defining meteorological and temporal conditions. This allows for testing the model's behavior and understanding how specific variables affect electricity demand without consequences or reliance on real-time data.
+
+**Level:** User Goal
+
+**Stakeholders and Interests:**
+*   **User:** Wants to explore how different weather scenarios impact the energy grid (e.g., "How much extra load would a 40ºC day in May create?").
+*   **Data Scientist:** Wants to validate model sensitivity and ensure the algorithm responds logically to extreme inputs.
+
+**Preconditions:**
+1.  **Authentication:** The user must be successfully authenticated.
+2.  **Model Availability:** Both active Daily and Hourly prediction models must be trained, persisted, and available in the system.
+
+**Main Success Scenario:**
+1.  The user accesses the **Scenario Simulator** section of the application.
+2.  The user selects the Daily Model Resolution.
+3.  The system offers a list of **Base Scenario Templates** (e.g., "Typical Spring Day", "Heatwave", "Winter Storm") to pre-fill the parameters. The user must select one of this templates.
+4.  The user defines the **Temporal Context**:
+    *   **Month:** User selects a month (1-12); the system automatically derives the corresponding **Season**.
+    *   **Day of Week:** User selects the specific day (Monday-Sunday).
+    *   **Year:** The system utilizes the user's current year to account for long-term demand trends.
+5.  The system displays input controls (with frontend validation limits) for the primary meteorological drivers:
+    *   2-meter air temperature (t2m)
+    *   Surface pressure (sp)
+    *   Total precipitation (tp)
+    *   10-meter wind components (u10 and v10)
+
+6.  The user modifies none, one or more of these parameters. Other features required by the model (e.g., lagged load, rolling climate statistics) are automatically calculated using neutral/median values from the training history.
+7.  The user hits the **"Run Simulation"** button.
+8.  The system performs **Frontend/Backend Validation** to ensure all inputs are within the physical and logical limits defined in the cleaning module (UC2).
+9.  The system feeds the synthesized feature vector into the active model.
+10. The system calculates the predicted load (MW) and identifies the **Top 2 Drivers** most heavily influencing this result.
+11. The system displays the simulation result (Predicted MW) and visual indicators for the drivers on the simulator dashboard.
+12. The user can adjust parameters and **Re-run** the experiment to observe changes in real-time.
+13. The system logs the simulation event (input parameters, results and timestamps) to ELK for audit and monitoring.
+
+**Extensions:**
+
+2. a. **The user selects the Hourly resolution:**
+    *   2a1. The user selects the specific **Hour of the Day** (0-23) in the Temporal Context section.
+    *   2a2. The system continues to Step 3 using the Hourly model.
+
+8) a. **Validation Failure (Invalid Inputs):**
+    *   8a1. The system detects inputs that are physically impossible or logically inconsistent.
+    *   8a2. The system logs the failure details to ELK
+    *   8a3. The system denies the simulation, highlights the offending fields, and prompts the user for correction.
+
+9. a. **The system catches an error during the model's inference phase.:**
+    *   9a1. The system logs the failure details to ELK.
+    *   9a2. The system displays a pop-up error message to the user

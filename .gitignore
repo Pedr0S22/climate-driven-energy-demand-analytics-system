@@ -37,6 +37,12 @@ pip-log.txt
 pip-delete-this-directory.txt
 
 # Unit test / coverage reports
+Testing/automated_tests/unit/*
+Testing/automated_tests/integration/*
+
+!Testing/automated_tests/unit/.gitkeep
+!Testing/automated_tests/integration/.gitkeep
+
 htmlcov/
 .tox/
 .nox/
