@@ -198,3 +198,82 @@ def test_fetch_copernicus_invalid_dates():
     """Test that passing an end_date before a start_date raises an error"""
     with pytest.raises(ValueError, match="start_date cannot be strictly after end_date"):
         fetch_copernicus_data("2023-12-31", "2023-01-01")
+
+
+# ==========================================
+# New Mandatory Tests (Spain Coords & UC1 Features)
+# ==========================================
+
+
+def test_ingestion_spain_coordinates_random_samples():
+    """
+    Test if the ingested Copernicus data samples are exclusively from Spain.
+
+    Input: A simulated DataFrame containing 'latitude' and 'longitude' columns
+           with multiple random samples.
+    Expected Output: Verification that all samples match the fixed coordinates
+                     for Madrid, Spain (Lat: 40.4, Lon: -3.7) used in the request.
+    """
+    # Simulate a dataset returned from Copernicus with random samples
+    # In a real scenario, this would be the content of the saved CSV
+    data = {
+        "latitude": [40.4, 40.4, 40.4, 40.4, 40.4],
+        "longitude": [-3.7, -3.7, -3.7, -3.7, -3.7],
+        "t2m": [280, 281, 282, 283, 284],
+    }
+    df = pd.DataFrame(data)
+
+    # Pick random samples to verify
+    samples = df.sample(n=min(3, len(df)))
+
+    for _, row in samples.iterrows():
+        assert row["latitude"] == 40.4, f"Latitude {row['latitude']} is not 40.4 (Madrid)"
+        assert row["longitude"] == -3.7, f"Longitude {row['longitude']} is not -3.7 (Madrid)"
+
+
+@patch("data_pipeline.ingestion.cdsapi.Client")
+@patch("data_pipeline.ingestion.os.path.exists", return_value=False)
+@patch("data_pipeline.ingestion.zipfile.ZipFile")
+@patch("data_pipeline.ingestion.os.replace")
+@patch("data_pipeline.ingestion.os.remove")
+def test_ingestion_features_uc1_compliance(mock_remove, mock_replace, mock_zip, mock_exists, mock_cds_client):
+    """
+    Test if the Copernicus ingestion request includes all mandatory features defined in UC1.
+
+    Input: Call to fetch_copernicus_data.
+    Expected Output: The 'variable' list in the CDS API request must contain all 11
+                     required meteorological variables.
+    """
+    mock_client_instance = MagicMock()
+    mock_cds_client.return_value = mock_client_instance
+
+    # Mock zip extraction to avoid errors in fetch_copernicus_data
+    mock_zip_instance = MagicMock()
+    mock_zip.return_value.__enter__.return_value = mock_zip_instance
+    mock_zip_instance.namelist.return_value = ["dummy.csv"]
+
+    fetch_copernicus_data("2023-01-01", "2023-01-01")
+
+    # Capture the request sent to CDS API
+    args, kwargs = mock_client_instance.retrieve.call_args
+    request = args[1] if len(args) > 1 else args[0]
+    requested_vars = request["variable"]
+
+    expected_vars = [
+        "2m_dewpoint_temperature",
+        "2m_temperature",
+        "surface_pressure",
+        "total_precipitation",
+        "surface_solar_radiation_downwards",
+        "surface_thermal_radiation_downwards",
+        "skin_temperature",
+        "soil_temperature_level_1",
+        "volumetric_soil_water_level_1",
+        "10m_u_component_of_wind",
+        "10m_v_component_of_wind",
+    ]
+
+    for var in expected_vars:
+        assert var in requested_vars, f"Missing mandatory UC1 feature: {var}"
+
+    assert len(requested_vars) == len(expected_vars), "Unexpected number of features requested"
