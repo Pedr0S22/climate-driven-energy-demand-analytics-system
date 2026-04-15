@@ -1,6 +1,6 @@
 # Requirements Folder
 
-In this readme you can find all information related to the project requirements, including the UCs, QAs and TCs.
+In this README, you can find all information related to the project requirements, including the UCs and the QAs. The TCs, that test the UCs and QAs, are found in the [Testing folder](../Testing/TEST_CASES.md).
 
 # Use Cases
 
@@ -23,6 +23,7 @@ Below there is a short presentation on what are the UCs, their numeration and ho
 
 - UC8 - Hourly prediction generation
     - UC11 - Hourly prediction dashboard
+- UC13 - Scenario simulation
 
     ### Admin Only Options
 - UC9 - Admin model management
@@ -67,8 +68,3 @@ To complement the Use Cases, we defined Quality Attributes that this software mu
 - QA17: Automated Test Coverage and Regression
 - QA18: Continuous Integration Efficiency
 - QA19: Traceability and Code Review
-
-
-# Test Cases
-
-TODO
