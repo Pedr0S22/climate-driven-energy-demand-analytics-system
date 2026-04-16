@@ -1,0 +1,19 @@
+
+services:
+  database: 
+    image: postgres:15
+    environment:
+      - POSTGRES_USER=piacd_energy
+      - POSTGRES_PASSWORD=postgres_Piacd_energy
+      - POSTGRES_DB=energy_db
+    volumes:
+      - ./init-scripts:/docker-entrypoint-initdb.d:ro
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U piacd_energy -d energy_db"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 10s 
+volumes:
+  postgres_data:
