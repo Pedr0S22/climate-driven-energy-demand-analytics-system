@@ -1,8 +1,10 @@
-import pandas as pd
-import os
-import numpy as np
-from pathlib import Path
 import logging
+import os
+import time
+from pathlib import Path
+
+import numpy as np
+import pandas as pd
 
 # =======================================
 # DADOS ENERGY
@@ -262,12 +264,12 @@ def g115g1(df):
 def weather(pasta_entrada=None, pasta_saida=None):
     # Fallbacks para o ambiente de produção
     if pasta_entrada is None:
-        root = Path(__file__).parent.parent.parent.parent
+        root = Path(__file__).parent.parent.parent.parent.parent
         pasta_entrada = root / "Code" / "energy_prediction_system" / "data" / "raw" / "weather"
 
     if pasta_saida is None:
-        root = Path(__file__).parent.parent.parent.parent
-        pasta_saida = root / "data" / "raw" / "weather_corrigido"
+        root = Path(__file__).parent.parent.parent.parent.parent
+        pasta_saida = root / "Code" / "energy_prediction_system" / "data" / "raw" / "weather_corrigido"
 
     pasta_entrada = Path(pasta_entrada)
     pasta_saida = Path(pasta_saida)
@@ -405,7 +407,7 @@ def missingImputation(df, var):
     hourly_groups = df.groupby(df.index.floor("1h"))
     resultado = []
 
-    for hora, group in hourly_groups:
+    for _hora, group in hourly_groups:
         serie = group[var]
         nan_count = serie.isna().sum()
         if nan_count == 0:
@@ -709,6 +711,8 @@ if __name__ == "__main__":
     caminho_energy_corrigido = DATA_RAW / "energy_corrigido"
     caminho_weather_corrigido = DATA_RAW / "weather_corrigido"
 
+    start_time = time.time()
+
     logging.info("Iniciando pipeline de processamento de energia...")
     energy(caminho_energy, pasta_saida=caminho_energy_corrigido)
 
@@ -722,4 +726,6 @@ if __name__ == "__main__":
         pasta_weather_corrigido=caminho_weather_corrigido,
         train_data=True,
     )
-    logging.info("Pipeline concluído.")
+    end_time = time.time()
+    elapsed_time = end_time - start_time
+    logging.info("Tempo de processamento do Módulo da Limpeza: %.2f segundos", elapsed_time)

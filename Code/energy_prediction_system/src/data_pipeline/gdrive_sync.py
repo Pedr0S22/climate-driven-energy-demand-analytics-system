@@ -1,6 +1,7 @@
-import os
 import logging
-from dotenv import load_dotenv, find_dotenv
+import os
+
+from dotenv import find_dotenv, load_dotenv
 from google.auth.transport.requests import Request
 from google.oauth2.credentials import Credentials
 from google_auth_oauthlib.flow import InstalledAppFlow
@@ -12,7 +13,7 @@ load_dotenv(find_dotenv())
 # Keep full access just to be safe
 SCOPES = ["https://www.googleapis.com/auth/drive"]
 SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
-PROJECT_ROOT = os.path.abspath(os.path.join(SCRIPT_DIR, ".."))
+PROJECT_ROOT = os.path.abspath(os.path.join(SCRIPT_DIR, "..", ".."))
 
 
 def authenticate_gdrive():

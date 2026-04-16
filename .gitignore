@@ -37,6 +37,12 @@ pip-log.txt
 pip-delete-this-directory.txt
 
 # Unit test / coverage reports
+Testing/automated_tests/unit/*
+Testing/automated_tests/integration/*
+
+!Testing/automated_tests/unit/.gitkeep
+!Testing/automated_tests/integration/.gitkeep
+
 htmlcov/
 .tox/
 .nox/
@@ -221,7 +227,9 @@ Code/energy_prediction_system/data/raw/weather/
 Code/energy_prediction_system/data/raw/energy_corrigido/
 Code/energy_prediction_system/data/raw/weather_corrigido/
 
-Code/energy_prediction_system/data/processed/
+Code/energy_prediction_system/data/processed/feat-engineering/*.csv
+Code/energy_prediction_system/data/processed/*.csv
+
 
 Code/energy_prediction_system/src/**/*.json
 
