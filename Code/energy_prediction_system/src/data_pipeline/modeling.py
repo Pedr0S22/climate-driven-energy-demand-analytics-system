@@ -179,7 +179,7 @@ class ModelManager:
         two_years = DateOffset(years=2) # Ponto onde o treino termina (1 ano de Gap + 1 ano de Teste)
         
 
-        step_offset = DateOffset(weeks=1) # Salto semanal garante os 30 folds
+        step_offset = DateOffset(months=1)
 
         for i in range(self.n_partitions):
             # Definição do bloco de Teste (Sempre 1 ano)
