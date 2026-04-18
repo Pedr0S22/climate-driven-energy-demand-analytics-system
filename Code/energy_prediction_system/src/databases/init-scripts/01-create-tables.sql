@@ -48,6 +48,7 @@ CREATE TABLE admin (
 CREATE TABLE request (
     id                  BIGSERIAL,
     date_req            TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    request_type	 VARCHAR(512) NOT NULL,
     model_model_name_id BIGINT NOT NULL,
     users_id            BIGINT NOT NULL,
     PRIMARY KEY(id),
