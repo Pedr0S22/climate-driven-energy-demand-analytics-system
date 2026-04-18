@@ -97,99 +97,94 @@ The primary objective of Ingestion Module is to reliably, securely, and reproduc
     - **Engineering Why:** Redundancy is critical for research reproducibility. By syncing to Google Drive, the team maintains a shared, persistent source of truth for raw data that survives local environment resets.
 
 
-### 2.2. Cleaning & Temporal Alignment Module
+### 2.2. Cleaning & Temporal Alignment Module (UC2)
 
-The primary objective of the Cleaning & Temporal Alignment Module is to transform raw, heterogeneous energy and meteorological data into a synchronized, clean, and hourly-aggregated dataset ready for feature engineering. It bridges the gap between raw API outputs (often containing gaps, outliers, or mixed frequencies) and the strict requirements of time-series modeling.
+The primary objective of the Cleaning & Temporal Alignment Module is to transform raw, heterogeneous energy and meteorological data into synchronized, clean, and aggregated datasets. Refactored into a modular `DataCleaner` class, it supports both high-performance batch processing of historical files and real-time ingestion for inference.
 
-*   **Target:** Reads from `/data/raw/energy/` and `/data/raw/weather/`, outputs to `/data/processed/`.
+*   **Target:** Reads from `/data/raw/`, outputs to `/data/processed/` (Batch) or `/data/processed/real-time/` (Real-Time).
 *   **Core Logic & Mechanisms:**
 
+    - **Modular Class Design (`DataCleaner`):**
+        - Decouples file I/O from transformation logic. It exposes cleaning methods that accept in-memory DataFrames.
+        - **Engineering Why:** Enables the **Live Data Scheduler** to process real-time API payloads directly without intermediate disk writes, reducing latency.
+
     - **Energy Data Processing:**
-        - **Frequency Detection & Alignment:** Automatically identifies 1h, 15-min, or mixed sampling. Standardizes the grid by filling missing timestamps.
-        - **Intelligent Imputation:** Missing `Load_MW` values are handled based on the gap size:
-            - **Single-point gaps:** Linear interpolation (`df.interpolate(method="linear")`).
-            - **Multi-point gaps:** Mean of the 6 preceding valid observations.
-            - **Engineering Why:** Linear interpolation handles isolated missing points smoothly. For larger gaps, the mean of the last 6 observations (1.5 hours) provides a "local steady-state" estimate that avoids creating artificial trends (which interpolation would do) or introducing future-leakage (which backfilling would do).
-        - **Max-Aggregation:** Collapses 15-minute intervals into hourly grains using the **maximum** load value.
-          - **Engineering Why:** In energy demand forecasting, resource planning is driven by **peak load**. Averaging 15-min peaks would smooth out the highest demand signals, leading to an under-estimation of system stress.
+        - **Time Alignment & Rounding:** Automatically rounds timestamps to the nearest 15-minute mark (xx:00, xx:15, xx:30, xx:45) and fills missing timestamps to ensure a continuous grid.
+        - **Rule-Based Imputation:** Missing `Load_MW` values are handled based on frequency:
+            - **Isolated (1 NaN per hour):** Linear interpolation.
+            - **Multiple (>1 NaN per hour):** Mean of the exactly the **last 6 valid observations**.
+        - **Max-Aggregation (Hourly):** Collapses 15-minute intervals into hourly grains using the **maximum** load value.
+          - **Engineering Why:** Resource planning is driven by **peak load**.
+
+    - **Daily Aggregation:**
+        - Derives a daily dataset from the synchronized hourly data.
+        - **Load_MW -> Load_MWh:** Calculated as the **sum** of the 24 hourly load values to represent total daily energy consumption.
+        - **Climate Aggregates:** Continuous variables use the **mean** for daily exposure.
 
     - **Weather Data Normalization:**
-        - **Unit Conversion:** Standardizes raw ERA5-Land units (e.g., Kelvin to Celsius, Pa to hPa, J/m² to W/m²).
-          - **Engineering Why:** Standardizes features to physically intuitive scales and numerically stable ranges, facilitating faster model convergence and better interpretability.
-        - **Outlier Detection (Dual-Pass):** IQR filtering (1.5 * IQR) combined with hard domain-specific boundaries.
-          - **Engineering Why:** Statistical IQR is sensitive to extremes. Physical limits (e.g., temperature between -40°C and 55°C) ensure that we don't discard legitimate extreme weather events (like heatwaves) unless they are truly physically impossible.
-        - **Variable-Specific Imputation:**
-            - *Thermal/Radiation:* Mean of 4 preceding and 2 subsequent values.
-            - *Wind/Pressure/Soil:* Rolling mean of 3 to 6 preceding observations.
-            - *Solar:* Forced to zero during night hours (22h-04h); daytime gaps use local window means.
-              - **Engineering Why:** Solar sensors often report noisy non-zero values at night. Hard-coding zero reflects physical reality and removes noise.
-        - **Mean-Aggregation:** 15-minute weather readings are averaged to produce representative hourly values.
-          - **Engineering Why:** Unlike energy demand (peak-driven), weather impacts on energy are cumulative/ambient. A mean temperature better represents the sustained thermal load on the grid.
+        - **Unit Conversion:** Standardizes units (Kelvin to Celsius, Pa to hPa, m to mm, J/m² to W/m²).
+        - **Outlier Detection (Dual-Pass):** IQR filtering combined with hard physical domain boundaries (Temperature: -40°C to 55°C, Wind: -69.4 to 69.4 m/s, Precip: 0 to 55 mm).
+        - **Variable-Specific Imputation (Vectorized):**
+            - *Thermal/Radiation:* Mean of 4 preceding and 2 subsequent valid observations.
+            - *Solar:* Forced to zero during night hours (22h-04h).
+            - *Wind (u10/v10):* Mean of the last 3 valid observations.
+            - *Precipitation:* Forced to zero if surrounded by zeros; otherwise mean of 3 closest valid.
 
-    - **Dataset Synchronization:**
-        - **Inner Join logic:** The module performs a strict `inner join` on the standardized `datetime` column (UTC).
-          - **Engineering Why:** The machine learning model requires a complete feature vector to make a prediction. Observations where one source is missing are unusable for training and would introduce bias if naively filled.
-        - **Output Generation:** Persists the final synchronized dataframe to `/data/processed/` as `dados_treino_completos.csv` or `dados_predicao.csv`.
+    - **Real-Time Adaptability:**
+        - When processing prediction data (`train_data=False`), the system utilizes a dedicated `/real-time/` subfolder and a `prediction_data` prefix. This ensures the production training set remains unpolluted while providing a consolidated history of live inputs.
 
     - **Cleaned Data Dictionary:**
 
-| Variable | Description | Unit | Aggregation (Hourly) |
-| :--- | :--- | :--- | :--- |
-| `datetime` | Standardized timestamp (UTC) | ISO 8601 | Join Key |
-| `Load_MW` | Actual electricity demand | MW | **Maximum** |
-| `t2m` | 2m Air Temperature | °C | Mean |
-| `skt` | Skin Temperature | °C | Mean |
-| `d2m` | 2m Dewpoint Temperature | °C | Mean |
-| `stl1` | Soil Temperature Level 1 | °C | Mean |
-| `ssrd` | Surface Solar Radiation Downwards | W/m² | Mean |
-| `strd` | Surface Thermal Radiation Downwards | W/m² | Mean |
-| `sp` | Surface Pressure | hPa | Mean |
-| `tp` | Total Precipitation | mm | Mean |
-| `u10` | 10m U-component of Wind | m/s | Mean |
-| `v10` | 10m V-component of Wind | m/s | Mean |
-| `swvl1` | Volumetric Soil Water Layer 1 | m³/m³ | Mean |
+| Variable | Description | Unit | Aggregation (Hourly) | Aggregation (Daily) |
+| :--- | :--- | :--- | :--- | :--- |
+| `datetime` | Standardized timestamp (UTC) | ISO 8601 | Join Key | Date Key |
+| `Load_MW` / `Load_MWh` | Electricity demand | MW / MWh | **Maximum** | **Sum** |
+| `t2m` | 2m Air Temperature | °C | Mean | Mean |
+| `skt` | Skin Temperature | °C | Mean | Mean |
+| `ssrd` | Surface Solar Radiation Downwards | W/m² | Mean | Mean |
+| `tp` | Total Precipitation | mm | Mean | Mean |
+| `u10` / `v10` | 10m Wind Components | m/s | Mean | Mean |
+| `sp` | Surface Pressure | hPa | Mean | Mean |
+| `swvl1` | Volumetric Soil Water Layer 1 | m³/m³ | Mean | Mean |
 
 
 ### 2.3. Feature Engineering Module
 
-The primary objective of the Feature Engineering Module is to transform synchronized hourly data into a high-dimensional feature set that captures temporal patterns, climate inertia, and physics-based demand drivers.
+The primary objective of the Feature Engineering Module is to transform synchronized data into a high-dimensional feature set that captures temporal patterns, climate inertia, and physics-based demand drivers. The refactored `FeatureEngineer` class dynamically adjusts its logic based on the data frequency (**Hourly** vs **Daily**).
 
-*   **Target:** Reads from `/data/processed/dados_treino_completos.csv`, outputs to `/data/processed/feat-engineering/` (Full, Selected, and PCA versions).
+*   **Target:** Reads from `/data/processed/complete_train_data_[hourly|daily].csv`, outputs to `/data/processed/feat-engineering/` as `features_[hourly|daily]_[full|selected|pca].csv`.
 *   **Core Logic & Mechanisms:**
 
     - **Temporal Decomposition:**
-        - Extracts `hour`, `day_of_week`, `month`, `year`, and `season` (1:Winter to 4:Autumn).
-        - **Engineering Why:** Captures multi-scale seasonality (daily cycles, weekend vs. weekday patterns, and annual trends) essential for non-stationary energy demand.
+        - **Hourly:** Extracts `hour`, `day_of_week`, `month`, `year`, and `season`.
+        - **Daily:** Extracts `day_of_week`, `month`, `year`, and `season` (skips `hour` as it is uniform).
+        - **Engineering Why:** Captures multi-scale seasonality essential for non-stationary energy demand.
 
-    - **Rolling Climate Features (24h Window):**
-        - Calculates `mean`, `std`, `median`, `var`, `skew`, and `kurt` for all climate variables.
-        - Computes **RMS (Root Mean Square)** and **Deriv (Rate of Change)** for key variables (`t2m`, `skt`, `ssrd`, `tp`).
-        - Uses **Rolling IQR** for `t2m` as a robust measure of thermal volatility.
-        - **Engineering Why:** A 24-hour window represents a full solar/diurnal cycle. RMS captures the "energy" of weather signals, while the derivative identifies rapid cooling or heating events that trigger immediate spikes in HVAC usage.
+    - **Frequency-Aware Rolling Features:**
+        - **Hourly:** Uses a **24-period** window to represent a full solar/diurnal cycle.
+        - **Daily:** Uses **7-period** and **30-period** windows to capture weekly inertia and broader monthly trends.
+        - **Stats:** Calculates `mean`, `std`, `median`, `var`, `rms`, `deriv`, `skew`, `kurt`, and `iqr`.
+        - **Engineering Why:** RMS captures the "energy" of weather signals, while the derivative identifies rapid cooling or heating events.
 
     - **Lagged Demand Features:**
-        - Extracts `L1` (momentum), `L24` (daily seasonality), and `L168` (weekly seasonality) from `Load_MW`.
-        - **Engineering Why:** Energy demand is highly auto-regressive. Today's load at 2 PM is historically the best predictor for tomorrow's load at 2 PM.
+        - **Hourly:** Extracts `L1` (momentum), `L24` (daily seasonality), and `L168` (weekly seasonality).
+        - **Daily:** Extracts `L1` (yesterday), `L7` (weekly cycle), and `L28` (monthly cycle).
+        - **Engineering Why:** Energy demand is highly auto-regressive. Daily models rely more on weekly patterns (`L7`) than diurnal ones.
 
     - **Physics-Derived Indicators:**
-        - **HDD/CDD (Base 18°C):** Heating and Cooling Degree Hours calculated in Celsius.
-        - **Thermal Anomalies:** Deviation of current temperature from the monthly mean.
-        - **72h Persistent Extremes:** Binary flags for Heatwaves and Coldwaves, triggered only if temperatures stay in the top/bottom 10th percentile for 72 consecutive hours.
-        - **Engineering Why:** 18°C is the standard "neutral" temperature where neither heating nor cooling is typically required. The 72h persistence flag captures the "cumulative heat stress" on buildings, where demand remains high even if the temperature dips slightly after a long hot spell.
-
-    - **Handling Early Records (Gaps in Rolling/Lags):**
-        - **Hybrid Imputation:** The module uses `.ffill().bfill()` to handle the $N-1$ initial rows where rolling windows or lags are incomplete.
-        - **Zero-Filling:** Flags like `heatwave_flag` use `.fillna(0)` to default to a "no-event" state when data is insufficient.
-        - **Engineering Why:** Using `bfill()` (back-filling) ensures that the first records of the dataset are not discarded. This maintains the maximum possible training size and keeps the dataset aligned with the original 52k+ row count, which is critical for time-series continuity.
+        - **HDD/CDD (Base 18°C):** Heating and Cooling Degree Hours/Days.
+        - **Persistent Extremes:** Binary flags for Heatwaves and Coldwaves.
+            - **Hourly:** Requires 72 consecutive hours of extreme temperature.
+            - **Daily:** Requires 3 consecutive days of extreme temperature.
+        - **Engineering Why:** Captures the "cumulative stress" on the grid, where demand remains high during prolonged extreme weather.
 
     - **Redundancy & Dimensionality Management:**
-        - **Association-Based Filter (0.6 Threshold):** Removes highly collinear variables. Uses **Spearman** for continuous-continuous, **Lambda** for categorical-categorical, and **Logistic Regression Accuracy** for categorical-continuous associations.
-        - **Automated PCA Elbow Detection:** Uses the **Knee Point method** (maximum distance to the secant line) to automatically select the optimal number of components for the PCA dataset.
-        - **Engineering Why:** Climate data is notoriously collinear (e.g., skin temp vs. air temp). A 0.6 threshold is conservative, ensuring we retain distinct signals while reducing noise. PCA Elbow detection allows the system to compress features without manual tuning as new variables are added.
+        - **Association-Based Filter (0.6 Threshold):** Removes highly collinear variables using Spearman, Lambda, and LogReg accuracy.
+        - **Automated PCA Elbow Detection:** Uses the **Knee Point method** to select optimal components, ensuring transformers are saved per frequency (`scaler_[hourly|daily].joblib`).
 
     - **Persistence:**
-        - Saves fitted `StandardScaler`, `PCA`, and `selected_features` list to `/models/feat-engineering/` using `joblib`.
-        - **Engineering Why:** Essential for the **Live Data Scheduler**, ensuring that real-time inference data is transformed using the exact same statistical parameters as the training data.
+        - Saves fitted states to `/models/feat-engineering/` with frequency-specific suffixes.
+        - **Engineering Why:** Essential for the **Live Data Scheduler**, ensuring real-time daily or hourly inference uses the exact statistical parameters of the corresponding training set.
 
 
 ### 2.4. Training & Evaluation Module
@@ -253,50 +248,94 @@ The primary objective of the Feature Engineering Module is to transform synchron
 ## 4. Databases & Data Storage Design
 
 ### 4.1. Relational Database - PostgreSQL
-[`TODO`] - EDIT
 
-The system relies on three logical databases/tables: `UserDB`, `ModelDB`, and `PredDB`, as defined in the Architecture.
+The system utilizes PostgreSQL as its primary relational database, structured to ensure data normalization, referential integrity, and efficient queries for predictive time-series data. The schema follows a strict Entity-Relationship model.
 
-### Table `users`
-Stores user credentials and roles. Passwords must be hashed, with a minimum length of 8 characters and maximum of 20 characters enforced before insertion.
+#### Base Tables and Role-Based Access Control
 
-| Column Name | Data Type | Constraints | Description |
-| :--- | :--- | :--- | :--- |
-| `id` | UUID / Integer | Primary Key | Unique identifier. |
-| `username` | String | Unique, Not Null | Chosen username. |
-| `email` | String | Unique, Not Null | User's email address. |
-| `password_hash` | String | Not Null | Bcrypt hashed password. |
-| `role` | String / Enum | Default: 'user' | Defines access level ('user' or 'admin'). |
-| `created_at` | Timestamp | Auto-generated| Account creation time. |
+The system uses an inheritance pattern to manage different user roles. The central `users` table stores credentials and common data, while `admin` and `client` act as specialized extensions. Passwords are natively managed on the server using the `pgcrypto` extension.
 
-### Table `models`
-Stores metadata for trained models available in the system.
+**Table `users`**
+Stores base credentials and account security information.
 
 | Column Name | Data Type | Constraints | Description |
 | :--- | :--- | :--- | :--- |
-| `id` | UUID / Integer | Primary Key | Unique identifier. |
-| `model_type` | String | Not Null | e.g., 'Linear Regression', 'Random Forest'. |
-| `resolution` | String | Not Null | 'Daily' or 'Hourly'. |
-| `metrics_json` | JSON/Text | | Stored MAE, RMSE, and R2 scores. |
-| `file_path` | String | Not Null | Path to the `.pkl` or `.joblib` file. |
-| `is_active` | Boolean | Default: False | Admin flag denoting if this is the active prod model. |
-| `created_at` | Timestamp | Auto-generated| When the model was trained. |
+| `id` | BigSerial | Primary Key | Auto-generated unique identifier. |
+| `email` | Text | Unique, Not Null | User email address. |
+| `username` | Varchar | Unique, Not Null | Chosen username. |
+| `password` | Varchar | Not Null | Password hash. |
+| `account_regist_date`| Timestamp | Default: CURRENT_TIMESTAMP | Account creation date and time. |
+| `failed_login_att` | Integer | Default: 0 | Counter for failed login attempts. |
+| `acc_locked_until` | Timestamp | Nullable | Date and time until the account is locked. |
+| `last_failed_att` | Timestamp | Nullable | Date and time of the last failed login attempt. |
 
-
-### Table `predictions`
-Logs user actions and historical predictions.
+**Table `admin` & `client`**
+Extensions of the users table that define system privileges.
 
 | Column Name | Data Type | Constraints | Description |
 | :--- | :--- | :--- | :--- |
-| `id` | UUID / Integer | Primary Key | Unique identifier. |
-| `user_id` | Foreign Key | Refers to `users.id`| Who requested the prediction. |
-| `model_id` | Foreign Key | Refers to `models.id`| Which model was used. |
-| `target_datetime` | Timestamp | Not Null | The date/time being predicted. |
-| `predicted_mw` | Float | Not Null | The predicted electricity load. |
-| `executed_at` | Timestamp | Auto-generated| When the request was made. |
+| `users_id` | BigInt | PK, FK | Primary key that also acts as a foreign key with ON DELETE CASCADE. |
 
-[`TODO`]
+#### Models and Requests
 
+The `model` table stores machine learning model metadata, while the `request` table serves as the transaction hub, linking a user to a specific model execution.
+
+**Table `model`**
+Stores metadata and performance metrics of the trained models.
+
+| Column Name | Data Type | Constraints | Description |
+| :--- | :--- | :--- | :--- |
+| `model_name_id` | BigSerial | Primary Key | Unique model identifier. |
+| `model_type` | Varchar | Not Null | Type of machine learning model. |
+| `model_creation_date` | Timestamp | Default: CURRENT_TIMESTAMP | Date the model was registered or trained. |
+| `model_server_relative_path`| Varchar | Not Null | Server path to the model file. |
+| `rmse` | Double Precision | Not Null | Root Mean Square Error metric. |
+| `mae` | Double Precision | Not Null | Mean Absolute Error metric. |
+| `r2` | Double Precision | Not Null | R-squared metric. |
+
+**Table `request`**
+Logs the history of prediction requests made by users.
+
+| Column Name | Data Type | Constraints | Description |
+| :--- | :--- | :--- | :--- |
+| `id` | BigSerial | Primary Key | Unique request identifier. |
+| `date_req` | Timestamp | Default: CURRENT_TIMESTAMP | Date and time the request was made. |
+| `model_model_name_id` | BigInt | FK | Reference to the utilized model. |
+| `users_id` | BigInt | FK | User who made the request. |
+| `request_type` | VARCHAR(512) | NOT NULL | Specifies the request type (e.g., 'normal' or 'advanced'). |
+
+#### Prediction Results
+
+Predictive results are strictly separated by their temporal granularity into `predictions_daily` and `predictions_hourly`. This prevents null fields in the database and allows highly optimized queries based on the requested time horizon, using composite primary keys to ensure a 1:N relationship with the origin request.
+
+**Table `predictions_daily`**
+Stores predictions with daily granularity.
+
+| Column Name | Data Type | Constraints | Description |
+| :--- | :--- | :--- | :--- |
+| `request_id` | BigInt | PK, FK | The origin request. |
+| `date_day` | Date | PK, Not Null | The target day of the prediction. |
+| `value_pred` | Double Precision | Not Null | The predicted electricity load value. |
+
+**Table `predictions_hourly`**
+Stores predictions with hourly granularity.
+
+| Column Name | Data Type | Constraints | Description |
+| :--- | :--- | :--- | :--- |
+| `request_id` | BigInt | PK, FK | The origin request. |
+| `date_hour` | Timestamp | PK, Not Null | The target hour of the prediction. |
+| `value_pred` | Double Precision | Not Null | The predicted electricity load value. |
+
+#### Architectural Rationale and Key Decisions
+
+##### Role-Based Access Control via Table Inheritance
+Instead of relying on a single, monolithic `users` table with sparse, nullable columns to accommodate different roles, the database employs a strict "Table-per-Type" inheritance pattern. The `users` table acts as the base entity containing universally required attributes (e.g., authentication credentials, login attempts). Role-specific tables (`admin` and `client`) reference this base table using their primary key as a foreign key. This guarantees zero null-column bloat and makes the system highly extensible if new roles are needed in the future. Furthermore, the aggressive implementation of `ON DELETE CASCADE` across these constraints offloads lifecycle management to the database engine. If a core user account is purged, all associated roles, prediction requests, and generated time-series data are instantaneously and safely destroyed, eliminating the risk of orphaned records.
+
+##### Temporal Segregation of Predictive Data
+Machine learning models inherently produce varying resolutions of time-series data. Storing these disparate granularities in a single `predictions` table would necessitate compromised data types (e.g., forcing daily dates into timestamp columns, or leaving columns null) and complex query filtering. By physically segregating `predictions_daily` (using the strict `DATE` type) and `predictions_hourly` (using `TIMESTAMP`), the schema enforces strict data consistency at the column level. The use of composite primary keys (`request_id` coupled with either `date_day` or `date_hour`) elegantly satisfies the 1:N relationship requirement. This allows a single transaction in the `request` table to fan out into hundreds of highly indexed, resolution-specific prediction rows, optimizing the database for fast retrieval by front-end dashboards.
+
+##### Server-Side Cryptography for Database Seeding
+Standard practices often expose plaintext passwords during initial database migrations, setup scripts, or CI/CD pipelines. To mitigate this security vulnerability, the architecture leverages PostgreSQL's native `pgcrypto` extension. By shifting the cryptographic workload to the database engine itself, passwords can be hashed and salted dynamically during the `INSERT` operation. This ensures that raw credentials are never stored in SQL dump files, migration logs, or application source code, adhering to strict zero-trust security principles from the moment the database is initialized.
 ### 4.2. File Storage System
 [`TODO`] - (Directory structures for raw/processed data, and .pkl/joblib model binary storage rules)
 

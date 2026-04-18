@@ -1,4 +1,4 @@
-# USE CASE DEFINITIONS - V3.0
+# USE CASE DEFINITIONS - V3.1
 
 This file contains all UCs for the development of this project.
 
@@ -114,8 +114,10 @@ Land Hourly data from 1950 to present" dataset found at [https://cds.climate.cop
 5. The system handles data types and features conversions.
 6. The system detects outliers using the IQR method for all variables except electricity load. For each detected value, the system verifies whether it is plausible according to the predefined limits.
 7. The system aggregates data every hour, averaging temperature, wind, radiation, and precipitation; for electrical charge, we use the maximum value for that interval.
-8. The system merges both datasets into a single dataset and saves the processed data in the `/data/processed/` folder.
-9. The system logs all events and the execution time to ELK.
+8. The system merges both datasets into a single dataset
+9. The system aggregates daily dataset using the sum of load_MW for 24h and uses a simple aveage for continous variables.
+10. The system saves the processed datasets (daily and hourly) in the `/data/processed/` folder.
+11. The system logs all events and the execution time to ELK.
 
 
 **Extensions:**
@@ -183,12 +185,17 @@ User goal.
     - variance;
     - root mean square;
     - average derivatives;
-    - skewness, kurtosis, IQR, zero crossing rate, mean crossing rate, and pairwise correlation;
+    - skewness, kurtosis, and IQR;
 
 6. The system extracts lagged demand features, such as:
-    - L1 Load: Electrical load one hour ago;
-    - L24 Load: Load one day ago;
-    - L168 Load: Load one week ago;
+    - Hourly dataset:
+        - L1 Load: Electrical load one hour ago;
+        - L24 Load: Load one day ago;
+        - L168 Load: Load one week ago;
+    - Daily dataset:
+        - L1 Load: Electrical load one day ago;
+        - L7 Load: Load one week ago;
+        - L28 Load: Load one month ago;
 
 7. The system derives new features from the data to provide additional analytical depth, such as:
     - Temperature Anomalies: Deviation from seasonal/monthly means;
@@ -197,29 +204,27 @@ User goal.
 
 8. The system validates that the features obtained don't include invalid values generated during the feature extraction process.
 
-9. The system measures and logs the execution time and total feature count and other events to ELK.
+9. The system measures and logs the execution time, relevant feature count, and other processing events.
 
-10. The system saves the full feature sets in `/data/processed/feat-engineering/`, ensuring the output format is compatible with the model training pipeline.
+10. The system saves the full sets in `/data/processed/feat-engineering/`, for both hourly and daily data models, ensuring the output format is compatible with the model training pipeline.
 
 **Extensions**:
 
 8. a) Minor domain inconsistencies detected (e.g., a few records with values that do not align with physical constraints):
     * 8a1. The system handles them by dropping or imputing the affected rows to maintain dataset quality.
 
-    b) Critical domain-context errors detected (e.g., widespread anomalies where feature values are physically implausible):
-    * 8b1. The system logs a domain consistency error to ELK and the process terminates to prevent training a model on nonsensical data.
-
-    * 8b2. The developer must review the previous extraction logic or source data to identify the source of the contextual mistake.
+    b) Domain inconsistencies detected:
+    * 8b1. The system utilizes forward and backward filling to handle invalid values generated during extraction, ensuring a complete dataset for the modeling stage.
 
     c) High dimensionality detected:
 
-    * 8c1. The system performs feature selection (e.g., Fisher Score, ReliefF) to identify the most predictive variables.
+    * 8c1. The system performs feature selection using correlation metrics (labda, spearman, logist regression/ANOVA) to identify the most predictive variables.
 
-    * 8c2. The system performs dimensionality reduction (e.g., PCA) to compress information.
+    * 8c2. The system performs dimensionality reduction PCA to compress information.
 
     * 8c3. The system generates and labels these new dataset versions.
 
-    * 8c4. The system saves each resulting dataset version as a separate file to allow for comparative training and evaluation in the next stage.
+    * 8c4. The system saves each resulting dataset version as a separate file to allow for comparative training and evaluation in the next stage (full, selected, pca feature sets) for both daily and hourly models.
 
     * 8c5. The system ensures these new versions are compatible with the model training pipeline.
 
