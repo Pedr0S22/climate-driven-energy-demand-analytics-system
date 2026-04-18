@@ -63,6 +63,62 @@ class TestStatisticalEvaluator(unittest.TestCase):
         best_strat = self.evaluator.select_best_strategy(strategy_results)
         self.assertEqual(best_strat, 'fixed_rolling')
 
+    def test_select_best_dataset_tie_breakers(self):
+        """Testa o desempate: RMSE igual, ganha R2. Se R2 igual, ganha MAE."""
+        results_dict = {
+            'ds1': {'rmse': [100.0], 'r2': [0.80], 'mae': [50.0]},
+            'ds2': {'rmse': [100.0], 'r2': [0.90], 'mae': [60.0]}, # Ganha no R2
+            'ds3': {'rmse': [100.0], 'r2': [0.90], 'mae': [40.0]}, # Empata R2, ganha no MAE
+        }
+        best_ds, _ = self.evaluator.select_best_dataset(results_dict)
+        self.assertEqual(best_ds, 'ds3')
+        
+        # Fazer o mesmo para a estratégia
+        strategy_results = {
+            'strat1': {'metrics': {'rmse': [100.0], 'r2': [0.8], 'mae': [50.0]}},
+            'strat2': {'metrics': {'rmse': [100.0], 'r2': [0.9], 'mae': [40.0]}},
+        }
+        best_strat = self.evaluator.select_best_strategy(strategy_results)
+        self.assertEqual(best_strat, 'strat2')
+
+    @patch('data_pipeline.modeling.Path.exists')
+    @patch('data_pipeline.modeling.pd.read_csv')
+    def test_load_all_datasets(self, mock_read_csv, mock_exists):
+        """Testa o carregamento de datasets simulando o disco."""
+        mock_exists.return_value = True
+        mock_read_csv.return_value = pd.DataFrame({'datetime': ['2023-01-01'], 'val': [1]})
+        
+        datasets = self.manager.load_all_datasets()
+        self.assertIn('full', datasets)
+        self.assertIn('pca', datasets)
+
+    def test_get_next_version(self):
+        """Testa o versionamento (ex: LR_v1.joblib -> LR_v2.joblib)"""
+        with patch.object(self.manager.models_dir, 'glob') as mock_glob:
+            # Simula que já existem a versão 1 e 3
+            mock_file1, mock_file3 = MagicMock(), MagicMock()
+            mock_file1.name = "LR_v1.joblib"
+            mock_file3.name = "LR_v3.joblib"
+            mock_glob.return_value = [mock_file1, mock_file3]
+            
+            # A próxima versão deve ser a 4
+            next_v = self.manager._get_next_version("LR")
+            self.assertEqual(next_v, 4)
+
+    @patch('data_pipeline.modeling.optuna.create_study')
+    def test_train_flexible_nested_strategy(self, mock_create_study):
+        """Força a execução da lógica interna de validação cruzada do Nested."""
+        mock_study = MagicMock()
+        mock_study.best_params = {'n_estimators': 10, 'max_depth': 3}
+        mock_create_study.return_value = mock_study
+        
+        X_train = self.test_data[['datetime', 'feature1']].copy()
+        y_train = self.test_data['Load_MW'].copy()
+        
+        # Testar a estratégia nested
+        model = self.manager.train_flexible(X_train, y_train, strategy="nested")
+        self.assertIsNotNone(model)
+
 
 class TestModelManager(unittest.TestCase):
     """Testes para a classe ModelManager"""
@@ -130,3 +186,38 @@ class TestModelManager(unittest.TestCase):
         self.assertTrue(hasattr(model, 'predict'))
         # Garante que a simulação foi chamada
         mock_create_study.assert_called_once()
+    
+    @patch('data_pipeline.modeling.joblib.dump')
+    @patch('data_pipeline.modeling.ModelManager.load_all_datasets')
+    @patch('data_pipeline.modeling.ModelManager.train_flexible')
+    def test_run_evaluation_pipeline_mocked(self, mock_train_flex, mock_load, mock_dump):
+        from data_pipeline.modeling import run_evaluation_pipeline
+        
+        # Cria um dataset miniatura para a pipeline não demorar tempo a processar
+        dates = pd.date_range('2018-01-01', end='2024-01-01', freq='W') # Semanal para ser leve
+        df = pd.DataFrame({
+            'datetime': dates,
+            'Load_MW': np.random.rand(len(dates)),
+            'Load_MWh': np.random.rand(len(dates)), # Necessário para freq="daily"
+            'feat1': np.random.rand(len(dates))
+        })
+        
+        # Diz ao ModelManager para carregar apenas este dataset pequenino
+        mock_load.return_value = {'full': df}
+        
+        # Finge o modelo "flexible" para não perdermos tempo a treinar Random Forests aqui
+        mock_rf = MagicMock()
+        mock_rf.predict.side_effect = lambda X: np.zeros(len(X)) # Previsões dummy
+        mock_train_flex.return_value = mock_rf
+        
+        # Executa a pipeline
+        try:
+            run_evaluation_pipeline()
+            pipeline_ran = True
+        except Exception as e:
+            pipeline_ran = False
+            print(f"Pipeline falhou: {e}")
+            
+        # Verifica se passou sem quebrar e se guardou ficheiros (Regra 8)
+        self.assertTrue(pipeline_ran)
+        self.assertTrue(mock_dump.called, "A pipeline não guardou nenhum modelo no disco.")
