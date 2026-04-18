@@ -8,7 +8,7 @@ import pandas as pd
 import tempfile
 
 # IMPORTANTE: Estamos a importar as tuas classes REAIS para as testar
-from src.data_pipeline.modeling import StatisticalEvaluator, ModelManager
+from data_pipeline.modeling import StatisticalEvaluator, ModelManager
 
 class TestStatisticalEvaluator(unittest.TestCase):
     """Testes para a classe StatisticalEvaluator"""
