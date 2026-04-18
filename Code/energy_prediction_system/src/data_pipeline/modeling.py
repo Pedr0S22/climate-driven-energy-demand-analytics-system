@@ -14,6 +14,7 @@ from sklearn.linear_model import LinearRegression
 from sklearn.metrics import mean_absolute_error, mean_squared_error, r2_score
 from sklearn.model_selection import TimeSeriesSplit
 from pandas.tseries.offsets import DateOffset
+import psycopg2 
 
 # =======================================
 # CONFIGURATION
@@ -333,123 +334,183 @@ class ModelManager:
         best_model.fit(X_final, y_train)
         
         return best_model
-def run_evaluation_pipeline():
-    overall_start = time.time()
-    evaluator = StatisticalEvaluator()
-    
-    for freq in ["hourly", "daily"]:
-        logger.info(f"\n{'='*60}\nSTARTING MASSIVE PIPELINE FOR: {freq.upper()}\n{'='*60}")
-        manager = ModelManager(frequency=freq)
-        datasets = manager.load_all_datasets()
+
+
+class DatabaseManager:
+    """Gere as operações de base de dados (PostgreSQL) para o registo de modelos."""
+    def __init__(self, db_config):
+        self.db_config = db_config
+
+    def save_model_metrics(self, model_type, file_path, rmse, mae, r2):
+        """Guarda os metadados do modelo na base de dados."""
+        if not self.db_config:
+            logger.warning("Nenhuma configuração de base de dados fornecida. Registo ignorado.")
+            return
+
+        query = """
+            INSERT INTO model (model_type, model_server_relative_path, rmse, mae, r2)
+            VALUES (%s, %s, %s, %s, %s);
+        """
+        try:
+            with psycopg2.connect(**self.db_config) as conn:
+                with conn.cursor() as cur:
+                    # Converte o path para string caso seja um objeto Path do pathlib
+                    cur.execute(query, (model_type, str(file_path), float(rmse), float(mae), float(r2)))
+            logger.info("✅ Metadados do modelo guardados na base de dados com sucesso.")
+        except Exception as e:
+            logger.error(f"❌ Erro ao guardar na base de dados: {e}")
+
+
+class PipelineOrchestrator:
+    """Orquestra a execução modular do pipeline de avaliação e treino."""
+    def __init__(self, db_config=None):
+        self.evaluator = StatisticalEvaluator()
+        self.db_manager = DatabaseManager(db_config)
+
+    def run(self):
+        overall_start = time.time()
         
-        if not datasets:
-            logger.warning(f"No datasets found for {freq}. Skipping.")
-            continue
+        for freq in ["hourly", "daily"]:
+            logger.info(f"\n{'='*60}\nSTARTING MASSIVE PIPELINE FOR: {freq.upper()}\n{'='*60}")
+            self.manager = ModelManager(frequency=freq)
+            datasets = self.manager.load_all_datasets()
             
+            if not datasets:
+                logger.warning(f"No datasets found for {freq}. Skipping.")
+                continue
+                
+            splits_by_strategy = self._precalculate_splits(datasets)
+            
+            for model_type in ["baseline", "flexible"]:
+                self._evaluate_and_save_model(model_type, freq, datasets, splits_by_strategy)
+
+        total_duration = time.time() - overall_start
+        logger.info(f"\nTotal execution time: {total_duration/60:.2f} minutes")
+
+    def _precalculate_splits(self, datasets):
+        """Isola a lógica de pré-cálculo dos splits temporais."""
         logger.info("Pre-calculating strict temporal splits...")
         precalculated_splits = {}
         for strategy in ["expanding", "fixed_rolling", "nested"]:
             precalculated_splits[strategy] = {}
             for ds_name, df in datasets.items():
+                precalculated_splits[strategy][ds_name] = self.manager.generate_splits(df, strategy=strategy)
+        return precalculated_splits
 
-                X = df.drop(columns=[manager.target_col])
-                y = df[manager.target_col]
-                precalculated_splits[strategy][ds_name] = manager.generate_splits(df, strategy=strategy)
+    def _evaluate_and_save_model(self, model_type, freq, datasets, splits_by_strategy):
+        """Gere a avaliação de um tipo de modelo específico e o respetivo salvamento."""
+        logger.info(f"\n--- Evaluating Model: {model_type.upper()} ---")
+        strategy_results = {}
+        strategies_to_run = ["expanding", "fixed_rolling"] if model_type == "baseline" else ["expanding", "fixed_rolling", "nested"]
         
-        for model_type in ["baseline", "flexible"]:
-            logger.info(f"\n--- Evaluating Model: {model_type.upper()} ---")
-            strategy_results = {}
+        # 1. Avaliar todas as estratégias
+        for strategy in strategies_to_run:
+            strategy_results[strategy] = self._run_strategy_loops(model_type, strategy, datasets, splits_by_strategy)
+        
+        # 2. Encontrar a melhor estratégia
+        best_strat = self.evaluator.select_best_strategy(strategy_results)
+        vencedora_metrics = strategy_results[best_strat]['metrics']
+        
+        # 3. Encontrar o melhor fold individual
+        melhor_idx = self._find_best_fold_index(vencedora_metrics)
+        best_final_model = vencedora_metrics['models'][melhor_idx]
+        
+        # Métricas do melhor modelo
+        best_rmse = vencedora_metrics['rmse'][melhor_idx]
+        best_r2 = vencedora_metrics['r2'][melhor_idx]
+        best_mae = vencedora_metrics['mae'][melhor_idx]
+
+        logger.info(f"  => [Best Individual Fold: #{melhor_idx}] RMSE: {best_rmse:.2f} | R2: {best_r2:.4f} | MAE: {best_mae:.2f}")
+
+        # ---------------------------------------------------------
+        # 4. GUARDAR NO DISCO E NA BASE DE DADOS
+        # ---------------------------------------------------------
+        prefix = "LR" if model_type == "baseline" else "RF"
+        version = self.manager._get_next_version(prefix)
+        file_name = f"{prefix}_v{version}.joblib"
+        
+        # A. Caminho Absoluto (Para o Python conseguir gravar o ficheiro no teu disco agora)
+        save_path = self.manager.models_dir / file_name
+        joblib.dump(best_final_model, save_path)
+        
+        logger.info(f"✅ WINNER for {model_type.upper()} ({freq}): Strategy='{best_strat}', Dataset='{strategy_results[best_strat]['dataset']}'")
+        logger.info(f"✅ Ficheiro guardado fisicamente em: {save_path}")
+
+        # B. Caminho Relativo (A partir da raiz 'energy/' para ir para a Base de Dados)
+        # Vai gerar algo como: "models/hourly/RF_v1.joblib"
+        caminho_relativo = f"models/{freq}/{file_name}"
+
+        # C. Guardar na BD com o caminho correto
+        db_model_name = "Linear Regression" if model_type == "baseline" else "Random Forest"
+        self.db_manager.save_model_metrics(
+            model_type=db_model_name,
+            file_path=caminho_relativo,  # <-- O caminho limpo vai aqui!
+            rmse=best_rmse,
+            mae=best_mae,
+            r2=best_r2
+        )
+    def _run_strategy_loops(self, model_type, strategy, datasets, splits_by_strategy):
+        """Executa os loops de treino para uma estratégia específica sobre os datasets."""
+        logger.info(f"  Strategy: {strategy}")
+        dataset_results = {ds: {'rmse': [], 'r2': [], 'mae': [], 'models': []} for ds in datasets.keys()}
+        
+        for ds_name, df in datasets.items():
+            X = df.drop(columns=[self.manager.target_col])
+            y = df[self.manager.target_col]
+            splits = splits_by_strategy[strategy][ds_name]
             
-            # Baseline não faz nested
-            strategies_to_run = ["expanding", "fixed_rolling"] if model_type == "baseline" else ["expanding", "fixed_rolling", "nested"]
-            
-            for strategy in strategies_to_run:
-                logger.info(f"  Strategy: {strategy}")
-                dataset_results = {ds: {'rmse': [], 'r2': [], 'mae': [], 'models': []} for ds in datasets.keys()}
+            for fold, (train_idx, test_idx) in enumerate(splits):
+                X_train, y_train = X.iloc[train_idx], y.iloc[train_idx]
+                X_test, y_test = X.iloc[test_idx], y.iloc[test_idx]
                 
-                for ds_name, df in datasets.items():
-                    X = df.drop(columns=[manager.target_col])
-                    y = df[manager.target_col]
+                if model_type == "baseline":
+                    X_train_b = X_train.drop(columns=['datetime']) if 'datetime' in X_train.columns else X_train
+                    model = self.manager.train_baseline(X_train_b, y_train)
+                else:
+                    model = self.manager.train_flexible(X_train, y_train, strategy)
                     
-                    splits = precalculated_splits[strategy][ds_name]
-                    
-                    for fold, (train_idx, test_idx) in enumerate(splits):
-                        X_train, y_train = X.iloc[train_idx], y.iloc[train_idx]
-                        X_test, y_test = X.iloc[test_idx], y.iloc[test_idx]
-                        
-                        if model_type == "baseline":
-                            X_train_b = X_train.drop(columns=['datetime']) if 'datetime' in X_train.columns else X_train
-                            model = manager.train_baseline(X_train_b, y_train)
-                        else:
-                            model = manager.train_flexible(X_train, y_train, strategy)
-                            
-                        X_test = X_test.drop(columns=['datetime']) if 'datetime' in X_test.columns else X_test
-                        y_pred = model.predict(X_test)
-                        rmse = np.sqrt(mean_squared_error(y_test, y_pred))
-                        r2 = r2_score(y_test, y_pred)
-                        mae = mean_absolute_error(y_test, y_pred)
-                        
-                        dataset_results[ds_name]['rmse'].append(rmse)
-                        dataset_results[ds_name]['r2'].append(r2)
-                        dataset_results[ds_name]['mae'].append(mae)
-                        dataset_results[ds_name]['models'].append(model)
+                X_test = X_test.drop(columns=['datetime']) if 'datetime' in X_test.columns else X_test
+                y_pred = model.predict(X_test)
                 
-                # Regra 6: Escolha do melhor dataset (médias)
-                best_ds, metrics = evaluator.select_best_dataset(dataset_results)
-                logger.info(f"    [Métricas Dataset {best_ds.upper()}] RMSE Médio: {metrics['rmse']:.2f} | R2 Médio: {metrics['r2']:.4f} | MAE Médio: {metrics['mae']:.2f}")
-                
-                strategy_results[strategy] = {
-                    'dataset': best_ds,
-                    'metrics': dataset_results[best_ds]
-                }
+                dataset_results[ds_name]['rmse'].append(np.sqrt(mean_squared_error(y_test, y_pred)))
+                dataset_results[ds_name]['r2'].append(r2_score(y_test, y_pred))
+                dataset_results[ds_name]['mae'].append(mean_absolute_error(y_test, y_pred))
+                dataset_results[ds_name]['models'].append(model)
+        
+        # Avalia qual foi o melhor dataset para esta estratégia
+        best_ds, metrics = self.evaluator.select_best_dataset(dataset_results)
+        logger.info(f"    [Métricas Dataset {best_ds.upper()}] RMSE Médio: {metrics['rmse']:.2f}")
+        
+        return {'dataset': best_ds, 'metrics': dataset_results[best_ds]}
+
+    def _find_best_fold_index(self, vencedora_metrics):
+        """Lógica de desempate para encontrar o melhor fold individual da estratégia vencedora."""
+        melhor_idx = 0
+        for i in range(1, len(vencedora_metrics['rmse'])):
+            curr_rmse = vencedora_metrics['rmse'][i]
+            best_rmse = vencedora_metrics['rmse'][melhor_idx]
             
-            # Regra 7: Escolha da melhor estratégia (estatística + médias)
-            best_strat = evaluator.select_best_strategy(strategy_results)
-            
-            # --- LÓGICA DE SELEÇÃO DO MELHOR MODELO (FOLD) ---
-            vencedora_metrics = strategy_results[best_strat]['metrics']
-            modelos_disponiveis = vencedora_metrics['models']
-            
-            # Encontrar o índice do melhor fold individual usando a hierarquia
-            melhor_idx = 0
-            for i in range(1, len(vencedora_metrics['rmse'])):
-                curr_rmse = vencedora_metrics['rmse'][i]
-                best_rmse = vencedora_metrics['rmse'][melhor_idx]
-                
-                # Critério 1: Menor RMSE
-                if curr_rmse < best_rmse:
+            if curr_rmse < best_rmse:
+                melhor_idx = i
+            elif curr_rmse == best_rmse:
+                if vencedora_metrics['r2'][i] > vencedora_metrics['r2'][melhor_idx]:
                     melhor_idx = i
-                elif curr_rmse == best_rmse:
-                    # Critério 2: Maior R2
-                    if vencedora_metrics['r2'][i] > vencedora_metrics['r2'][melhor_idx]:
+                elif vencedora_metrics['r2'][i] == vencedora_metrics['r2'][melhor_idx]:
+                    if vencedora_metrics['mae'][i] < vencedora_metrics['mae'][melhor_idx]:
                         melhor_idx = i
-                    elif vencedora_metrics['r2'][i] == vencedora_metrics['r2'][melhor_idx]:
-                        # Critério 3: Menor MAE
-                        if vencedora_metrics['mae'][i] < vencedora_metrics['mae'][melhor_idx]:
-                            melhor_idx = i
+        return melhor_idx
 
-            best_final_model = modelos_disponiveis[melhor_idx]
-            
-            # Métricas globais da estratégia para o log informativo
-            mean_rmse = np.mean(vencedora_metrics['rmse'])
-            mean_r2 = np.mean(vencedora_metrics['r2'])
-            mean_mae = np.mean(vencedora_metrics['mae'])
-            
-            logger.info(f"  => [Métricas Globais {best_strat.upper()}] RMSE: {mean_rmse:.2f} | R2: {mean_r2:.4f} | MAE: {mean_mae:.2f}")
-            logger.info(f"  => [Best Individual Fold: #{melhor_idx}] RMSE: {vencedora_metrics['rmse'][melhor_idx]:.2f}")
-
-            # Regra 8: Guardar com versão
-            prefix = "LR" if model_type == "baseline" else "RF"
-            version = manager._get_next_version(prefix)
-            file_name = f"{prefix}_v{version}.joblib"
-            save_path = manager.models_dir / file_name
-            
-            joblib.dump(best_final_model, save_path)
-            logger.info(f"✅ WINNER for {model_type.upper()} ({freq}): Strategy='{best_strat}', Dataset='{strategy_results[best_strat]['dataset']}'")
-            logger.info(f"✅ Ficheiro guardado: {save_path}")
-
-    total_duration = time.time() - overall_start
-    logger.info(f"\nTotal execution time: {total_duration/60:.2f} minutes")
 
 if __name__ == "__main__":
-    run_evaluation_pipeline()
+
+    DB_CONFIG = {
+        "dbname": "energy_db",
+        "user": "piacd_energy",
+        "password": "postgres_Piacd_energy",
+        "host": "localhost", # (Lê a nota importante abaixo sobre o host)
+        "port": "5433"
+    }
+    
+    # Inicia a orquestração do pipeline de forma limpa
+    orchestrator = PipelineOrchestrator(db_config=DB_CONFIG)
+    orchestrator.run()

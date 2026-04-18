@@ -1,15 +1,21 @@
-"""
-Unit Tests para o módulo data_pipeline.modeling
-"""
+
 
 import unittest
 from unittest.mock import patch, MagicMock
 import numpy as np
 import pandas as pd
 import tempfile
+import logging
 
-# IMPORTANTE: Confirma se o teu import funciona assim, caso contrário usa "from src.data_pipeline..."
-from data_pipeline.modeling import StatisticalEvaluator, ModelManager, run_evaluation_pipeline
+from data_pipeline.modeling import (
+    StatisticalEvaluator, 
+    ModelManager, 
+    DatabaseManager, 
+    PipelineOrchestrator
+)
+
+# Silenciar os logs durante os testes para não sujar a consola
+logging.getLogger("data_pipeline.modeling").setLevel(logging.CRITICAL)
 
 class TestStatisticalEvaluator(unittest.TestCase):
     """Testes para a classe StatisticalEvaluator"""
@@ -135,47 +141,118 @@ class TestModelManager(unittest.TestCase):
 
     @patch('data_pipeline.modeling.Path.glob')
     def test_get_next_version(self, mock_glob):
-        """Testa o versionamento (ex: LR_v1.joblib -> LR_v2.joblib)"""
-        # Cria ficheiros simulados
         mock_file1, mock_file3 = MagicMock(), MagicMock()
         mock_file1.name = "LR_v1.joblib"
         mock_file3.name = "LR_v3.joblib"
-        
-        # Diz ao mock para devolver estes ficheiros quando o glob for chamado
         mock_glob.return_value = [mock_file1, mock_file3]
         
-        # A próxima versão depois da 1 e 3 tem de ser a 4
         next_v = self.manager._get_next_version("LR")
         self.assertEqual(next_v, 4)
 
-class TestEvaluationPipeline(unittest.TestCase):
-    """Testa o mega-loop final da run_evaluation_pipeline"""
+
+class TestDatabaseManager(unittest.TestCase):
+    """Testes dedicados à integração com a Base de Dados"""
+    
+    @patch('data_pipeline.modeling.psycopg2.connect')
+    def test_save_model_metrics_success(self, mock_connect):
+        """Testa se a query de inserção correta é chamada sem erros"""
+        db_config = {"dbname": "test_db", "user": "test"}
+        manager = DatabaseManager(db_config)
+        
+        # Simula o Context Manager do psycopg2 (with conn.cursor()...)
+        mock_conn = MagicMock()
+        mock_cursor = MagicMock()
+        mock_connect.return_value.__enter__.return_value = mock_conn
+        mock_conn.cursor.return_value.__enter__.return_value = mock_cursor
+
+        manager.save_model_metrics("Random Forest", "models/hourly/RF_v1.joblib", 10.5, 5.2, 0.95)
+        
+        # Garante que o cur.execute foi chamado
+        self.assertTrue(mock_cursor.execute.called)
+        
+        # Verifica se os argumentos passados para a BD estão corretos
+        call_args = mock_cursor.execute.call_args[0]
+        self.assertIn("INSERT INTO model", call_args[0])
+        self.assertEqual(call_args[1], ("Random Forest", "models/hourly/RF_v1.joblib", 10.5, 5.2, 0.95))
+
+    def test_save_model_metrics_no_config(self):
+        """Garante que o código não 'quebra' se a configuração da BD for nula"""
+        manager = DatabaseManager(None)
+        # Não deve lançar exceção
+        manager.save_model_metrics("RF", "path", 1.0, 1.0, 1.0) 
+
+    @patch('data_pipeline.modeling.psycopg2.connect')
+    def test_save_model_metrics_exception(self, mock_connect):
+        """Garante que se a Base de dados estiver em baixo, o treino do modelo não é deitado ao lixo"""
+        db_config = {"dbname": "test_db"}
+        manager = DatabaseManager(db_config)
+        mock_connect.side_effect = Exception("Database is down!")
+        
+        # Mesmo com erro simulado, não deve lançar a exceção para cima e matar a run
+        try:
+            manager.save_model_metrics("RF", "path", 1.0, 1.0, 1.0)
+            failed = False
+        except Exception:
+            failed = True
+            
+        self.assertFalse(failed, "A exceção de DB não foi tratada pelo try/except e parou a pipeline!")
+
+
+class TestPipelineOrchestrator(unittest.TestCase):
+    """Testa a nova classe de orquestração do pipeline completo"""
+
+    def setUp(self):
+        self.orchestrator = PipelineOrchestrator(db_config=None)
+
+    def test_find_best_fold_index(self):
+        """Testa a lógica de desempate para o melhor Fold interno"""
+        vencedora_metrics = {
+            'rmse': [15.0, 10.0, 10.0, 12.0],
+            'r2':   [0.80, 0.90, 0.90, 0.85],
+            'mae':  [8.0,  5.0,  4.0,  6.0] # No índice 2 e 3 há empate de RMSE/R2. Ganha o menor MAE (índice 2).
+        }
+        
+        best_idx = self.orchestrator._find_best_fold_index(vencedora_metrics)
+        self.assertEqual(best_idx, 2)
 
     @patch('data_pipeline.modeling.joblib.dump')
     @patch('data_pipeline.modeling.ModelManager.load_all_datasets')
-    @patch('data_pipeline.modeling.ModelManager.train_flexible')
-    def test_run_evaluation_pipeline_mocked(self, mock_train_flex, mock_load, mock_dump):
+    @patch('data_pipeline.modeling.PipelineOrchestrator._run_strategy_loops')
+    @patch('data_pipeline.modeling.DatabaseManager.save_model_metrics')
+    def test_pipeline_run_integration(self, mock_db_save, mock_run_loops, mock_load, mock_dump):
+        """Testa o flow global da aplicação mockando as partes pesadas de treino e disco"""
+        
+        # 1. Cria DataFrames Falsos
         dates = pd.date_range('2018-01-01', end='2024-01-01', freq='W') 
         df = pd.DataFrame({
             'datetime': dates,
             'Load_MW': np.random.rand(len(dates)),
-            'Load_MWh': np.random.rand(len(dates)), 
-            'feat1': np.random.rand(len(dates))
+            'Load_MWh': np.random.rand(len(dates))
         })
         
-        # Correção vital: Passar os 3 datasets para o Friedman Test não rebentar!
-        mock_load.return_value = {'full': df, 'selected': df, 'pca': df}
+        # Simula o load_datasets
+        mock_load.return_value = {'full': df}
         
-        mock_rf = MagicMock()
-        mock_rf.predict.side_effect = lambda X: np.zeros(len(X)) 
-        mock_train_flex.return_value = mock_rf
+        # Simula o _run_strategy_loops para devolver sempre sucesso imediato sem treinar
+        mock_run_loops.return_value = {
+            'dataset': 'full',
+            'metrics': {
+                'rmse': [10.0], 'r2': [0.9], 'mae': [5.0], 'models': ['MockedModelObject']
+            }
+        }
         
+        # 2. Executa a classe
         try:
-            run_evaluation_pipeline()
+            self.orchestrator.run()
             pipeline_ran = True
         except Exception as e:
             pipeline_ran = False
             print(f"Pipeline falhou com erro: {e}")
             
-        self.assertTrue(pipeline_ran, "A pipeline quebrou durante o teste.")
-        self.assertTrue(mock_dump.called, "A pipeline não guardou nenhum modelo no disco.")
+        # 3. Asserções rigorosas
+        self.assertTrue(pipeline_ran, "A pipeline orquestrada quebrou.")
+        self.assertTrue(mock_dump.called, "O orquestrador não tentou guardar o modelo.")
+        self.assertTrue(mock_run_loops.called, "O orquestrador não chamou as estratégias de validação cruzada.")
+
+if __name__ == '__main__':
+    unittest.main()
