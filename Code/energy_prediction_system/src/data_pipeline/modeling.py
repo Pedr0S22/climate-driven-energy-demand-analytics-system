@@ -423,7 +423,8 @@ class PipelineOrchestrator:
         best_r2 = vencedora_metrics['r2'][melhor_idx]
         best_mae = vencedora_metrics['mae'][melhor_idx]
 
-        logger.info(f"  => [Best Individual Fold: #{melhor_idx}] RMSE: {best_rmse:.2f} | R2: {best_r2:.4f} | MAE: {best_mae:.2f}")
+        logger.info(f"  => [Best Individual Fold: #{melhor_idx}] RMSE: {best_rmse:.2f} "
+                    f"| R2: {best_r2:.4f} | MAE: {best_mae:.2f}")
 
         # ---------------------------------------------------------
         # 4. GUARDAR NO DISCO E NA BASE DE DADOS
