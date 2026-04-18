@@ -31,7 +31,7 @@ class StatisticalEvaluator:
     @staticmethod
     def test_normality(data_groups, alpha=0.05):
         """Tests if all groups are normally distributed using Shapiro-Wilk."""
-        for name, data in data_groups.items():
+        for _ , data in data_groups.items():
             # If standard deviation is 0, shapiro fails. 
             if np.std(data) == 0:
                 return False
@@ -200,7 +200,7 @@ class ModelManager:
             # 4. Verificação de consistência: temos dados suficientes para esta janela de 3 anos?
             if training_start_cutoff < start_date:
                 if i < self.n_partitions:
-                    logger.warning(f"Aviso: Dados insuficientes para {self.n_partitions} folds. Gerados apenas {i} folds.")
+                    logger.warning(f"Aviso: Dados insuficientes para {self.n_partitions} folds.")
                 break
                 
             # 5. Extração dos índices
@@ -401,8 +401,11 @@ class PipelineOrchestrator:
         """Gere a avaliação de um tipo de modelo específico e o respetivo salvamento."""
         logger.info(f"\n--- Evaluating Model: {model_type.upper()} ---")
         strategy_results = {}
-        strategies_to_run = ["expanding", "fixed_rolling"] if model_type == "baseline" else ["expanding", "fixed_rolling", "nested"]
-        
+        if model_type == "baseline":
+            strategies_to_run = ["expanding", "fixed_rolling"]
+        else:
+            strategies_to_run = ["expanding", "fixed_rolling", "nested"]
+
         # 1. Avaliar todas as estratégias
         for strategy in strategies_to_run:
             strategy_results[strategy] = self._run_strategy_loops(model_type, strategy, datasets, splits_by_strategy)
@@ -428,12 +431,12 @@ class PipelineOrchestrator:
         prefix = "LR" if model_type == "baseline" else "RF"
         version = self.manager._get_next_version(prefix)
         file_name = f"{prefix}_v{version}.joblib"
-        
-        # A. Caminho Absoluto (Para o Python conseguir gravar o ficheiro no teu disco agora)
+
         save_path = self.manager.models_dir / file_name
         joblib.dump(best_final_model, save_path)
         
-        logger.info(f"✅ WINNER for {model_type.upper()} ({freq}): Strategy='{best_strat}', Dataset='{strategy_results[best_strat]['dataset']}'")
+        logger.info(f"✅ WINNER for {model_type.upper()} ({freq}): Strategy='{best_strat}',"
+                    f"Dataset='{strategy_results[best_strat]['dataset']}'")
         logger.info(f"✅ Ficheiro guardado fisicamente em: {save_path}")
 
         # B. Caminho Relativo (A partir da raiz 'energy/' para ir para a Base de Dados)
@@ -459,7 +462,7 @@ class PipelineOrchestrator:
             y = df[self.manager.target_col]
             splits = splits_by_strategy[strategy][ds_name]
             
-            for fold, (train_idx, test_idx) in enumerate(splits):
+            for train_idx, test_idx in splits:
                 X_train, y_train = X.iloc[train_idx], y.iloc[train_idx]
                 X_test, y_test = X.iloc[test_idx], y.iloc[test_idx]
                 

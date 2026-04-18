@@ -124,12 +124,14 @@ class TestModelingFullCoverage(unittest.TestCase):
         manager = ModelManager()
         
         # 1. Testar modo Nested explícito
-        model_nested = manager.train_flexible(self.df[['datetime', 'temperatura']], self.df['Load_MW'], strategy="nested")
+        model_nested = manager.train_flexible(self.df[['datetime', 'temperatura']],
+                                               self.df['Load_MW'], strategy="nested")
         self.assertIsNotNone(model_nested)
         
         # 2. Testar modo Expanding com poucos dados (aciona o fallback do split 80/20)
         small_df = self.df.iloc[:50].copy() # Apenas 50 dias, insuficiente para gap de 2 anos
-        model_small = manager.train_flexible(small_df[['datetime', 'temperatura']], small_df['Load_MW'], strategy="expanding")
+        model_small = manager.train_flexible(small_df[['datetime', 'temperatura']],
+                                              small_df['Load_MW'], strategy="expanding")
         self.assertIsNotNone(model_small)
 
     @patch('data_pipeline.modeling.psycopg2.connect')
