@@ -112,7 +112,7 @@ class TestModelManager(unittest.TestCase):
         self.assertIsNotNone(model)
         self.assertTrue(hasattr(model, 'predict'))
 
-    @patch('src.data_pipeline.modeling.optuna.create_study')
+    @patch('data_pipeline.modeling.optuna.create_study')
     def test_train_flexible_mocked_optuna(self, mock_create_study):
         """Testa o RandomForest sem executar 30 trials do Optuna (simulado)"""
         # Configuramos o Mock para "enganar" o Optuna e devolver logo os melhores parâmetros
