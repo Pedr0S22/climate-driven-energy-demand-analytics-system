@@ -10,7 +10,7 @@ import tempfile
 
 # IMPORTANTE: Garante que o caminho de importação reflete a estrutura do teu projeto.
 # Se der erro, experimenta "from data_pipeline.modeling import ..."
-from src.data_pipeline.modeling import StatisticalEvaluator, ModelManager
+from data_pipeline.modeling import StatisticalEvaluator, ModelManager
 
 class TestStatisticalEvaluator(unittest.TestCase):
     """Testes para a classe StatisticalEvaluator"""
