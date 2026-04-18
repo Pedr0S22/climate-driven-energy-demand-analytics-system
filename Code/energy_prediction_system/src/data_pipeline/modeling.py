@@ -146,7 +146,7 @@ class ModelManager:
         self.data_dir = self.app_root / "data" / "processed" / "feat-engineering"
         self.models_dir = self.app_root / "models" / self.frequency
         self.models_dir.mkdir(parents=True, exist_ok=True)
-        self.n_partitions = 50
+        self.n_partitions = 2
 
     def load_all_datasets(self) -> dict:
         datasets = {}
@@ -198,8 +198,8 @@ class ModelManager:
 
             # 4. Verificação de consistência: temos dados suficientes para esta janela de 3 anos?
             if training_start_cutoff < start_date:
-                if i < target_folds:
-                    logger.warning(f"Aviso: Dados insuficientes para {target_folds} folds. Gerados apenas {i} folds.")
+                if i < self.n_partitions:
+                    logger.warning(f"Aviso: Dados insuficientes para {self.n_partitions} folds. Gerados apenas {i} folds.")
                 break
                 
             # 5. Extração dos índices

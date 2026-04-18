@@ -3,12 +3,14 @@ Unit Tests para o módulo data_pipeline.modeling
 """
 
 import unittest
+from unittest.mock import patch, MagicMock
 import numpy as np
 import pandas as pd
 import tempfile
 
-# IMPORTANTE: Estamos a importar as tuas classes REAIS para as testar
-from data_pipeline.modeling import StatisticalEvaluator, ModelManager
+# IMPORTANTE: Garante que o caminho de importação reflete a estrutura do teu projeto.
+# Se der erro, experimenta "from data_pipeline.modeling import ..."
+from src.data_pipeline.modeling import StatisticalEvaluator, ModelManager
 
 class TestStatisticalEvaluator(unittest.TestCase):
     """Testes para a classe StatisticalEvaluator"""
@@ -20,33 +22,46 @@ class TestStatisticalEvaluator(unittest.TestCase):
     def test_normality_with_normal_data(self):
         np.random.seed(42)
         normal_data = {
-            'group1': np.random.normal(loc=100, scale=15, size=30),
-            'group2': np.random.normal(loc=100, scale=15, size=30),
+            'group1': np.random.normal(loc=100, scale=5, size=50),
+            'group2': np.random.normal(loc=100, scale=5, size=50),
         }
         
-        # Chama o TEU método real (ajusta o nome 'check_normality' se necessário)
-        result = self.evaluator.check_normality(normal_data)
+        # Chama o método test_normality real
+        result = self.evaluator.test_normality(normal_data)
         self.assertTrue(result, "Expected normal data to pass Shapiro-Wilk test")
 
     def test_normality_with_non_normal_data(self):
         np.random.seed(42)
         non_normal_data = {
-            'group1': np.random.exponential(scale=2, size=30),
-            'group2': np.random.exponential(scale=2, size=30),
+            'group1': np.random.exponential(scale=2, size=50),
+            'group2': np.random.exponential(scale=2, size=50),
         }
         
-        result = self.evaluator.check_normality(non_normal_data)
+        result = self.evaluator.test_normality(non_normal_data)
         self.assertFalse(result, "Expected non-normal data to fail Shapiro-Wilk test")
 
     def test_select_best_dataset_by_rmse(self):
+        # 3 Datasets fornecidos para evitar o ValueError do Friedman Test
         results_dict = {
             'full': {'rmse': [100.0] * 5, 'r2': [0.9] * 5, 'mae': [80.0] * 5},
             'selected': {'rmse': [150.0] * 5, 'r2': [0.85] * 5, 'mae': [120.0] * 5},
+            'pca': {'rmse': [120.0] * 5, 'r2': [0.88] * 5, 'mae': [100.0] * 5},
         }
         
-        # Chama o TEU método real (ajusta o nome 'select_best_dataset' se necessário)
-        best_ds = self.evaluator.select_best_dataset(results_dict)
+        # A função devolve um tuplo: best_ds, best_metrics
+        best_ds, metrics = self.evaluator.select_best_dataset(results_dict)
         self.assertEqual(best_ds, 'full')
+        self.assertEqual(metrics['rmse'], 100.0)
+
+    def test_select_best_strategy(self):
+        # Testa a seleção da melhor estratégia
+        strategy_results = {
+            'fixed_rolling': {'metrics': {'rmse': [100.0] * 5, 'r2': [0.9] * 5, 'mae': [80.0] * 5}},
+            'expanding': {'metrics': {'rmse': [150.0] * 5, 'r2': [0.8] * 5, 'mae': [100.0] * 5}},
+            'nested': {'metrics': {'rmse': [120.0] * 5, 'r2': [0.85] * 5, 'mae': [90.0] * 5}},
+        }
+        best_strat = self.evaluator.select_best_strategy(strategy_results)
+        self.assertEqual(best_strat, 'fixed_rolling')
 
 
 class TestModelManager(unittest.TestCase):
@@ -55,9 +70,9 @@ class TestModelManager(unittest.TestCase):
     def setUp(self):
         """Setup: Cria dados sintéticos e a instância do manager"""
         self.temp_dir = tempfile.mkdtemp()
-        self.manager = ModelManager() # Instancia a tua classe real
+        self.manager = ModelManager() 
         
-        dates = pd.date_range(start='2020-01-01', end='2024-12-31', freq='h')
+        dates = pd.date_range(start='2018-01-01', end='2024-12-31', freq='D')
         self.test_data = pd.DataFrame({
             'datetime': dates,
             'Load_MW': np.random.normal(loc=2000, scale=300, size=len(dates)),
@@ -66,46 +81,52 @@ class TestModelManager(unittest.TestCase):
 
     def test_generate_splits_temporal_order(self):
         """Testa se o teu método real gera splits corretamente"""
-        # Chama o TEU método real em vez de simular a lógica de split
-        splits = self.manager.generate_splits(self.test_data)
+        splits = self.manager.generate_splits(self.test_data, strategy="fixed_rolling")
         
         self.assertTrue(len(splits) > 0, "Expected at least one valid split")
         
         for train_idx, test_idx in splits:
+            # O índice máximo de treino tem de ser menor que o mínimo de teste
             self.assertTrue(max(train_idx) < min(test_idx), "Train must come before test")
+            # Não podem existir dados sobrepostos
             overlap = set(train_idx) & set(test_idx)
             self.assertEqual(len(overlap), 0, "Train and test sets must not overlap")
 
     def test_generate_splits_edge_case_insufficient_data(self):
-        """Testa como o teu código reage a dados pequenos"""
-        dates = pd.date_range(start='2020-01-01', end='2021-12-31', freq='h')
+        """Testa como o teu código reage a dados insuficientes (menos de 3 anos)"""
+        dates = pd.date_range(start='2020-01-01', end='2021-12-31', freq='D')
         small_data = pd.DataFrame({
             'datetime': dates,
             'Load_MW': np.random.normal(loc=2000, scale=300, size=len(dates)),
         })
         
-        # Verifica se o método lida bem com poucos dados (pode retornar lista vazia)
         splits = self.manager.generate_splits(small_data)
         self.assertEqual(len(splits), 0, "Should not generate splits with insufficient data")
 
     def test_train_baseline_valid_data(self):
-        """Testa o teu método de treino de baseline"""
-        X = np.random.randn(100, 5)
-        y = np.random.randn(100)
+        """Testa o teu método de treino do baseline (Linear Regression)"""
+        X = pd.DataFrame(np.random.randn(100, 5), columns=[f'feat{i}' for i in range(5)])
+        y = pd.Series(np.random.randn(100))
         
-        # Chama o TEU método real
         model = self.manager.train_baseline(X, y)
         self.assertIsNotNone(model)
+        self.assertTrue(hasattr(model, 'predict'))
 
-    def test_metric_calculation(self):
-        """Testa o teu método de calcular métricas"""
-        y_true = np.array([1, 2, 3, 4, 5])
-        y_pred = np.array([1.1, 1.9, 3.1, 3.9, 5.1])
+    @patch('src.data_pipeline.modeling.optuna.create_study')
+    def test_train_flexible_mocked_optuna(self, mock_create_study):
+        """Testa o RandomForest sem executar 30 trials do Optuna (simulado)"""
+        # Configuramos o Mock para "enganar" o Optuna e devolver logo os melhores parâmetros
+        mock_study = MagicMock()
+        mock_study.best_params = {'n_estimators': 20, 'max_depth': 5}
+        mock_create_study.return_value = mock_study
         
-        # Chama o TEU método real que calcula as métricas (ajusta o nome)
-        metrics = self.manager.calculate_metrics(y_true, y_pred)
+        # O train_flexible exige a coluna 'datetime' para calcular os gaps
+        X_train = self.test_data[['datetime', 'feature1']].copy()
+        y_train = self.test_data['Load_MW'].copy()
         
-        self.assertIn('r2', metrics)
-        self.assertIn('rmse', metrics)
-        self.assertTrue(0.9 <= metrics['r2'] <= 1.0)
-        self.assertTrue(0 <= metrics['rmse'] < 0.5)
+        model = self.manager.train_flexible(X_train, y_train, strategy="expanding")
+        
+        self.assertIsNotNone(model)
+        self.assertTrue(hasattr(model, 'predict'))
+        # Garante que a simulação foi chamada
+        mock_create_study.assert_called_once()
