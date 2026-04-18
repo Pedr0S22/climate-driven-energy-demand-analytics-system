@@ -146,7 +146,7 @@ class ModelManager:
         self.data_dir = self.app_root / "data" / "processed" / "feat-engineering"
         self.models_dir = self.app_root / "models" / self.frequency
         self.models_dir.mkdir(parents=True, exist_ok=True)
-        self.n_partitions = 5
+        self.n_partitions = 50
 
     def load_all_datasets(self) -> dict:
         datasets = {}
