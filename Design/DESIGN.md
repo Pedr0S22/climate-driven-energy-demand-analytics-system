@@ -248,50 +248,94 @@ The primary objective of the Feature Engineering Module is to transform synchron
 ## 4. Databases & Data Storage Design
 
 ### 4.1. Relational Database - PostgreSQL
-[`TODO`] - EDIT
 
-The system relies on three logical databases/tables: `UserDB`, `ModelDB`, and `PredDB`, as defined in the Architecture.
+The system utilizes PostgreSQL as its primary relational database, structured to ensure data normalization, referential integrity, and efficient queries for predictive time-series data. The schema follows a strict Entity-Relationship model.
 
-### Table `users`
-Stores user credentials and roles. Passwords must be hashed, with a minimum length of 8 characters and maximum of 20 characters enforced before insertion.
+#### Base Tables and Role-Based Access Control
 
-| Column Name | Data Type | Constraints | Description |
-| :--- | :--- | :--- | :--- |
-| `id` | UUID / Integer | Primary Key | Unique identifier. |
-| `username` | String | Unique, Not Null | Chosen username. |
-| `email` | String | Unique, Not Null | User's email address. |
-| `password_hash` | String | Not Null | Bcrypt hashed password. |
-| `role` | String / Enum | Default: 'user' | Defines access level ('user' or 'admin'). |
-| `created_at` | Timestamp | Auto-generated| Account creation time. |
+The system uses an inheritance pattern to manage different user roles. The central `users` table stores credentials and common data, while `admin` and `client` act as specialized extensions. Passwords are natively managed on the server using the `pgcrypto` extension.
 
-### Table `models`
-Stores metadata for trained models available in the system.
+**Table `users`**
+Stores base credentials and account security information.
 
 | Column Name | Data Type | Constraints | Description |
 | :--- | :--- | :--- | :--- |
-| `id` | UUID / Integer | Primary Key | Unique identifier. |
-| `model_type` | String | Not Null | e.g., 'Linear Regression', 'Random Forest'. |
-| `resolution` | String | Not Null | 'Daily' or 'Hourly'. |
-| `metrics_json` | JSON/Text | | Stored MAE, RMSE, and R2 scores. |
-| `file_path` | String | Not Null | Path to the `.pkl` or `.joblib` file. |
-| `is_active` | Boolean | Default: False | Admin flag denoting if this is the active prod model. |
-| `created_at` | Timestamp | Auto-generated| When the model was trained. |
+| `id` | BigSerial | Primary Key | Auto-generated unique identifier. |
+| `email` | Text | Unique, Not Null | User email address. |
+| `username` | Varchar | Unique, Not Null | Chosen username. |
+| `password` | Varchar | Not Null | Password hash. |
+| `account_regist_date`| Timestamp | Default: CURRENT_TIMESTAMP | Account creation date and time. |
+| `failed_login_att` | Integer | Default: 0 | Counter for failed login attempts. |
+| `acc_locked_until` | Timestamp | Nullable | Date and time until the account is locked. |
+| `last_failed_att` | Timestamp | Nullable | Date and time of the last failed login attempt. |
 
-
-### Table `predictions`
-Logs user actions and historical predictions.
+**Table `admin` & `client`**
+Extensions of the users table that define system privileges.
 
 | Column Name | Data Type | Constraints | Description |
 | :--- | :--- | :--- | :--- |
-| `id` | UUID / Integer | Primary Key | Unique identifier. |
-| `user_id` | Foreign Key | Refers to `users.id`| Who requested the prediction. |
-| `model_id` | Foreign Key | Refers to `models.id`| Which model was used. |
-| `target_datetime` | Timestamp | Not Null | The date/time being predicted. |
-| `predicted_mw` | Float | Not Null | The predicted electricity load. |
-| `executed_at` | Timestamp | Auto-generated| When the request was made. |
+| `users_id` | BigInt | PK, FK | Primary key that also acts as a foreign key with ON DELETE CASCADE. |
 
-[`TODO`]
+#### Models and Requests
 
+The `model` table stores machine learning model metadata, while the `request` table serves as the transaction hub, linking a user to a specific model execution.
+
+**Table `model`**
+Stores metadata and performance metrics of the trained models.
+
+| Column Name | Data Type | Constraints | Description |
+| :--- | :--- | :--- | :--- |
+| `model_name_id` | BigSerial | Primary Key | Unique model identifier. |
+| `model_type` | Varchar | Not Null | Type of machine learning model. |
+| `model_creation_date` | Timestamp | Default: CURRENT_TIMESTAMP | Date the model was registered or trained. |
+| `model_server_relative_path`| Varchar | Not Null | Server path to the model file. |
+| `rmse` | Double Precision | Not Null | Root Mean Square Error metric. |
+| `mae` | Double Precision | Not Null | Mean Absolute Error metric. |
+| `r2` | Double Precision | Not Null | R-squared metric. |
+
+**Table `request`**
+Logs the history of prediction requests made by users.
+
+| Column Name | Data Type | Constraints | Description |
+| :--- | :--- | :--- | :--- |
+| `id` | BigSerial | Primary Key | Unique request identifier. |
+| `date_req` | Timestamp | Default: CURRENT_TIMESTAMP | Date and time the request was made. |
+| `model_model_name_id` | BigInt | FK | Reference to the utilized model. |
+| `users_id` | BigInt | FK | User who made the request. |
+| `request_type` | VARCHAR(512) | NOT NULL | Specifies the request type (e.g., 'normal' or 'advanced'). |
+
+#### Prediction Results
+
+Predictive results are strictly separated by their temporal granularity into `predictions_daily` and `predictions_hourly`. This prevents null fields in the database and allows highly optimized queries based on the requested time horizon, using composite primary keys to ensure a 1:N relationship with the origin request.
+
+**Table `predictions_daily`**
+Stores predictions with daily granularity.
+
+| Column Name | Data Type | Constraints | Description |
+| :--- | :--- | :--- | :--- |
+| `request_id` | BigInt | PK, FK | The origin request. |
+| `date_day` | Date | PK, Not Null | The target day of the prediction. |
+| `value_pred` | Double Precision | Not Null | The predicted electricity load value. |
+
+**Table `predictions_hourly`**
+Stores predictions with hourly granularity.
+
+| Column Name | Data Type | Constraints | Description |
+| :--- | :--- | :--- | :--- |
+| `request_id` | BigInt | PK, FK | The origin request. |
+| `date_hour` | Timestamp | PK, Not Null | The target hour of the prediction. |
+| `value_pred` | Double Precision | Not Null | The predicted electricity load value. |
+
+#### Architectural Rationale and Key Decisions
+
+##### Role-Based Access Control via Table Inheritance
+Instead of relying on a single, monolithic `users` table with sparse, nullable columns to accommodate different roles, the database employs a strict "Table-per-Type" inheritance pattern. The `users` table acts as the base entity containing universally required attributes (e.g., authentication credentials, login attempts). Role-specific tables (`admin` and `client`) reference this base table using their primary key as a foreign key. This guarantees zero null-column bloat and makes the system highly extensible if new roles are needed in the future. Furthermore, the aggressive implementation of `ON DELETE CASCADE` across these constraints offloads lifecycle management to the database engine. If a core user account is purged, all associated roles, prediction requests, and generated time-series data are instantaneously and safely destroyed, eliminating the risk of orphaned records.
+
+##### Temporal Segregation of Predictive Data
+Machine learning models inherently produce varying resolutions of time-series data. Storing these disparate granularities in a single `predictions` table would necessitate compromised data types (e.g., forcing daily dates into timestamp columns, or leaving columns null) and complex query filtering. By physically segregating `predictions_daily` (using the strict `DATE` type) and `predictions_hourly` (using `TIMESTAMP`), the schema enforces strict data consistency at the column level. The use of composite primary keys (`request_id` coupled with either `date_day` or `date_hour`) elegantly satisfies the 1:N relationship requirement. This allows a single transaction in the `request` table to fan out into hundreds of highly indexed, resolution-specific prediction rows, optimizing the database for fast retrieval by front-end dashboards.
+
+##### Server-Side Cryptography for Database Seeding
+Standard practices often expose plaintext passwords during initial database migrations, setup scripts, or CI/CD pipelines. To mitigate this security vulnerability, the architecture leverages PostgreSQL's native `pgcrypto` extension. By shifting the cryptographic workload to the database engine itself, passwords can be hashed and salted dynamically during the `INSERT` operation. This ensures that raw credentials are never stored in SQL dump files, migration logs, or application source code, adhering to strict zero-trust security principles from the moment the database is initialized.
 ### 4.2. File Storage System
 [`TODO`] - (Directory structures for raw/processed data, and .pkl/joblib model binary storage rules)
 
