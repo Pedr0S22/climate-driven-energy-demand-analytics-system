@@ -133,16 +133,20 @@ class TestModelManager(unittest.TestCase):
         self.assertIn('full', datasets)
         self.assertIn('pca', datasets)
 
-    def test_get_next_version(self):
-        with patch.object(self.manager.models_dir, 'glob') as mock_glob:
-            mock_file1, mock_file3 = MagicMock(), MagicMock()
-            mock_file1.name = "LR_v1.joblib"
-            mock_file3.name = "LR_v3.joblib"
-            mock_glob.return_value = [mock_file1, mock_file3]
-            
-            next_v = self.manager._get_next_version("LR")
-            self.assertEqual(next_v, 4)
-
+    @patch('data_pipeline.modeling.Path.glob')
+    def test_get_next_version(self, mock_glob):
+        """Testa o versionamento (ex: LR_v1.joblib -> LR_v2.joblib)"""
+        # Cria ficheiros simulados
+        mock_file1, mock_file3 = MagicMock(), MagicMock()
+        mock_file1.name = "LR_v1.joblib"
+        mock_file3.name = "LR_v3.joblib"
+        
+        # Diz ao mock para devolver estes ficheiros quando o glob for chamado
+        mock_glob.return_value = [mock_file1, mock_file3]
+        
+        # A próxima versão depois da 1 e 3 tem de ser a 4
+        next_v = self.manager._get_next_version("LR")
+        self.assertEqual(next_v, 4)
 
 class TestEvaluationPipeline(unittest.TestCase):
     """Testa o mega-loop final da run_evaluation_pipeline"""
