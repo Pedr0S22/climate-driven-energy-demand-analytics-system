@@ -11,3 +11,4 @@ Developers should refer to these documents during the implementation phase to en
 ## Developer How-To Guides
 *   [AUTO-FORMATTING.md](AUTO-FORMATTING.md): Instructions on how to use automated tools to ensure code quality, linting, and formatting.
 *   [HOW-TO_TRAEFIK.md](HOW-TO_TRAEFIK.md): Guide for configuring and managing Traefik as the reverse proxy for the system.
+*   [STYLE_GUIDE.md](STYLE_GUIDE.md): Guide for frontend components.
