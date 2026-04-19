@@ -1,4 +1,4 @@
-# USE CASE DEFINITIONS - V3.1
+# USE CASE DEFINITIONS - V3.2
 
 This file contains all UCs for the development of this project.
 
@@ -762,4 +762,33 @@ Allow the user to access a dashboard to view the time series of the hourly elect
 
 9. a. **The system catches an error during the model's inference phase.:**
     *   9a1. The system logs the failure details to ELK.
-    *   9a2. The system displays a pop-up error message to the user
+    *   9a2. The system displays a pop-up error message to the user.
+
+
+    ## UC14: User Logout
+
+    **Primary Actor:** User or Admin
+
+    **Scope/Goal:** Allow an authenticated user to securely terminate their session, invalidating any active authentication tokens and preventing unauthorized access to their account on the device.
+
+    **Level:** User Goal
+
+    **Stakeholders and Interests:**
+    *   **User:** Wants to ensure their account is secure when they finish using the application or step away from their device.
+    *   **Security Administrator:** Needs assurance that sessions are properly terminated, tokens are invalidated or discarded, and the action is logged for auditing.
+
+    **Preconditions:**
+    1.  **Authentication:** The user must be currently authenticated and have an active session in the system.
+
+    **Main Success Scenario:**
+    1.  The user requests to log out of the application via the user interface (e.g., clicking a "Logout" button).
+    2.  The system invalidates the user's active session and securely clears any locally stored authentication tokens (e.g., JWT).
+    3.  The system logs the logout event, recording the timestamp, the user's email, and username to ELK.
+    4.  The system redirects the user to the login/authentication screen.
+
+    **Extensions:**
+
+    2. a. **The system fails to communicate with the backend to invalidate the token (if applicable):**
+    *   2a1. The system catches the network or server error.
+    *   2a2. The system forces a local logout by discarding the token on the client side.
+    *   2a3. The system proceeds to Step 3, logging the local logout and the backend communication failure to ELK.

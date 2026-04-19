@@ -196,7 +196,7 @@ The primary objective of the Feature Engineering Module is to transform synchron
 ## 3. Core Backend Services Design
 
 ### 3.1.Authentication/Registration & Security Services
-[`TODO`] - (JWT lifecycle, Bcrypt salting details)
+[`TODO`] - (JWT lifecycle, Bcrypt salting details, login/logout)
 
 #### 3.1.1 API Contrancts for Authentication/Registration [`TODO`]
 

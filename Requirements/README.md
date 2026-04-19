@@ -15,6 +15,7 @@ Below there is a short presentation on what are the UCs, their numeration and ho
 ### Application
 - UC5 - User registration
 - UC6 - User authentication
+- UC14 - User logout
 
     ### Options
 
