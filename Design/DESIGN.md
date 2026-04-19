@@ -285,13 +285,14 @@ Stores metadata and performance metrics of the trained models.
 
 | Column Name | Data Type | Constraints | Description |
 | :--- | :--- | :--- | :--- |
-| `model_name_id` | BigSerial | Primary Key | Unique model identifier. |
-| `model_type` | Varchar | Not Null | Type of machine learning model. |
-| `model_creation_date` | Timestamp | Default: CURRENT_TIMESTAMP | Date the model was registered or trained. |
-| `model_server_relative_path`| Varchar | Not Null | Server path to the model file. |
-| `rmse` | Double Precision | Not Null | Root Mean Square Error metric. |
-| `mae` | Double Precision | Not Null | Mean Absolute Error metric. |
-| `r2` | Double Precision | Not Null | R-squared metric. |
+| `model_name_id` | BIGSERIAL | Primary Key | Unique model identifier. |
+| `model_type` | VARCHAR(512) | Not Null | Type of machine learning model. |
+| `model_creation_date` | TIMESTAMP | Not Null, Default: CURRENT_TIMESTAMP | Date the model was registered or trained. |
+| `model_pred_type` | VARCHAR(512) | Not Null | Type of prediction the model makes (e.g., regression, classification). |
+| `model_server_relative_path`| VARCHAR(512) | Not Null | Server path to the model file. |
+| `rmse` | DOUBLE PRECISION | Not Null | Root Mean Square Error metric. |
+| `mae` | DOUBLE PRECISION | Not Null | Mean Absolute Error metric. |
+| `r2` | DOUBLE PRECISION | Not Null | R-squared metric. |
 
 **Table `request`**
 Logs the history of prediction requests made by users.
