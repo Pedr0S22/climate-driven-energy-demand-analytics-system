@@ -153,9 +153,6 @@ class TestModelManager(unittest.TestCase):
 class TestDatabaseManager(unittest.TestCase):
     """Testes dedicados à integração com a Base de Dados"""
     
-    @patch('data_pipeline.modeling.psycopg2.connect')
-
-
     def test_save_model_metrics_no_config(self):
         """Garante que o código não 'quebra' se a configuração da BD for nula"""
         manager = DatabaseManager(None)
