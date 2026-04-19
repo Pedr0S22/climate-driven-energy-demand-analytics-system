@@ -50,14 +50,15 @@ class TestStatisticalEvaluator:
         assert best_ds == "full"
 
     def test_select_best_dataset_tie_breakers(self):
-        # Aumentamos o tamanho da amostra e adicionamos ruído mínimo para evitar avisos do Scipy
+        # Aumentamos o tamanho da amostra (n=10) e garantimos variância entre observações
+        # para evitar o "invalid value encountered in scalar divide" do friedmanchisquare.
         results_dict = {
-            "ds1": {"rmse": [100.0, 100.1, 99.9, 100.0, 100.1], "r2": [0.80] * 5, "mae": [50.0] * 5},
-            "ds2": {"rmse": [100.0, 100.1, 99.9, 100.0, 100.1], "r2": [0.90] * 5, "mae": [60.0] * 5},
-            "ds3": {"rmse": [100.0, 100.1, 99.9, 100.0, 100.1], "r2": [0.90] * 5, "mae": [40.0] * 5},
+            "ds1": {"rmse": [100.0 + i * 0.1 for i in range(10)], "r2": [0.80] * 10, "mae": [50.0] * 10},
+            "ds2": {"rmse": [100.0 + i * 0.1 for i in range(10)], "r2": [0.90] * 10, "mae": [60.0] * 10},
+            "ds3": {"rmse": [100.0 + i * 0.1 for i in range(10)], "r2": [0.90] * 10, "mae": [40.0] * 10},
         }
         best_ds, _ = self.evaluator.select_best_dataset(results_dict)
-        assert best_ds == "ds3"  # Empata RMSE e R2, ganha pelo menor MAE
+        assert best_ds == "ds3"
 
     def test_select_best_strategy(self):
         strategy_results = {

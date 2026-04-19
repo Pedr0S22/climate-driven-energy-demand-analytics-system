@@ -8,6 +8,7 @@ import joblib
 import numpy as np
 import optuna
 import pandas as pd
+import psycopg2
 from pandas.tseries.offsets import DateOffset
 from scipy.stats import f_oneway, friedmanchisquare, kruskal, shapiro
 from sklearn.ensemble import RandomForestRegressor
@@ -337,8 +338,6 @@ class DatabaseManager:
             return
 
         try:
-            import psycopg2
-
             with psycopg2.connect(**self.db_config) as conn:
                 with conn.cursor() as cur:
                     # Atualiza a query para incluir a nova coluna

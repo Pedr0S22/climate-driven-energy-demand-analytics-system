@@ -55,12 +55,13 @@ class TestModelingFullCoverage:
         mock_study.best_params = {"n_estimators": 2, "max_depth": 2}
         mock_create_study.return_value = mock_study
 
-        # 2. DATASETS FALSOS: Retornamos os 3 datasets com ruído para evitar avisos estatísticos
+        # 2. DATASETS FALSOS: Retornamos os 3 datasets com ruído SIGNIFICATIVO para evitar avisos estatísticos
         df_full = self.df.copy()
         df_selected = self.df.copy()
-        df_selected["Load_MW"] += np.random.normal(0, 1, size=len(df_selected))
+        # Adiciona ruído distinto para cada dataset para garantir que não são idênticos
+        df_selected["Load_MW"] += np.random.normal(10, 5, size=len(df_selected))
         df_pca = self.df.copy()
-        df_pca["Load_MW"] -= np.random.normal(0, 1, size=len(df_pca))
+        df_pca["Load_MW"] -= np.random.normal(10, 5, size=len(df_pca))
 
         mock_load.return_value = {"full": df_full, "selected": df_selected, "pca": df_pca}
 
