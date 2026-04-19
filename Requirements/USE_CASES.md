@@ -1,4 +1,4 @@
-# USE CASE DEFINITIONS - V3.2
+# USE CASE DEFINITIONS - V3.3
 
 This file contains all UCs for the development of this project.
 
@@ -485,7 +485,7 @@ User goal.
 
 1. a. User requests a custom prediction timeframe:
 
-    * 1a1. The user selects a custom number of historical hours (between 1 to 5) and/or forecast hours (between 1 to 24).
+    * 1a1. The user selects a custom number of historical hours (between 3 to 5) and/or forecast hours (between 1 to 24).
 
     * 1a2. The system proceeds to Step 2 using the newly specified parameters.
 
@@ -647,7 +647,7 @@ Allow the user to access a dashboard to view the time series of the hourly elect
 3. The system renders a time series chart displaying the continuous trend from actual values to predicted values.
 4. The system displays visual indicators with the main 2 variables associated with the forecast.
 5. The user hovers or interacts with the chart to view the precise demand values for specific individual hours.
-6. The user adjusts the parameters for the chart, changing the historical context (between 1 to 5 hours) and the forecast horizon (between 1 to 24 hours).
+6. The user adjusts the parameters for the chart, changing the historical context (between 3 to 5 hours) and the forecast horizon (between 1 to 24 hours).
 7. The user asks for a new prediction based on the new parameters.
 8. The system retrieves the recalculated prediction and smoothly updates the chart and top 2 drivers.
 9. The System logs every event into ELK.
@@ -765,30 +765,33 @@ Allow the user to access a dashboard to view the time series of the hourly elect
     *   9a2. The system displays a pop-up error message to the user.
 
 
-    ## UC14: User Logout
+## UC14: User Logout
 
-    **Primary Actor:** User or Admin
+**Primary Actor:** User or Admin
 
-    **Scope/Goal:** Allow an authenticated user to securely terminate their session, invalidating any active authentication tokens and preventing unauthorized access to their account on the device.
+**Scope/Goal:** Allow an authenticated user to securely terminate their session, invalidating any active authentication tokens and preventing unauthorized access to their account on the device.
 
-    **Level:** User Goal
+**Level:** User Goal
 
-    **Stakeholders and Interests:**
-    *   **User:** Wants to ensure their account is secure when they finish using the application or step away from their device.
-    *   **Security Administrator:** Needs assurance that sessions are properly terminated, tokens are invalidated or discarded, and the action is logged for auditing.
+**Stakeholders and Interests:**
+    
+*   **User:** Wants to ensure their account is secure when they finish using the application or step away from their device.
+*   **Security Administrator:** Needs assurance that sessions are properly terminated, tokens are invalidated or discarded, and the action is logged for auditing.
 
-    **Preconditions:**
-    1.  **Authentication:** The user must be currently authenticated and have an active session in the system.
+**Preconditions:**
 
-    **Main Success Scenario:**
-    1.  The user requests to log out of the application via the user interface (e.g., clicking a "Logout" button).
-    2.  The system invalidates the user's active session and securely clears any locally stored authentication tokens (e.g., JWT).
-    3.  The system logs the logout event, recording the timestamp, the user's email, and username to ELK.
-    4.  The system redirects the user to the login/authentication screen.
+1.  **Authentication:** The user must be currently authenticated and have an active session in the system.
 
-    **Extensions:**
+**Main Success Scenario:**
 
-    2. a. **The system fails to communicate with the backend to invalidate the token (if applicable):**
+1.  The user requests to log out of the application via the user interface (e.g., clicking a "Logout" button).
+2.  The system invalidates the user's active session and securely clears any locally stored authentication tokens (e.g., JWT).
+3.  The system logs the logout event, recording the timestamp, the user's email, and username to ELK.
+4.  The system redirects the user to the login/authentication screen.
+
+**Extensions:**
+
+2. a. The system fails to communicate with the backend to invalidate the token (if applicable):
     *   2a1. The system catches the network or server error.
     *   2a2. The system forces a local logout by discarding the token on the client side.
     *   2a3. The system proceeds to Step 3, logging the local logout and the backend communication failure to ELK.
