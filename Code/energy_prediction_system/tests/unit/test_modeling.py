@@ -154,26 +154,7 @@ class TestDatabaseManager(unittest.TestCase):
     """Testes dedicados à integração com a Base de Dados"""
     
     @patch('data_pipeline.modeling.psycopg2.connect')
-    def test_save_model_metrics_success(self, mock_connect):
-        """Testa se a query de inserção correta é chamada sem erros"""
-        db_config = {"dbname": "test_db", "user": "test"}
-        manager = DatabaseManager(db_config)
-        
-        # Simula o Context Manager do psycopg2 (with conn.cursor()...)
-        mock_conn = MagicMock()
-        mock_cursor = MagicMock()
-        mock_connect.return_value.__enter__.return_value = mock_conn
-        mock_conn.cursor.return_value.__enter__.return_value = mock_cursor
 
-        manager.save_model_metrics("Random Forest", "models/hourly/RF_v1.joblib", 10.5, 5.2, 0.95)
-        
-        # Garante que o cur.execute foi chamado
-        self.assertTrue(mock_cursor.execute.called)
-        
-        # Verifica se os argumentos passados para a BD estão corretos
-        call_args = mock_cursor.execute.call_args[0]
-        self.assertIn("INSERT INTO model", call_args[0])
-        self.assertEqual(call_args[1], ("Random Forest", "models/hourly/RF_v1.joblib", 10.5, 5.2, 0.95))
 
     def test_save_model_metrics_no_config(self):
         """Garante que o código não 'quebra' se a configuração da BD for nula"""

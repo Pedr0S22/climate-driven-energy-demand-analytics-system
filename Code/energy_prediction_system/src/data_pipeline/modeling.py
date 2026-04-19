@@ -341,7 +341,7 @@ class DatabaseManager:
     def __init__(self, db_config):
         self.db_config = db_config
 
-    def save_model_metrics(self, model_type, model_pred_type, file_path, rmse, mae, r2): # <-- Adicionado model_pred_type aqui
+    def save_model_metrics(self, model_type, model_pred_type, file_path, rmse, mae, r2):
         """Guarda as métricas do modelo na base de dados."""
         if not self.db_config:
             return
