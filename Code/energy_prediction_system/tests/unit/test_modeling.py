@@ -182,21 +182,29 @@ class TestDatabaseManager(unittest.TestCase):
         manager.save_model_metrics("RF", "path", 1.0, 1.0, 1.0) 
 
     @patch('data_pipeline.modeling.psycopg2.connect')
-    def test_save_model_metrics_exception(self, mock_connect):
-        """Garante que se a Base de dados estiver em baixo, o treino do modelo não é deitado ao lixo"""
-        db_config = {"dbname": "test_db"}
+    def test_save_model_metrics_success(self, mock_connect):
+        """Testa se a query de inserção correta é chamada sem erros"""
+        db_config = {"dbname": "test_db", "user": "test"}
         manager = DatabaseManager(db_config)
-        mock_connect.side_effect = Exception("Database is down!")
         
-        # Mesmo com erro simulado, não deve lançar a exceção para cima e matar a run
-        try:
-            manager.save_model_metrics("RF", "path", 1.0, 1.0, 1.0)
-            failed = False
-        except Exception:
-            failed = True
-            
-        self.assertFalse(failed, "A exceção de DB não foi tratada pelo try/except e parou a pipeline!")
+        # Simula o Context Manager do psycopg2 (with conn.cursor()...)
+        mock_conn = MagicMock()
+        mock_cursor = MagicMock()
+        mock_connect.return_value.__enter__.return_value = mock_conn
+        mock_conn.cursor.return_value.__enter__.return_value = mock_cursor
 
+        # Adicionado o 'hourly' como 2º argumento
+        manager.save_model_metrics("Random Forest", "hourly", "models/hourly/RF_v1.joblib", 10.5, 5.2, 0.95)
+        
+        # Garante que o cur.execute foi chamado
+        self.assertTrue(mock_cursor.execute.called)
+        
+        # Verifica se os argumentos passados para a BD estão corretos
+        call_args = mock_cursor.execute.call_args[0]
+        self.assertIn("INSERT INTO model", call_args[0])
+        
+        # Adicionado o 'hourly' na verificação da tupla também!
+        self.assertEqual(call_args[1], ("Random Forest", "hourly", "models/hourly/RF_v1.joblib", 10.5, 5.2, 0.95))
 
 class TestPipelineOrchestrator(unittest.TestCase):
     """Testa a nova classe de orquestração do pipeline completo"""

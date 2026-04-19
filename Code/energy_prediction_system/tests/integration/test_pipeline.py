@@ -143,7 +143,14 @@ class TestModelingFullCoverage(unittest.TestCase):
         
         # Se a pipeline quebrar aqui, o teste falha (o objetivo é que o except apanhe o erro silenciosamente)
         try:
-            manager.save_model_metrics("RF", "path/model.joblib", 1.0, 1.0, 1.0)
+            manager.save_model_metrics(
+                model_type="RF", 
+                model_pred_type="hourly",      # <-- O parâmetro novo!
+                file_path="path/model.joblib", 
+                rmse=1.0, 
+                mae=1.0, 
+                r2=1.0
+            )
             passed = True
         except Exception:
             passed = False

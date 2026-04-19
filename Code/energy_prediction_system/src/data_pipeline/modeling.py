@@ -448,11 +448,13 @@ class PipelineOrchestrator:
         db_model_name = "Linear Regression" if model_type == "baseline" else "Random Forest"
         self.db_manager.save_model_metrics(
             model_type=db_model_name,
-            file_path=caminho_relativo,  # <-- O caminho limpo vai aqui!
+            model_pred_type=freq,       
+            file_path=caminho_relativo,  
             rmse=best_rmse,
             mae=best_mae,
             r2=best_r2
         )
+    
     def _run_strategy_loops(self, model_type, strategy, datasets, splits_by_strategy):
         """Executa os loops de treino para uma estratégia específica sobre os datasets."""
         logger.info(f"  Strategy: {strategy}")

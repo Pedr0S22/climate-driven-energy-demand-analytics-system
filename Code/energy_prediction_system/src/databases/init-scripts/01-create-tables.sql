@@ -24,6 +24,7 @@ CREATE TABLE model (
     model_name_id              BIGSERIAL,
     model_type                 VARCHAR(512) NOT NULL,
     model_creation_date        TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    model_pred_type		       VARCHAR(512) NOT NULL,
     model_server_relative_path VARCHAR(512) NOT NULL,
     rmse                       DOUBLE PRECISION NOT NULL,
     mae                        DOUBLE PRECISION NOT NULL,
