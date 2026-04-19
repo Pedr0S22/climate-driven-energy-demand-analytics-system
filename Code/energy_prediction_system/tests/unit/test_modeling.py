@@ -178,9 +178,15 @@ class TestDatabaseManager(unittest.TestCase):
     def test_save_model_metrics_no_config(self):
         """Garante que o código não 'quebra' se a configuração da BD for nula"""
         manager = DatabaseManager(None)
-        # Não deve lançar exceção
-        manager.save_model_metrics("RF", "path", 1.0, 1.0, 1.0) 
-
+        # Usar keyword arguments (nome=valor) evita que a ordem troque as voltas!
+        manager.save_model_metrics(
+            model_type="RF",
+            model_pred_type="hourly", 
+            file_path="path", 
+            rmse=1.0, 
+            mae=1.0, 
+            r2=1.0
+        )
     @patch('data_pipeline.modeling.psycopg2.connect')
     def test_save_model_metrics_success(self, mock_connect):
         """Testa se a query de inserção correta é chamada sem erros"""
