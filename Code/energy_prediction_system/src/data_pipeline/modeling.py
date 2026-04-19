@@ -341,26 +341,27 @@ class DatabaseManager:
     def __init__(self, db_config):
         self.db_config = db_config
 
-    def save_model_metrics(self, model_type, file_path, rmse, mae, r2):
-        """Guarda os metadados do modelo na base de dados."""
+    def save_model_metrics(self, model_type, model_pred_type, file_path, rmse, mae, r2): # <-- Adicionado model_pred_type aqui
+        """Guarda as métricas do modelo na base de dados."""
         if not self.db_config:
-            logger.warning("Nenhuma configuração de base de dados fornecida. Registo ignorado.")
             return
 
-        query = """
-            INSERT INTO model (model_type, model_server_relative_path, rmse, mae, r2)
-            VALUES (%s, %s, %s, %s, %s);
-        """
         try:
+            import psycopg2
             with psycopg2.connect(**self.db_config) as conn:
                 with conn.cursor() as cur:
-                    # Converte o path para string caso seja um objeto Path do pathlib
-                    cur.execute(query, (model_type, str(file_path), float(rmse), float(mae), float(r2)))
-            logger.info("✅ Metadados do modelo guardados na base de dados com sucesso.")
+                    # Atualiza a query para incluir a nova coluna
+                    query = """
+                        INSERT INTO model 
+                        (model_type, model_pred_type, model_server_relative_path, rmse, mae, r2) 
+                        VALUES (%s, %s, %s, %s, %s, %s)
+                    """
+                    # Passa a tupla com os 6 valores!
+                    cur.execute(query, (model_type, model_pred_type, file_path, rmse, mae, r2))
+                    conn.commit()
         except Exception as e:
-            logger.error(f"❌ Erro ao guardar na base de dados: {e}")
-
-
+            # Em caso de erro na DB, loga mas não quebra o pipeline
+            print(f"Erro ao guardar na base de dados: {e}")
 class PipelineOrchestrator:
     """Orquestra a execução modular do pipeline de avaliação e treino."""
     def __init__(self, db_config=None):
