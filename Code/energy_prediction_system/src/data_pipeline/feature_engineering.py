@@ -52,6 +52,7 @@ class FeatureEngineer:
         self.scaler = StandardScaler()
         self.pca = None
         self.selected_features = None
+        self.pca_features = None
         # Datetime is metadata; these are its categorical decompositions
         self.categorical_cols = ["hour", "day_of_week", "month", "season", "year"]
         if self.frequency == "daily":
@@ -278,6 +279,7 @@ class FeatureEngineer:
             joblib.dump(self.scaler, self.models_dir / f"scaler_{self.frequency}{suffix}.joblib")
             joblib.dump(self.pca, self.models_dir / f"pca_{self.frequency}{suffix}.joblib")
             joblib.dump(self.selected_features, self.models_dir / f"selected_features_{self.frequency}{suffix}.joblib")
+            joblib.dump(self.pca_features, self.models_dir / f"pca_features_{self.frequency}{suffix}.joblib")
             logger.info(f"Transformers persisted to {self.models_dir} with suffix {self.frequency}")
 
     def run_pipeline(self, df: pd.DataFrame, fit=True):
@@ -293,13 +295,16 @@ class FeatureEngineer:
             self.fit_selection(df)
 
         features_full = df.copy()
+        # All columns except metadata are the "full feature set" for PCA
+        self.pca_features = [c for c in df.columns if c not in ["datetime", self.target_col]]
+
         meta_cols = ["datetime", self.target_col] if "datetime" in df.columns else []
         features_selected = df[meta_cols + self.selected_features].copy()
 
         if fit:
-            self.fit_pca(df[self.selected_features])
+            self.fit_pca(df[self.pca_features])
 
-        X_pca = self.pca.transform(self.scaler.transform(df[self.selected_features].fillna(0)))
+        X_pca = self.pca.transform(self.scaler.transform(df[self.pca_features].fillna(0)))
         pca_df = pd.DataFrame(X_pca, columns=[f"PCA_{i}" for i in range(X_pca.shape[1])])
         base_cols = [c for c in ["datetime", self.target_col] if c in df.columns]
         features_pca = pd.concat([df[base_cols].reset_index(drop=True), pca_df], axis=1)
