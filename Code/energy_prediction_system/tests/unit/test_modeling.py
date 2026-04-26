@@ -5,7 +5,7 @@ import numpy as np
 import pandas as pd
 import pytest
 from pathlib import Path
-from src.data_pipeline.modeling import (
+from data_pipeline.modeling import (
     DatabaseManager,
     ModelManager,
     PipelineOrchestrator,
@@ -47,7 +47,7 @@ class TestStatisticalEvaluator:
 
         assert result is False
 
-    @patch("modeling.f_oneway")
+    @patch("src.data_pipeline.modeling.f_oneway")
     @patch.object(StatisticalEvaluator, "test_normality")
     def test_select_best_dataset_anova_diff_win_rmse(self, mock_normality, mock_anova):
         """
@@ -74,7 +74,7 @@ class TestStatisticalEvaluator:
         assert metrics["rmse"] == 5.0
 
 
-    @patch("modeling.friedmanchisquare")
+    @patch("src.data_pipeline.modeling.friedmanchisquare")
     @patch.object(StatisticalEvaluator, "test_normality")
     def test_select_best_dataset_friedman_no_diff_win_r2(self, mock_normality, mock_friedman):
         """
@@ -101,7 +101,7 @@ class TestStatisticalEvaluator:
         assert metrics["r2"] == 0.9
 
 
-    @patch("modeling.f_oneway")
+    @patch("src.data_pipeline.modeling.f_oneway")
     @patch.object(StatisticalEvaluator, "test_normality")
     def test_select_best_dataset_win_mae(self, mock_normality, mock_anova):
         """
@@ -125,7 +125,7 @@ class TestStatisticalEvaluator:
         assert best_ds == "Dataset_B"
         assert metrics["mae"] == 1.0
 
-    @patch("modeling.f_oneway")
+    @patch("src.data_pipeline.modeling.f_oneway")
     @patch.object(StatisticalEvaluator, "test_normality")
     def test_select_best_strategy_anova_win_rmse(self, mock_normality, mock_anova):
         """
@@ -151,7 +151,7 @@ class TestStatisticalEvaluator:
         assert best_strat == "fixed_rolling"
 
 
-    @patch("modeling.kruskal")
+    @patch("src.data_pipeline.modeling.kruskal")
     @patch.object(StatisticalEvaluator, "test_normality")
     def test_select_best_strategy_kruskal_win_r2(self, mock_normality, mock_kruskal):
         """
@@ -177,7 +177,7 @@ class TestStatisticalEvaluator:
         assert best_strat == "nested"
 
 
-    @patch("modeling.f_oneway")
+    @patch("src.data_pipeline.modeling.f_oneway")
     @patch.object(StatisticalEvaluator, "test_normality")
     def test_select_best_strategy_win_mae(self, mock_normality, mock_anova):
         """
@@ -231,8 +231,9 @@ class TestModelManager:
     @patch.object(Path, "exists")
     def test_load_all_datasets(self, mock_exists, mock_read_csv):
         """Testa se carrega os datasets corretamente apenas se existirem no disco."""
-        # Forçamos a que apenas o ficheiro "full" exista (selected e pca vão falhar)
-        mock_exists.side_effect = lambda: "full" in str(mock_exists.call_args[0])
+        
+        # CORREÇÃO: O lambda recebe 'self_path' (o próprio Path) e verifica se a string "full" faz parte dele
+        mock_exists.side_effect = lambda self_path: "full" in str(self_path)
         
         # Simulamos o DataFrame que o pandas lê do CSV
         mock_read_csv.return_value = pd.DataFrame({"datetime": ["2020-01-01"], "val": [1]})
@@ -245,7 +246,6 @@ class TestModelManager:
         assert "selected" not in datasets
         assert "pca" not in datasets
         assert pd.api.types.is_datetime64_any_dtype(datasets["full"]["datetime"])
-
     # ==========================================
     # 2. Testes de Janelas Temporais (Splits)
     # ==========================================
@@ -324,8 +324,8 @@ class TestModelManager:
         assert len(drivers) == 2
         assert isinstance(drivers, list)
 
-    @patch("modeling.optuna.create_study")
-    @patch("modeling.RandomForestRegressor")
+    @patch("src.data_pipeline.modeling.optuna.create_study")
+    @patch("src.data_pipeline.modeling.RandomForestRegressor")
     def test_train_flexible_nested(self, mock_rf_class, mock_create_study):
         """
         Usa Mocks no Optuna e RandomForest para testar o train_flexible sem 
@@ -363,7 +363,7 @@ class TestModelManager:
 
 class TestDatabaseManager:
 
-    @patch("modeling.psycopg2.connect")
+    @patch("src.data_pipeline.modeling.psycopg2.connect")
     def test_save_model_metrics_success(self, mock_connect):
         """
         CENÁRIO 1: Caminho feliz. 
@@ -403,7 +403,7 @@ class TestDatabaseManager:
         assert isinstance(args_passed_to_execute[5], float)
         assert args_passed_to_execute[5] == 1.23
 
-    @patch("modeling.psycopg2.connect")
+    @patch("src.data_pipeline.modeling.psycopg2.connect")
     def test_save_model_metrics_no_config(self, mock_connect):
         """
         CENÁRIO 2: Early return. 
@@ -420,7 +420,7 @@ class TestDatabaseManager:
         # Assert: Garante que nunca tentou conectar ao psycopg2
         mock_connect.assert_not_called()
 
-    @patch("modeling.psycopg2.connect")
+    @patch("src.data_pipeline.modeling.psycopg2.connect")
     def test_save_model_metrics_string_driver(self, mock_connect):
         """
         CENÁRIO 3: Parâmetro de drivers diferente. 
@@ -443,7 +443,7 @@ class TestDatabaseManager:
         assert args_passed_to_execute[4] == "ApenasUmDriver"
 
     @patch("builtins.print")
-    @patch("modeling.psycopg2.connect")
+    @patch("src.data_pipeline.modeling.psycopg2.connect")
     def test_save_model_metrics_exception_handling(self, mock_connect, mock_print):
         """
         CENÁRIO 4: Tratamento de exceção. 
@@ -511,7 +511,7 @@ class TestPipelineOrchestrator:
     # ==========================================
     # 3. Teste do Loop de Treino
     # ==========================================
-    @patch("modeling.PipelineOrchestrator._precalculate_splits")
+    @patch("src.data_pipeline.modeling.PipelineOrchestrator._precalculate_splits")
     def test_run_strategy_loops(self, mock_precalc):
         """Testa se o loop extrai métricas, treina o modelo e guarda os drivers."""
         orchestrator = PipelineOrchestrator()
@@ -552,7 +552,7 @@ class TestPipelineOrchestrator:
     # ==========================================
     # 4. Teste de Avaliação e Gravação
     # ==========================================
-    @patch("modeling.joblib.dump")  # Evita criar ficheiros físicos
+    @patch("src.data_pipeline.modeling.joblib.dump")  # Evita criar ficheiros físicos
     def test_evaluate_and_save_model(self, mock_joblib_dump):
         """Testa se encontra a melhor estratégia, o melhor fold e grava tudo (Disco + BD)."""
         orchestrator = PipelineOrchestrator()
@@ -597,7 +597,7 @@ class TestPipelineOrchestrator:
     # ==========================================
     # 5. Teste do Fluxo Principal (Run)
     # ==========================================
-    @patch("modeling.ModelManager")
+    @patch("src.data_pipeline.modeling.ModelManager")
     def test_run_empty_datasets(self, mock_model_manager_class):
         """Testa o bypass caso não encontre ficheiros de dados (não deve falhar)."""
         orchestrator = PipelineOrchestrator()
@@ -613,7 +613,7 @@ class TestPipelineOrchestrator:
         # Como está vazio, o pipeline dá "continue" e nunca chama as funções abaixo:
         mock_manager_instance.generate_splits.assert_not_called()
 
-    @patch("modeling.ModelManager")
+    @patch("src.data_pipeline.modeling.ModelManager")
     def test_run_full_flow(self, mock_model_manager_class):
         """Testa se o método run chama a orquestração completa para hourly e daily."""
         orchestrator = PipelineOrchestrator()
