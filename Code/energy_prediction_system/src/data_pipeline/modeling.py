@@ -231,7 +231,14 @@ class ModelManager:
     def train_baseline(self, X_train, y_train):
         model = LinearRegression()
         model.fit(X_train, y_train)
-        return model
+        if hasattr(X_train, 'columns'):
+            # Get absolute coefficients to measure impact magnitude
+            importance = np.abs(model.coef_)
+            # Sort and get the indices of the top 2
+            top_2_idx = np.argsort(importance)[-2:][::-1]
+            top_2_drivers = X_train.columns[top_2_idx].tolist()
+            logger.info(f"Top 2 Drivers (Linear Regression): {top_2_drivers}")
+        return model, top_2_drivers
 
     def train_flexible(self, X_train, y_train, strategy):
         """
@@ -323,7 +330,14 @@ class ModelManager:
         X_final = X_train.drop(columns=["datetime"]) if "datetime" in X_train.columns else X_train
         best_model.fit(X_final, y_train)
 
-        return best_model
+        if hasattr(X_final, 'columns'):
+            importance = best_model.feature_importances_
+            # Sort and get the indices of the top 2
+            top_2_idx = np.argsort(importance)[-2:][::-1]
+            top_2_drivers = X_final.columns[top_2_idx].tolist()
+            logger.info(f"Top 2 Drivers (Random Forest): {top_2_drivers}")
+
+        return best_model, top_2_drivers
 
 
 class DatabaseManager:
@@ -332,26 +346,39 @@ class DatabaseManager:
     def __init__(self, db_config):
         self.db_config = db_config
 
-    def save_model_metrics(self, model_type, model_pred_type, file_path, rmse, mae, r2):
+    def save_model_metrics(self, model_type, model_pred_type, file_path, dataset_selected, top2_drivers, rmse, mae, r2):
         """Guarda as métricas do modelo na base de dados."""
         if not self.db_config:
             return
 
+        # Converter a lista ['Driver1', 'Driver2'] para uma string "Driver1, Driver2"
+        if isinstance(top2_drivers, list):
+            top2_drivers_str = ", ".join(top2_drivers)
+        else:
+            top2_drivers_str = str(top2_drivers)
+
         try:
             with psycopg2.connect(**self.db_config) as conn:
                 with conn.cursor() as cur:
-                    # Atualiza a query para incluir a nova coluna
                     query = """
                         INSERT INTO model 
-                        (model_type, model_pred_type, model_server_relative_path, rmse, mae, r2) 
-                        VALUES (%s, %s, %s, %s, %s, %s)
+                        (model_type, model_pred_type, model_server_relative_path, dataset_selected, top2_drivers, rmse, mae, r2) 
+                        VALUES (%s, %s, %s, %s, %s, %s, %s, %s)
                     """
-                    # Passa a tupla com os 6 valores!
-                    cur.execute(query, (model_type, model_pred_type, file_path, rmse, mae, r2))
+                    cur.execute(query, (
+                        model_type, 
+                        model_pred_type, 
+                        file_path, 
+                        dataset_selected, 
+                        top2_drivers_str, 
+                        rmse, 
+                        mae, 
+                        r2
+                    ))
                     conn.commit()
         except Exception as e:
-            # Em caso de erro na DB, loga mas não quebra o pipeline
             print(f"Erro ao guardar na base de dados: {e}")
+
 
 
 class PipelineOrchestrator:
@@ -406,11 +433,17 @@ class PipelineOrchestrator:
 
         # 2. Encontrar a melhor estratégia
         best_strat = self.evaluator.select_best_strategy(strategy_results)
+        
+        # ADICIONADO: Guardar o nome do Dataset Vencedor
+        best_dataset_name = strategy_results[best_strat]["dataset"]
         vencedora_metrics = strategy_results[best_strat]["metrics"]
 
         # 3. Encontrar o melhor fold individual
         melhor_idx = self._find_best_fold_index(vencedora_metrics)
         best_final_model = vencedora_metrics["models"][melhor_idx]
+        
+        # ADICIONADO: Extrair os top drivers do melhor fold individual
+        best_top2_drivers = vencedora_metrics["drivers"][melhor_idx]
 
         # Métricas do melhor modelo
         best_rmse = vencedora_metrics["rmse"][melhor_idx]
@@ -422,9 +455,7 @@ class PipelineOrchestrator:
             f"| R2: {best_r2:.4f} | MAE: {best_mae:.2f}"
         )
 
-        # ---------------------------------------------------------
-        # 4. GUARDAR NO DISCO E NA BASE DE DADOS
-        # ---------------------------------------------------------
+
         prefix = "LR" if model_type == "baseline" else "RF"
         version = self.manager._get_next_version(prefix)
         file_name = f"{prefix}_v{version}.joblib"
@@ -433,30 +464,30 @@ class PipelineOrchestrator:
         joblib.dump(best_final_model, save_path)
 
         logger.info(
-            f"✅ WINNER for {model_type.upper()} ({freq}): Strategy='{best_strat}',"
-            f"Dataset='{strategy_results[best_strat]['dataset']}'"
+            f"✅ WINNER for {model_type.upper()} ({freq}): Strategy='{best_strat}', "
+            f"Dataset='{best_dataset_name}', Top Drivers='{best_top2_drivers}'"
         )
         logger.info(f"✅ Ficheiro guardado fisicamente em: {save_path}")
 
-        # B. Caminho Relativo (A partir da raiz 'energy/' para ir para a Base de Dados)
-        # Vai gerar algo como: "models/hourly/RF_v1.joblib"
         caminho_relativo = f"models/{freq}/{file_name}"
 
-        # C. Guardar na BD com o caminho correto
+        # C. Guardar na BD com o caminho correto E NOVOS PARÂMETROS
         db_model_name = "Linear Regression" if model_type == "baseline" else "Random Forest"
         self.db_manager.save_model_metrics(
             model_type=db_model_name,
             model_pred_type=freq,
             file_path=caminho_relativo,
+            dataset_selected=best_dataset_name,
+            top2_drivers=best_top2_drivers,
             rmse=best_rmse,
             mae=best_mae,
             r2=best_r2,
         )
-
     def _run_strategy_loops(self, model_type, strategy, datasets, splits_by_strategy):
         """Executa os loops de treino para uma estratégia específica sobre os datasets."""
         logger.info(f"  Strategy: {strategy}")
-        dataset_results = {ds: {"rmse": [], "r2": [], "mae": [], "models": []} for ds in datasets.keys()}
+        # ADICIONADO: Uma chave "drivers" para guardar os melhores drivers de cada split
+        dataset_results = {ds: {"rmse": [], "r2": [], "mae": [], "models": [], "drivers": []} for ds in datasets.keys()}
 
         for ds_name, df in datasets.items():
             X = df.drop(columns=[self.manager.target_col])
@@ -467,11 +498,12 @@ class PipelineOrchestrator:
                 X_train, y_train = X.iloc[train_idx], y.iloc[train_idx]
                 X_test, y_test = X.iloc[test_idx], y.iloc[test_idx]
 
+                # ADICIONADO: Desempacotar model e top_drivers
                 if model_type == "baseline":
                     X_train_b = X_train.drop(columns=["datetime"]) if "datetime" in X_train.columns else X_train
-                    model = self.manager.train_baseline(X_train_b, y_train)
+                    model, top_drivers = self.manager.train_baseline(X_train_b, y_train)
                 else:
-                    model = self.manager.train_flexible(X_train, y_train, strategy)
+                    model, top_drivers = self.manager.train_flexible(X_train, y_train, strategy)
 
                 X_test = X_test.drop(columns=["datetime"]) if "datetime" in X_test.columns else X_test
                 y_pred = model.predict(X_test)
@@ -480,13 +512,15 @@ class PipelineOrchestrator:
                 dataset_results[ds_name]["r2"].append(r2_score(y_test, y_pred))
                 dataset_results[ds_name]["mae"].append(mean_absolute_error(y_test, y_pred))
                 dataset_results[ds_name]["models"].append(model)
+                # ADICIONADO: Guardar os drivers
+                dataset_results[ds_name]["drivers"].append(top_drivers)
 
         # Avalia qual foi o melhor dataset para esta estratégia
         best_ds, metrics = self.evaluator.select_best_dataset(dataset_results)
         logger.info(f"    [Métricas Dataset {best_ds.upper()}] RMSE Médio: {metrics['rmse']:.2f}")
 
         return {"dataset": best_ds, "metrics": dataset_results[best_ds]}
-
+    
     def _find_best_fold_index(self, vencedora_metrics):
         """Lógica de desempate para encontrar o melhor fold individual da estratégia vencedora."""
         melhor_idx = 0
