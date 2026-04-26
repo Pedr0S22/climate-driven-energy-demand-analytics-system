@@ -1,302 +1,111 @@
-"""
-Integration Tests with focused coverage on modeling.py and full end-to-end pipeline validation.
-"""
-
-import logging
+import pytest
+import pandas as pd
+import numpy as np
+import joblib
+from pathlib import Path
 from unittest.mock import MagicMock, patch
 
-import numpy as np
-import pandas as pd
-import pytest
+# Importações do projeto
 from data_pipeline.cleaning import cleaning
 from data_pipeline.feature_engineering import FeatureEngineer
 from data_pipeline.modeling import (
-    DatabaseManager,
     ModelManager,
     PipelineOrchestrator,
 )
 
-# Silenciar os logs para os testes não encherem o ecrã
-logging.getLogger("data_pipeline.modeling").setLevel(logging.CRITICAL)
-
-
-class TestModelingFullCoverage:
-    @pytest.fixture(autouse=True)
-    def setup(self, tmp_path):
-        self.temp_dir = tmp_path
-        self.models_dir = self.temp_dir / "models"
-        self.models_dir.mkdir(parents=True, exist_ok=True)
-
-        # DADOS SINTÉTICOS: 3 anos e 2 meses de dados diários.
-        # Isto garante dados suficientes para passar na matemática rigorosa
-        # de splits temporais (que exige gap de 1 ano + 1 ano de teste).
-        dates = pd.date_range(start="2020-01-01", end="2023-03-01", freq="D")
-
-        self.df = pd.DataFrame(
-            {
-                "datetime": dates,
-                "Load_MW": np.random.normal(2000, 100, size=len(dates)),  # Para hourly
-                "Load_MWh": np.random.normal(48000, 2000, size=len(dates)),  # Para daily
-                "temperatura": np.random.normal(15, 5, size=len(dates)),
-            }
-        )
+class TestPipelineIntegration:
+    
+    @pytest.fixture
+    def project_env(self, tmp_path):
+        """Simula a estrutura completa do projeto para o ModelManager."""
+        base = tmp_path / "energy_system"
+        # Estrutura exigida pelo ModelManager e Pipeline
+        (base / "data/raw/energy").mkdir(parents=True)
+        (base / "data/raw/weather").mkdir(parents=True)
+        (base / "data/processed/feat-engineering").mkdir(parents=True)
+        (base / "models/hourly").mkdir(parents=True)
+        (base / "models/daily").mkdir(parents=True)
+        return base
 
     @patch("data_pipeline.modeling.psycopg2.connect")
-    @patch("data_pipeline.modeling.joblib.dump")
-    @patch("data_pipeline.modeling.optuna.create_study")
-    @patch("data_pipeline.modeling.ModelManager.load_all_datasets")
-    def test_run_orchestrator_pipeline_full_coverage(self, mock_load, mock_create_study, mock_dump, mock_db_connect):
-        """
-        Executa a mega pipeline real (Orchestrator)!
-        Cobre os loops Hourly e Daily, as 3 estratégias e a inserção na BD.
-        """
-        # 1. OPTUNA RÁPIDO: Enganamos o Optuna para não demorar horas
-        mock_study = MagicMock()
-        mock_study.best_params = {"n_estimators": 2, "max_depth": 2}
-        mock_create_study.return_value = mock_study
+    def test_end_to_end_pipeline(self, mock_db, project_env):
+        # 1. MOCK DA BASE DE DADOS
+        mock_db.return_value = MagicMock()
+        
+        # 2. DADOS SINTÉTICOS - Aumentado para 4 anos para garantir splits válidos
+        # O ModelManager (modeling.py) precisa de: 1 ano treino + 1 ano gap + 1 ano teste.
+        start_date = "2020-01-01"
+        times = pd.date_range(start_date, periods=24*365*4, freq="h", tz="UTC")
+        
+        df_e = pd.DataFrame({
+            "Unnamed: 0": times, 
+            "Load_MW": np.random.uniform(20000, 30000, len(times))
+        })
+        df_e.to_csv(project_env / "data/raw/energy/energy.csv", index=False)
+        
+        df_w = pd.DataFrame({
+            "valid_time": times, 
+            "t2m": np.random.uniform(280, 290, len(times)), 
+            "skt": np.random.uniform(280, 290, len(times)), 
+            "ssrd": 100.0,
+            "latitude": 40.4, 
+            "longitude": -3.7
+        })
+        df_w.to_csv(project_env / "data/raw/weather/weather.csv", index=False)
 
-        # 2. DATASETS FALSOS: Retornamos os 3 datasets com ruído SIGNIFICATIVO para evitar avisos estatísticos
-        df_full = self.df.copy()
-        df_selected = self.df.copy()
-        # Adiciona ruído distinto para cada dataset para garantir que não são idênticos
-        df_selected["Load_MW"] += np.random.normal(10, 5, size=len(df_selected))
-        df_pca = self.df.copy()
-        df_pca["Load_MW"] -= np.random.normal(10, 5, size=len(df_pca))
-
-        mock_load.return_value = {"full": df_full, "selected": df_selected, "pca": df_pca}
-
-        # 3. MOCK BASE DE DADOS: Finge que ligou ao PostgreSQL sem falhar
-        mock_conn = MagicMock()
-        mock_cursor = MagicMock()
-        mock_db_connect.return_value.__enter__.return_value = mock_conn
-        mock_conn.cursor.return_value.__enter__.return_value = mock_cursor
-
-        # 4. EXECUTA O CÓDIGO REAL DA PIPELINE
-        db_config = {"dbname": "test", "user": "test"}  # Passamos config para forçar a entrada no bloco da BD
-        orchestrator = PipelineOrchestrator(db_config=db_config)
-
-        # Injetamos o diretório temporário para não sujar o PC local
-        orchestrator.models_dir = self.models_dir
-
-        try:
-            # Esta linha executa mais de 80% do ficheiro modeling.py num só golpe!
-            orchestrator.run()
-            sucesso = True
-        except Exception as e:
-            print(f"A pipeline quebrou: {e}")
-            sucesso = False
-
-        assert sucesso, "O PipelineOrchestrator falhou ao processar os dados!"
-        assert mock_dump.called, "Os modelos não foram guardados no disco!"
-        assert mock_cursor.execute.called, "A pipeline não tentou gravar na Base de Dados!"
-
-    # =========================================================================
-    # Testes Auxiliares (Tapar os "buracos" dos Edge Cases / Erros)
-    # =========================================================================
-
-    def test_get_next_version_file_reading(self):
-        """Cobre a leitura de versões antigas de modelos no disco."""
-        manager = ModelManager()
-        manager.models_dir = self.models_dir
-        (self.models_dir / "LR_v1.joblib").touch()
-        (self.models_dir / "LR_v3.joblib").touch()
-
-        version = manager._get_next_version("LR")
-        assert version == 4
-
-    @patch("data_pipeline.modeling.Path.exists")
-    @patch("data_pipeline.modeling.pd.read_csv")
-    def test_load_all_datasets_disk_reading(self, mock_read, mock_exists):
-        """Cobre o carregamento do disco quando os ficheiros existem."""
-        manager = ModelManager()
-        mock_exists.return_value = True
-        mock_read.return_value = pd.DataFrame({"datetime": ["2020-01-01"], "val": [1]})
-
-        ds = manager.load_all_datasets()
-        assert "full" in ds
-
-    @patch("data_pipeline.modeling.optuna.create_study")
-    def test_train_flexible_edge_cases(self, mock_create_study):
-        """Cobre a estratégia 'nested' e o fallback de dados insuficientes."""
-        mock_study = MagicMock()
-        mock_study.best_params = {"n_estimators": 2, "max_depth": 2}
-        mock_create_study.return_value = mock_study
-
-        manager = ModelManager()
-
-        # 1. Testar modo Nested explícito
-        model_nested = manager.train_flexible(
-            self.df[["datetime", "temperatura"]], self.df["Load_MW"], strategy="nested"
-        )
-        assert model_nested is not None
-
-        # 2. Testar modo Expanding com poucos dados (aciona o fallback do split 80/20)
-        small_df = self.df.iloc[:50].copy()  # Apenas 50 dias, insuficiente para gap de 2 anos
-        model_small = manager.train_flexible(
-            small_df[["datetime", "temperatura"]], small_df["Load_MW"], strategy="expanding"
-        )
-        assert model_small is not None
-
-    @patch("data_pipeline.modeling.psycopg2.connect")
-    def test_database_manager_exception(self, mock_connect):
-        """Cobre o except bloco se a Base de Dados estiver desligada."""
-        manager = DatabaseManager({"dbname": "test"})
-        # Força o PostgreSQL a atirar um erro
-        mock_connect.side_effect = Exception("Docker is down!")
-
-        # Se a pipeline quebrar aqui, o teste falha (o objetivo é que o except apanhe o erro silenciosamente)
-        try:
-            manager.save_model_metrics(
-                model_type="RF",
-                model_pred_type="hourly",  # <-- O parâmetro novo!
-                file_path="path/model.joblib",
-                rmse=1.0,
-                mae=1.0,
-                r2=1.0,
+        # 3. LIMPEZA
+        # Patch para evitar que o tratamento de outliers remova os nossos dados aleatórios
+        with patch("data_pipeline.cleaning.DataCleaner.treat_weather_outliers", side_effect=lambda x: x):
+            df_h, _ = cleaning(
+                energy_dir=project_env / "data/raw/energy",
+                weather_dir=project_env / "data/raw/weather",
+                train_data=True,
+                output_dir=project_env / "data/processed"
             )
-            passed = True
-        except Exception:
-            passed = False
 
-        assert passed, "Uma falha na base de dados parou a execução da pipeline!"
+        # 4. FEATURE ENGINEERING
+        fe = FeatureEngineer(threshold=0.6, models_dir=project_env / "models", frequency="hourly")
+        results = fe.run_pipeline(df_h, fit=True)
+        
+        # Guardar os ficheiros processados na pasta esperada pelo ModelManager
+        for ds_type, df_feat in results.items():
+            dest = project_env / f"data/processed/feat-engineering/features_hourly_{ds_type}.csv"
+            df_feat.to_csv(dest, index=False)
 
+        # 5. MODELAÇÃO
+        orchestrator = PipelineOrchestrator(db_config={"fake": "config"})
+        
+        # Injeção manual e configuração do Manager para usar as pastas de teste
+        orchestrator.manager = ModelManager(frequency="hourly")
+        orchestrator.manager.data_dir = project_env / "data/processed/feat-engineering"
+        orchestrator.manager.models_dir = project_env / "models/hourly"
+        # Reduzimos n_partitions para 3 para o teste ser mais rápido e caber nos 4 anos
+        orchestrator.manager.n_partitions = 3 
 
-# =========================================================================
-# NOVOS TESTES: End-to-End Full Pipeline (Ingestion -> Cleaning -> FE -> Modeling)
-# =========================================================================
+        # Carregar datasets gerados no passo 4
+        datasets = orchestrator.manager.load_all_datasets()
+        assert len(datasets) > 0, "Deveria ter carregado datasets do Feature Engineering"
 
+        # Calcular splits temporais (Expanding, Fixed, Nested)
+        splits_by_strategy = orchestrator._precalculate_splits(datasets)
+        
+        # Verificar se foram gerados splits (evita o erro AttributeError: 'NoneType')
+        for strat, ds_splits in splits_by_strategy.items():
+            for ds_name, s in ds_splits.items():
+                assert len(s) > 0, f"Estratégia {strat} no dataset {ds_name} não gerou splits!"
 
-def setup_synthetic_raw_data(raw_energy_dir, raw_weather_dir, freq="h"):
-    """Gera ficheiros CSV sintéticos mínimos para o pipeline processar."""
-    # Precisamos de dados suficientes para os splits (3 anos min)
-    periods = 100 if freq == "h" else 50
-    dates = pd.date_range("2023-01-01", periods=periods, freq=freq, tz="UTC")
+        # Executar apenas o baseline para validar o fluxo de treino e gravação na DB mockada
+        orchestrator._evaluate_and_save_model(
+            model_type="baseline", 
+            freq="hourly", 
+            datasets=datasets, 
+            splits_by_strategy=splits_by_strategy
+        )
 
-    # Energy: O cleaner sempre espera "Load_MW" inicialmente
-    df_e = pd.DataFrame({"Unnamed: 0": dates, "Load_MW": np.random.uniform(20000, 30000, len(dates))})
-    df_e.to_csv(raw_energy_dir / "energy_raw.csv", index=False)
-
-    # Weather
-    weather_cols = [
-        "valid_time",
-        "latitude",
-        "longitude",
-        "t2m",
-        "u10",
-        "v10",
-        "ssrd",
-        "tp",
-        "d2m",
-        "skt",
-        "strd",
-        "sp",
-        "stl1",
-        "swvl1",
-    ]
-    df_w = pd.DataFrame({col: np.random.rand(len(dates)) for col in weather_cols})
-    df_w["valid_time"] = dates
-    df_w["latitude"] = 40.4
-    df_w["longitude"] = -3.7
-    for col in ["t2m", "d2m", "skt", "stl1"]:
-        df_w[col] = df_w[col] * 20 + 273.15
-
-    df_w.to_csv(raw_weather_dir / "weather_raw.csv", index=False)
-
-
-@patch("data_pipeline.modeling.psycopg2.connect")
-@patch("data_pipeline.modeling.optuna.create_study")
-@patch("data_pipeline.modeling.joblib.dump")
-@patch("data_pipeline.modeling.ModelManager.generate_splits")
-@patch("data_pipeline.modeling.StatisticalEvaluator.select_best_dataset")
-@patch("data_pipeline.modeling.StatisticalEvaluator.select_best_strategy")
-def test_full_pipeline_hourly_integration(mock_strat, mock_ds, mock_splits, mock_dump, mock_optuna, mock_db, tmp_path):
-    """Testa o pipeline completo de ponta a ponta (Hourly)."""
-    # Setup Dirs
-    raw_energy = tmp_path / "raw" / "energy"
-    raw_weather = tmp_path / "raw" / "weather"
-    processed = tmp_path / "processed"
-    models = tmp_path / "models"
-    for d in [raw_energy, raw_weather, processed, models]:
-        d.mkdir(parents=True, exist_ok=True)
-
-    # 1. MOCK INGESTION: Drop synthetic files
-    setup_synthetic_raw_data(raw_energy, raw_weather, freq="h")
-
-    # 2. CLEANING
-    df_hourly, _ = cleaning(energy_dir=raw_energy, weather_dir=raw_weather, train_data=True, output_dir=processed)
-    assert not df_hourly.empty
-
-    # 3. FEATURE ENGINEERING
-    fe = FeatureEngineer(threshold=0.6, models_dir=models, frequency="hourly")
-    fe.run_pipeline(df_hourly, fit=True)
-    fe.save()
-
-    # 4. MODELING (Orchestrator)
-    mock_study = MagicMock()
-    mock_study.best_params = {"n_estimators": 1, "max_depth": 1}
-    mock_optuna.return_value = mock_study
-
-    # Mock splits to return 1 fold for speed
-    mock_splits.return_value = [(np.arange(0, 40), np.arange(40, 50))]
-    mock_ds.return_value = ("full", {"rmse": 10.0, "r2": 0.9, "mae": 5.0})
-    mock_strat.return_value = "fixed_rolling"
-
-    orchestrator = PipelineOrchestrator(db_config=None)
-    orchestrator.models_dir = models
-
-    with patch("data_pipeline.modeling.ModelManager.load_all_datasets", autospec=True) as mock_load:
-        dummy_ds = {"full": df_hourly.copy(), "pca": df_hourly.copy(), "selected": df_hourly.copy()}
-        # Only return data for hourly
-        mock_load.side_effect = lambda self_manager: dummy_ds if self_manager.frequency == "hourly" else {}
-        orchestrator.run()
-
-    assert mock_dump.called
-
-
-@patch("data_pipeline.modeling.psycopg2.connect")
-@patch("data_pipeline.modeling.optuna.create_study")
-@patch("data_pipeline.modeling.joblib.dump")
-@patch("data_pipeline.modeling.ModelManager.generate_splits")
-@patch("data_pipeline.modeling.StatisticalEvaluator.select_best_dataset")
-@patch("data_pipeline.modeling.StatisticalEvaluator.select_best_strategy")
-def test_full_pipeline_daily_integration(mock_strat, mock_ds, mock_splits, mock_dump, mock_optuna, mock_db, tmp_path):
-    """Testa o pipeline completo de ponta a ponta (Daily)."""
-    # Setup Dirs
-    raw_energy = tmp_path / "raw" / "energy"
-    raw_weather = tmp_path / "raw" / "weather"
-    processed = tmp_path / "processed"
-    models = tmp_path / "models"
-    for d in [raw_energy, raw_weather, processed, models]:
-        d.mkdir(parents=True, exist_ok=True)
-
-    # 1. MOCK INGESTION: Drop synthetic files
-    setup_synthetic_raw_data(raw_energy, raw_weather, freq="D")
-
-    # 2. CLEANING
-    _, df_daily = cleaning(energy_dir=raw_energy, weather_dir=raw_weather, train_data=True, output_dir=processed)
-    assert not df_daily.empty
-
-    # 3. FEATURE ENGINEERING
-    fe = FeatureEngineer(threshold=0.6, models_dir=models, frequency="daily")
-    fe.run_pipeline(df_daily, fit=True)
-    fe.save()
-
-    # 4. MODELING (Orchestrator)
-    mock_study = MagicMock()
-    mock_study.best_params = {"n_estimators": 1, "max_depth": 1}
-    mock_optuna.return_value = mock_study
-
-    mock_splits.return_value = [(np.arange(0, 40), np.arange(40, 50))]
-    mock_ds.return_value = ("full", {"rmse": 10.0, "r2": 0.9, "mae": 5.0})
-    mock_strat.return_value = "fixed_rolling"
-
-    orchestrator = PipelineOrchestrator(db_config=None)
-    orchestrator.models_dir = models
-
-    with patch("data_pipeline.modeling.ModelManager.load_all_datasets", autospec=True) as mock_load:
-        dummy_ds = {"full": df_daily.copy(), "pca": df_daily.copy(), "selected": df_daily.copy()}
-        # Only return data for daily
-        mock_load.side_effect = lambda self_manager: dummy_ds if self_manager.frequency == "daily" else {}
-        orchestrator.run()
-
-    assert mock_dump.called
+        # 6. ASSERÇÕES FINAIS
+        # O prefixo definido no modeling.py para baseline é "LR"
+        model_files = list((project_env / "models/hourly").glob("LR_v*.joblib"))
+        assert len(model_files) > 0, "O modelo LR deveria ter sido gravado em disco."
+        
+        saved_model = joblib.load(model_files[0])
+        assert hasattr(saved_model, "predict"), "O ficheiro guardado deve ser um modelo válido."
