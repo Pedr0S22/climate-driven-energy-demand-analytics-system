@@ -30,14 +30,12 @@ class StatisticalEvaluator:
 
     @staticmethod
     def test_normality(data_groups, alpha=0.05):
-        """Tests if all groups are normally distributed using Shapiro-Wilk."""
         for _, data in data_groups.items():
-            # If standard deviation is 0, shapiro fails.
             if np.std(data) == 0:
                 return False
             stat, p_val = shapiro(data)
             if p_val < alpha:
-                return False  # Not normal
+                return False  
         return True
 
     @staticmethod
@@ -371,9 +369,9 @@ class DatabaseManager:
                         file_path, 
                         dataset_selected, 
                         top2_drivers_str, 
-                        rmse, 
-                        mae, 
-                        r2
+                        float(rmse), 
+                        float(mae), 
+                        float(r2)
                     ))
                     conn.commit()
         except Exception as e:

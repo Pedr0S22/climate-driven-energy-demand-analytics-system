@@ -288,11 +288,13 @@ Stores metadata and performance metrics of the trained models.
 | `model_name_id` | BIGSERIAL | Primary Key | Unique model identifier. |
 | `model_type` | VARCHAR(512) | Not Null | Type of machine learning model. |
 | `model_creation_date` | TIMESTAMP | Not Null, Default: CURRENT_TIMESTAMP | Date the model was registered or trained. |
-| `model_pred_type` | VARCHAR(512) | Not Null | Type of prediction the model makes (e.g., regression, classification). |
+| `model_pred_type` | VARCHAR(512) | Not Null | Frequency/Type of prediction the model makes. |
 | `model_server_relative_path`| VARCHAR(512) | Not Null | Server path to the model file. |
-| `rmse` | DOUBLE PRECISION | Not Null | Root Mean Square Error metric. |
-| `mae` | DOUBLE PRECISION | Not Null | Mean Absolute Error metric. |
-| `r2` | DOUBLE PRECISION | Not Null | R-squared metric. |
+| `dataset_selected` | VARCHAR(512) | Not Null | The specific dataset version/strategy that yielded the best performance. |
+| `top2_drivers` | VARCHAR(512) | Not Null | The top 2 most influential features for the model's predictions. |
+| `rmse` | DOUBLE PRECISION | Not Null | Root Mean Square Error metric of the winning fold. |
+| `mae` | DOUBLE PRECISION | Not Null | Mean Absolute Error metric of the winning fold. |
+| `r2` | DOUBLE PRECISION | Not Null | R-squared metric of the winning fold. |
 
 **Table `request`**
 Logs the history of prediction requests made by users.
