@@ -4,6 +4,7 @@ from unittest.mock import MagicMock, patch
 import numpy as np
 import pandas as pd
 import pytest
+from pathlib import Path
 from data_pipeline.modeling import (
     DatabaseManager,
     ModelManager,
