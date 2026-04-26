@@ -569,9 +569,11 @@ class TestPipelineOrchestrator:
         orchestrator._run_strategy_loops = MagicMock(return_value={
             "dataset": "pca", 
             "metrics": {
-                "rmse": [10.0, 2.0], "r2": [0.5, 0.9], "mae": [3.0, 1.0], 
-                "models": ["modelo_mau", "modelo_bom"], 
-                "drivers": [["D1"], ["Top1", "Top2"]]
+                "rmse": [10.0, 5.0, 2.0], 
+                "r2": [0.5, 0.7, 0.9], 
+                "mae": [3.0, 2.0, 1.0], 
+                "models": ["modelo_mau", "modelo_medio", "modelo_bom"], 
+                "drivers": [["D1"], ["D2"], ["Top1", "Top2"]]
             }
         })
         
