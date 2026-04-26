@@ -1,4 +1,6 @@
+import json
 import logging
+import os
 import re
 import time
 import warnings
@@ -9,6 +11,7 @@ import numpy as np
 import optuna
 import pandas as pd
 import psycopg2
+from dotenv import load_dotenv
 from pandas.tseries.offsets import DateOffset
 from scipy.stats import f_oneway, friedmanchisquare, kruskal, shapiro
 from sklearn.ensemble import RandomForestRegressor
@@ -63,6 +66,8 @@ class StatisticalEvaluator:
         if p_val < 0.05:
             is_diff = True
 
+        logger.info(f"    Statistical Analysis ({test_used}): p-value = {p_val:.4e}")
+        
         # Select best by mean RMSE -> R2 -> MAE
         best_ds = None
         best_metrics = {"rmse": float("inf"), "r2": float("-inf"), "mae": float("inf")}
@@ -71,6 +76,8 @@ class StatisticalEvaluator:
             mean_rmse = np.mean(results_dict[ds]["rmse"])
             mean_r2 = np.mean(results_dict[ds]["r2"])
             mean_mae = np.mean(results_dict[ds]["mae"])
+            
+            logger.info(f"    - Candidate Dataset: {ds.upper()} | Mean RMSE: {mean_rmse:.4f} | Mean R2: {mean_r2:.4f} | Mean MAE: {mean_mae:.4f}")
 
             if mean_rmse < best_metrics["rmse"]:
                 best_ds = ds
@@ -84,9 +91,10 @@ class StatisticalEvaluator:
                     best_metrics = {"rmse": mean_rmse, "r2": mean_r2, "mae": mean_mae}
 
         if not is_diff:
-            logger.info(f"    -> {test_used} showed NO stat diff (p={p_val:.4e}). Choosing {best_ds} by raw means.")
+            logger.info(f"Dataset Selection Conclusion: No statistical significance. Selecting {best_ds} based on raw mean performance.")
         else:
-            logger.info(f"    -> {test_used} showed stat diff (p={p_val:.4e}). Selected {best_ds}.")
+            logger.info(f"Dataset Selection Conclusion: Statistical significance detected. Selecting {best_ds} as the optimal dataset.")
+        
         return best_ds, best_metrics
 
     @staticmethod
@@ -116,24 +124,19 @@ class StatisticalEvaluator:
             mean_r2 = np.mean(strategy_results[strat]["metrics"]["r2"])
             mean_mae = np.mean(strategy_results[strat]["metrics"]["mae"])
 
-            # 1. Ganha pelo RMSE
             if mean_rmse < best_metrics["rmse"]:
                 best_strat = strat
                 best_metrics = {"rmse": mean_rmse, "r2": mean_r2, "mae": mean_mae}
-
-            # 2. Empate no RMSE -> Ganha pelo melhor R2
             elif mean_rmse == best_metrics["rmse"]:
                 if mean_r2 > best_metrics["r2"]:
                     best_strat = strat
                     best_metrics = {"rmse": mean_rmse, "r2": mean_r2, "mae": mean_mae}
-
-                # 3. Empate no RMSE e R2 -> Ganha pelo menor MAE
                 elif mean_r2 == best_metrics["r2"]:
                     if mean_mae < best_metrics["mae"]:
                         best_strat = strat
                         best_metrics = {"rmse": mean_rmse, "r2": mean_r2, "mae": mean_mae}
 
-        logger.info(f"  => {test_used} evaluation (p={p_val:.4e}). Winning Strategy: {best_strat}")
+        logger.info(f"Strategy Selection: {test_used} evaluation (p={p_val:.4e}). Selected strategy: {best_strat}")
         return best_strat
 
 
@@ -235,7 +238,6 @@ class ModelManager:
             # Sort and get the indices of the top 2
             top_2_idx = np.argsort(importance)[-2:][::-1]
             top_2_drivers = X_train.columns[top_2_idx].tolist()
-            logger.info(f"Top 2 Drivers (Linear Regression): {top_2_drivers}")
         return model, top_2_drivers
 
     def train_flexible(self, X_train, y_train, strategy):
@@ -333,7 +335,6 @@ class ModelManager:
             # Sort and get the indices of the top 2
             top_2_idx = np.argsort(importance)[-2:][::-1]
             top_2_drivers = X_final.columns[top_2_idx].tolist()
-            logger.info(f"Top 2 Drivers (Random Forest): {top_2_drivers}")
 
         return best_model, top_2_drivers
 
@@ -360,7 +361,8 @@ class DatabaseManager:
                 with conn.cursor() as cur:
                     query = """
                         INSERT INTO model 
-                        (model_type, model_pred_type, model_server_relative_path, dataset_selected, top2_drivers, rmse, mae, r2) 
+                        (model_type, model_pred_type, model_server_relative_path, dataset_selected,
+                          top2_drivers, rmse, mae, r2) 
                         VALUES (%s, %s, %s, %s, %s, %s, %s, %s)
                     """
                     cur.execute(query, (
@@ -390,7 +392,7 @@ class PipelineOrchestrator:
         overall_start = time.time()
 
         for freq in ["hourly", "daily"]:
-            logger.info(f"\n{'='*60}\nSTARTING MASSIVE PIPELINE FOR: {freq.upper()}\n{'='*60}")
+            logger.info(f"\n{'='*60}\nINITIALIZING MODELING PIPELINE FOR: {freq.upper()}\n{'='*60}")
             self.manager = ModelManager(frequency=freq)
             datasets = self.manager.load_all_datasets()
 
@@ -432,7 +434,7 @@ class PipelineOrchestrator:
         # 2. Encontrar a melhor estratégia
         best_strat = self.evaluator.select_best_strategy(strategy_results)
         
-        # ADICIONADO: Guardar o nome do Dataset Vencedor
+        # Guardar o nome do Dataset Vencedor
         best_dataset_name = strategy_results[best_strat]["dataset"]
         vencedora_metrics = strategy_results[best_strat]["metrics"]
 
@@ -440,7 +442,7 @@ class PipelineOrchestrator:
         melhor_idx = self._find_best_fold_index(vencedora_metrics)
         best_final_model = vencedora_metrics["models"][melhor_idx]
         
-        # ADICIONADO: Extrair os top drivers do melhor fold individual
+        # Extrair os top drivers do melhor fold individual
         best_top2_drivers = vencedora_metrics["drivers"][melhor_idx]
 
         # Métricas do melhor modelo
@@ -462,10 +464,10 @@ class PipelineOrchestrator:
         joblib.dump(best_final_model, save_path)
 
         logger.info(
-            f"✅ WINNER for {model_type.upper()} ({freq}): Strategy='{best_strat}', "
+            f"WINNER for {model_type.upper()} ({freq}): Strategy='{best_strat}', "
             f"Dataset='{best_dataset_name}', Top Drivers='{best_top2_drivers}'"
         )
-        logger.info(f"✅ Ficheiro guardado fisicamente em: {save_path}")
+        logger.info(f"Model file saved to: {save_path}")
 
         caminho_relativo = f"models/{freq}/{file_name}"
 
@@ -481,10 +483,34 @@ class PipelineOrchestrator:
             mae=best_mae,
             r2=best_r2,
         )
+
+        # D. Log para ELK (Structured Logging)
+        elk_payload = {
+            "event": "model_training_completed",
+            "user": "system_pipeline",
+            "timestamp": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime()),
+            "model_info": {
+                "name": db_model_name,
+                "frequency": freq,
+                "version": version,
+                "dataset": best_dataset_name,
+                "path": caminho_relativo
+            },
+            "metrics": {
+                "rmse": float(best_rmse),
+                "mae": float(best_mae),
+                "r2": float(best_r2)
+            },
+            "analysis": {
+                "top2_drivers": best_top2_drivers
+            },
+            "status": "success"
+        }
+        logger.info(f"ELK_JSON_LOG: {json.dumps(elk_payload)}")
     def _run_strategy_loops(self, model_type, strategy, datasets, splits_by_strategy):
         """Executa os loops de treino para uma estratégia específica sobre os datasets."""
         logger.info(f"  Strategy: {strategy}")
-        # ADICIONADO: Uma chave "drivers" para guardar os melhores drivers de cada split
+        # Uma chave "drivers" para guardar os melhores drivers de cada split
         dataset_results = {ds: {"rmse": [], "r2": [], "mae": [], "models": [], "drivers": []} for ds in datasets.keys()}
 
         for ds_name, df in datasets.items():
@@ -496,7 +522,7 @@ class PipelineOrchestrator:
                 X_train, y_train = X.iloc[train_idx], y.iloc[train_idx]
                 X_test, y_test = X.iloc[test_idx], y.iloc[test_idx]
 
-                # ADICIONADO: Desempacotar model e top_drivers
+                # Desempacotar model e top_drivers
                 if model_type == "baseline":
                     X_train_b = X_train.drop(columns=["datetime"]) if "datetime" in X_train.columns else X_train
                     model, top_drivers = self.manager.train_baseline(X_train_b, y_train)
@@ -510,12 +536,15 @@ class PipelineOrchestrator:
                 dataset_results[ds_name]["r2"].append(r2_score(y_test, y_pred))
                 dataset_results[ds_name]["mae"].append(mean_absolute_error(y_test, y_pred))
                 dataset_results[ds_name]["models"].append(model)
-                # ADICIONADO: Guardar os drivers
+                # Guardar os drivers
                 dataset_results[ds_name]["drivers"].append(top_drivers)
 
         # Avalia qual foi o melhor dataset para esta estratégia
         best_ds, metrics = self.evaluator.select_best_dataset(dataset_results)
-        logger.info(f"    [Métricas Dataset {best_ds.upper()}] RMSE Médio: {metrics['rmse']:.2f}")
+        logger.info(
+            f"    [Split Metrics - {strategy.upper()} - Dataset: {best_ds.upper()}] "
+            f"Mean RMSE: {metrics['rmse']:.4f} | Mean R2: {metrics['r2']:.4f} | Mean MAE: {metrics['mae']:.4f}"
+        )
 
         return {"dataset": best_ds, "metrics": dataset_results[best_ds]}
     
@@ -538,12 +567,16 @@ class PipelineOrchestrator:
 
 
 if __name__ == "__main__":
+    # Load environment variables from the app root
+    app_root = Path(__file__).resolve().parent.parent.parent
+    load_dotenv(dotenv_path=app_root / ".env")
+
     DB_CONFIG = {
-        "dbname": "energy_db",
-        "user": "piacd_energy",
-        "password": "postgres_Piacd_energy",
-        "host": "localhost",  # (Lê a nota importante abaixo sobre o host)
-        "port": "5433",
+        "dbname": os.getenv("DB_NAME"),
+        "user": os.getenv("DB_USER"),
+        "password": os.getenv("DB_PASSWORD"),
+        "host": os.getenv("DB_HOST", "localhost"),
+        "port": os.getenv("DB_PORT", "5433"),
     }
 
     # Inicia a orquestração do pipeline de forma limpa

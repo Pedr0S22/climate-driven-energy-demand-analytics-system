@@ -55,7 +55,7 @@ The technology stack used in the project is described below. Also FILE X and FIL
 
 ### 1.3. Infrastructure & Telemetry Stack
 
-* **Monitoring:** [`TODO`] ELK
+* **Monitoring:** [`TODO`] ELK 
 
 
 ## 2. Data Pipeline Design
@@ -188,8 +188,44 @@ The primary objective of the Feature Engineering Module is to transform synchron
 
 
 ### 2.4. Training & Evaluation Module
-* **Target:** Reads from `/data/feat-engineering/`, saves to ModelDB.
-* **Logic:** [`TODO`Uses TimeSeriesSplit (No random shuffling allowed). Evaluates using MAE, RMSE, R2. Saves output as a serialized model file...]
+
+The primary objective of the Training & Evaluation Module is to autonomously select the most robust model and dataset configuration through rigorous statistical validation. It transitions the pipeline from a "one-size-fits-all" approach to an adaptive strategy that handles both **Hourly** (short-term volatility) and **Daily** (long-term trend) demand patterns.
+
+*   **Target:** Reads from `/data/processed/feat-engineering/`, persists winning binaries to `/models/`, and metadata to the `model` table in PostgreSQL.
+*   **Logic & Mechanisms:**
+
+    - **Advanced Temporal Validation:**
+        - **The 1-Year Safety Gap:** All temporal splits implement a mandatory **1-year gap** between training and testing.
+        - **Technical Rationale:** Energy demand is heavily influenced by climate inertia and long-term economic cycles. A simple cross-validation or a short gap would lead to **data leakage** through temporal proximity. A 1-year gap ensures the model is tested on a completely different annual cycle, proving its generalization across seasonal boundaries.
+        - **Strategies Evaluated:**
+            - *Expanding Window:* Cumulative training from start of history.
+            - *Fixed Rolling:* Constant window size to capture only recent shifts in demand behavior.
+            - *Nested Validation (Random Forest):* Internal optimization loops within each fold to prevent hyperparameter overfitting.
+
+    - **Statistical Rigor in Selection:**
+        - Instead of picking the model with the lowest average error, the system employs a **Shapiro-Wilk** normality test on the RMSE distribution across 20 partitions.
+        - **Selection Decision Tree:**
+            - If Normal: Uses **One-Way ANOVA** to verify if dataset/strategy performance differences are statistically significant.
+            - If Non-Normal: Uses **Friedman** (for datasets) or **Kruskal-Wallis** (for strategies) tests.
+        - **Engineering Why:** Ensures that the "winner" is not just lucky on a specific time window, but consistently superior with statistical significance (p < 0.05).
+
+    - **Hyperparameter Optimization (Optuna):**
+        - Utilizes the `optuna` library to conduct 30 trials per model.
+        - **Search Space:** Focuses on `n_estimators` (20-100) and `max_depth` (5-15) for Random Forest.
+        - **Technical Rationale:** A constrained depth prevents the model from memorizing specific training spikes, while the number of estimators provides enough variance reduction.
+
+    - **Overfitting Check & Mitigation:**
+        - **Train/Validation Gap Analysis:** The system logs mean metrics across all folds. A significant gap (e.g., R2 > 0.99 on train vs R2 < 0.80 on test) triggers a warning in the ELK logs.
+        - **Mitigation:** Nested validation during Optuna optimization forces the model to find parameters that work across multiple sub-folds within the training set before ever seeing the test data.
+
+    - **Driver Analysis (Interpretability):**
+        - **Linear Regression:** Extracts absolute coefficients to identify magnitude of impact.
+        - **Random Forest:** Extracts Gini Importance.
+        - **Modification:** The "Top 2 Event Drivers" are persisted to the database per model. This allows the frontend to show users *why* the demand is high (e.g., "Driven by: Skewed Temperature, Solar Radiation").
+
+    - **Persistence & Versioning:**
+        - Implements Rule 8: Models are saved as `[LR|RF]_vx.joblib`.
+        - Database entries link the file path with the exact `rmse`, `mae`, and `r2` metrics from the winning fold, enabling rollback to previous versions if performance degrades in production.
 
 
 
@@ -343,7 +379,11 @@ Standard practices often expose plaintext passwords during initial database migr
 [`TODO`] - (Directory structures for raw/processed data, and .pkl/joblib model binary storage rules)
 
 ### 4.3. Log Storage ELK
-[`TODO`] - (What indices you are using for logs if any!!)
+
+The system uses the ELK Stack to centralize performance and audit logs. The primary index used is `energy-demand-logs-*`.
+
+*   **Model Training Logs:** Every pipeline run pushes a structured JSON payload containing the full metric suite and driver analysis.
+*   **Audit Trail:** Logs include the `user` and `timestamp` for every model update.
 
 
 ## 5. Frontend UI & Dashboard Design
@@ -360,7 +400,33 @@ Standard practices often expose plaintext passwords during initial database migr
 ### 6. Telemetry & Observability Design
 
 ### 6.1. Application Log Formatting
-[`TODO`] - (Standardized JSON log payloads for FastAPI)
+
+To enable automated ingestion by Logstash, the pipeline utilizes a standardized structured logging format.
+
+**Structured Log Payload (JSON):**
+```json
+{
+  "event": "model_training_completed",
+  "user": "system_pipeline",
+  "timestamp": "ISO-8601-String",
+  "model_info": {
+    "name": "Random Forest",
+    "frequency": "hourly",
+    "version": 2,
+    "dataset": "pca"
+  },
+  "metrics": {
+    "rmse": 0.12,
+    "mae": 0.08,
+    "r2": 0.94
+  },
+  "analysis": {
+    "top2_drivers": ["t2m_rolling_mean", "L24"]
+  },
+  "status": "success"
+}
+```
 
 ### 6.2. Logstash Parsing Rules
-[`TODO`] - (How ELK ingests the Python logs)
+
+Logstash is configured with a `grok` filter that identifies the `ELK_JSON_LOG:` prefix. Once identified, the `json` filter parses the payload directly into Elasticsearch fields, allowing Kibana to build real-time dashboards of model accuracy over time without manual data entry.
