@@ -5,17 +5,17 @@ import joblib
 from pathlib import Path
 from unittest.mock import MagicMock, patch
 
-# Importações do projeto
 from data_pipeline.cleaning import DataCleaner, cleaning
 from data_pipeline.feature_engineering import FeatureEngineer
 from data_pipeline.modeling import PipelineOrchestrator, ModelManager
 import data_pipeline.ingestion as ingestion
 
 class TestPipelineIntegration:
-    """Testes de integração corrigidos para evitar erros de indexação com Mocks."""
+    """Integration tests for the modular data pipeline."""
 
     @pytest.fixture
     def pipeline_dirs(self, tmp_path):
+        """Configure temporary directories for test artifacts."""
         base = tmp_path / "project"
         raw_energy = base / "data" / "raw" / "energy"
         raw_weather = base / "data" / "raw" / "weather"
@@ -38,26 +38,20 @@ class TestPipelineIntegration:
     @patch("data_pipeline.ingestion.backup_project_data")
     @patch("data_pipeline.ingestion.os.getenv")
     def test_ingestion_orchestration(self, mock_getenv, mock_backup, mock_entsoe, mock_cds):
-        """Tests the orchestration of data retrieval from ENTSO-E and Copernicus."""
+        """Validate orchestration of data retrieval from external APIs."""
         mock_getenv.return_value = "fake_api_key"
-        
-        # Mock ENTSO-E
         mock_entsoe_instance = mock_entsoe.return_value
         mock_entsoe_instance.query_load.return_value = pd.DataFrame(
             {"Load_MW": [25000]}, 
             index=pd.date_range("2023-01-01", periods=1, freq="h", tz="Europe/Madrid")
         )
-
-        # Mock Copernicus
         mock_cds_instance = mock_cds.return_value
         
-        # Call the master retrieval function
         with patch("data_pipeline.ingestion.os.path.exists", return_value=False), \
              patch("data_pipeline.ingestion.os.makedirs"), \
              patch("pandas.DataFrame.to_csv"):
             ingestion.data_retrieval("2023-01-01", "2023-01-01", country_code="ES")
 
-        # Verify calls
         assert mock_entsoe.called
         assert mock_cds.called
         assert mock_backup.called
@@ -65,37 +59,29 @@ class TestPipelineIntegration:
     @patch("data_pipeline.gdrive_sync.authenticate_gdrive")
     @patch("data_pipeline.gdrive_sync.os.getenv")
     def test_gdrive_sync_integration(self, mock_getenv, mock_auth, pipeline_dirs):
-        """Tests the GDrive backup logic with mocked authentication and upload calls."""
-        # 1. Setup Mock IDs and Service
+        """Validate Google Drive backup synchronization logic."""
         mock_getenv.side_effect = lambda k: "fake_folder_id" if "DRIVE_FOLDER_ID" in k else None
         mock_service = MagicMock()
         mock_auth.return_value = mock_service
-        
-        # Mock the list and create methods
         mock_files = mock_service.files.return_value
         mock_files.list.return_value.execute.return_value = {"files": []}
         mock_files.create.return_value.execute.return_value = {"id": "new_id"}
 
-        # 2. Create dummy files in pipeline_dirs to be backed up
         energy_file = pipeline_dirs["raw_energy"] / "test_energy.csv"
         weather_file = pipeline_dirs["raw_weather"] / "test_weather.csv"
         energy_file.write_text("dummy,data")
         weather_file.write_text("dummy,data")
 
-        # 3. Patch PROJECT_ROOT to use our tmp pipeline_dirs
-        # pipeline_dirs['raw_energy'] is project/data/raw/energy
-        # We need PROJECT_ROOT to be the 'project' directory
         project_root = pipeline_dirs["raw_energy"].parent.parent.parent
         from data_pipeline import gdrive_sync
         with patch("data_pipeline.gdrive_sync.PROJECT_ROOT", str(project_root)):
             gdrive_sync.backup_project_data()
 
-        # 4. Assertions
         assert mock_auth.called
-        # Should be called once for each CSV file found (one in energy, one in weather)
         assert mock_files.create.call_count == 2
 
     def test_cleaning_and_feat_eng(self, pipeline_dirs):
+        """Validate cleaning and feature engineering modular flow."""
         times = pd.date_range("2023-01-01", periods=48, freq="h", tz="UTC")
         df_e = pd.DataFrame({"Unnamed: 0": times, "Load_MW": np.random.uniform(20000, 30000, 48)})
         df_e.to_csv(pipeline_dirs["raw_energy"] / "energy_test.csv", index=False)
@@ -128,33 +114,25 @@ class TestPipelineIntegration:
     @patch("optuna.create_study")
     @patch("joblib.dump")
     def test_modeling_integration_extension(self, mock_joblib, mock_create_study, mock_rf, mock_db, pipeline_dirs):
-        """Ativa 3 splits e resolve o IndexError usando arrays NumPy reais nos atributos do modelo."""
+        """Validate modeling integration with multi-split evaluation."""
         mock_db.return_value = MagicMock()
         mock_joblib.return_value = None
-
-        # 1. Mock do Estudo Optuna
         mock_study = MagicMock()
         mock_study.best_params = {"n_estimators": 5, "max_depth": 3}
         mock_study.best_trial.params = {"n_estimators": 5, "max_depth": 3}
         mock_create_study.return_value = mock_study
 
-        # 2. Mock do RandomForestRegressor Dinâmico
         fake_rf = MagicMock()
-        
         def dynamic_fit_mock(X, y, **kwargs):
-            # IMPORTANTE: Definir feature_importances_ como um array NumPy real
-            # Isto evita que o .argsort() devolva um Mock e cause erro no Pandas
             n_features = X.shape[1]
             fake_rf.feature_importances_ = np.random.rand(n_features)
             fake_rf.coef_ = np.random.rand(n_features)
             return fake_rf
 
-        # Configurar comportamentos do modelo
         fake_rf.fit.side_effect = dynamic_fit_mock
         fake_rf.predict.side_effect = lambda X: np.zeros(len(X))
         mock_rf.return_value = fake_rf
 
-        # 3. Gerar 5 anos de dados (Suporta 3 splits de 1 ano cada com folga)
         feat_eng_path = pipeline_dirs["feat_eng_dir"]
         feat_eng_path.mkdir(exist_ok=True, parents=True)
         times = pd.date_range("2019-01-01", periods=24*365*5, freq="h", tz="UTC")
@@ -167,29 +145,22 @@ class TestPipelineIntegration:
         for ds in ["full", "selected", "pca"]:
             df_mock.to_csv(feat_eng_path / f"features_hourly_{ds}.csv", index=False)
 
-        # 4. Configurar Orquestrador
         orchestrator = PipelineOrchestrator(db_config={"fake": "db"})
         orchestrator.manager = ModelManager(frequency="hourly")
         orchestrator.manager.data_dir = feat_eng_path
         orchestrator.manager.models_dir = pipeline_dirs["models"]
-        
-        # 3 splits para garantir validade estatística (elimina warnings)
         orchestrator.manager.n_partitions = 3 
 
         datasets = orchestrator.manager.load_all_datasets()
         splits = orchestrator._precalculate_splits(datasets)
 
-        # 5. Executar Treino (Baseline e Flexible)
         for m_type in ["baseline", "flexible"]:
             with patch("data_pipeline.modeling.LinearRegression") as mock_lr:
-                # Aplicamos a mesma lógica dinâmica à Regressão Linear
                 fake_lr = MagicMock()
                 fake_lr.fit.side_effect = dynamic_fit_mock
                 fake_lr.predict.side_effect = lambda X: np.zeros(len(X))
                 mock_lr.return_value = fake_lr
-                
                 orchestrator._evaluate_and_save_model(m_type, "hourly", datasets, splits)
 
-        # 6. Asserções finais
         assert mock_joblib.called 
         assert mock_db.called
