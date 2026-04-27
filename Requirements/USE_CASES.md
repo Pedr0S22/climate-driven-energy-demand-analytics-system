@@ -1,4 +1,4 @@
-# USE CASE DEFINITIONS - V3.3
+# USE CASE DEFINITIONS - V3.4
 
 This file contains all UCs for the development of this project.
 
@@ -743,26 +743,25 @@ Allow the user to access a dashboard to view the time series of the hourly elect
 6.  The user modifies none, one or more of these parameters. Other features required by the model (e.g., lagged load, rolling climate statistics) are automatically calculated using neutral/median values from the training history.
 7.  The user hits the **"Run Simulation"** button.
 8.  The system performs **Frontend/Backend Validation** to ensure all inputs are within the physical and logical limits defined in the cleaning module (UC2).
-9.  The system feeds the synthesized feature vector into the active model.
-10. The system calculates the predicted load (MW) and identifies the **Top 2 Drivers** most heavily influencing this result.
-11. The system displays the simulation result (Predicted MW) and visual indicators for the drivers on the simulator dashboard.
-12. The user can adjust parameters and **Re-run** the experiment to observe changes in real-time.
-13. The system logs the simulation event (input parameters, results and timestamps) to ELK for audit and monitoring.
+9. The system feeds the synthesized feature vector into the active model.
+10. The system calculates the predicted load (MW) and identifies the Top 2 Drivers most heavily influencing this result.
+11. The system securely passes the generated prediction (Predicted MW), the identified top 2 drivers, the selected template, and the custom input parameters to the presentation layer for visualization.
+12. The system logs the simulation event (input parameters, results, and timestamps) to ELK for audit and monitoring.
 
 **Extensions:**
 
-2. a. **The user selects the Hourly resolution:**
-    *   2a1. The user selects the specific **Hour of the Day** (0-23) in the Temporal Context section.
-    *   2a2. The system continues to Step 3 using the Hourly model.
+2. a. The user selects the Hourly resolution:
+    * 2a1. The user selects the specific Hour of the Day (0-23) in the Temporal Context section.
+    * 2a2. The system continues to Step 3 using the Hourly model.
 
-8) a. **Validation Failure (Invalid Inputs):**
-    *   8a1. The system detects inputs that are physically impossible or logically inconsistent.
-    *   8a2. The system logs the failure details to ELK
-    *   8a3. The system denies the simulation, highlights the offending fields, and prompts the user for correction.
+8) a. Validation Failure (Invalid Inputs):
+    * 8a1. The system detects inputs that are physically impossible or logically inconsistent.
+    * 8a2. The system logs the failure details to ELK.
+    * 8a3. The system denies the simulation, highlights the offending fields, and prompts the user for correction.
 
-9. a. **The system catches an error during the model's inference phase.:**
-    *   9a1. The system logs the failure details to ELK.
-    *   9a2. The system displays a pop-up error message to the user.
+9. a. The system catches an error during the model's inference phase:
+    * 9a1. The system logs the failure details to ELK.
+    * 9a2. The system displays a pop-up error message to the user.
 
 
 ## UC14: User Logout
@@ -795,3 +794,60 @@ Allow the user to access a dashboard to view the time series of the hourly elect
     *   2a1. The system catches the network or server error.
     *   2a2. The system forces a local logout by discarding the token on the client side.
     *   2a3. The system proceeds to Step 3, logging the local logout and the backend communication failure to ELK.
+
+
+
+## UC15: Scenario Simulation Dashboard
+
+**Primary Actor:** User
+
+**Scope/Goal:**
+The visualization layer for the Scenario Simulation module. The goal is to clearly render the calculated prediction alongside the specific context of the simulation, showing the user exactly what parameters and templates drove the displayed forecast.
+
+**Level:** User Goal
+
+**Stakeholders and Interests:**
+
+* **User:** Needs a clear, intuitive dashboard to interpret the results of their "What-if" scenario, verifying the inputs they chose against the final predicted demand.
+
+* **Developer:** Needs a modular component that solely handles UI rendering based on the data payload delivered by the simulation engine.
+
+**Preconditions:**
+
+1. **Authentication:** The user must be successfully authenticated in the system.
+
+2. **Simulation Execution:** The backend must have successfully completed a scenario simulation (UC13) and generated a valid data payload.
+
+**Main Success Scenario:**
+
+1. The use case begins immediately after the backend calculates a scenario simulation prediction.
+
+2. The system receives the simulation payload, which includes the Predicted Load (MW), the Base Scenario Template utilized, the custom Temporal/Meteorological parameters, and the Top 2 Drivers.
+
+3. The system renders the Simulation Results Dashboard.
+
+4. The system prominently displays the Predicted Load in megawatts (MW).
+
+5. The system displays a summary card detailing the context of the run, specifically showing the chosen Base Scenario Template (e.g., "Heatwave", "Winter Storm").
+
+6. The system displays a categorized breakdown of the exact variables used for the prediction:
+
+    * The Temporal Context (Month, Day of Week, Year, and Hour if applicable).
+
+    * The Meteorological Parameters (Temperature, Pressure, Precipitation, Wind).
+
+7. The system visualizes the Top 2 Drivers with indicators or charts to show how strongly they influenced the final MW prediction.
+
+8. The system provides an interactive "Adjust Scenario" button, allowing the user to tweak their previously chosen parameters and seamlessly trigger a new simulation run (routing back to UC13).
+
+**Extensions:**
+
+2. a. Missing or Corrupted Payload Data:
+
+    * 2a1. The system detects that required components (e.g., the predicted MW value or the template name) are missing from the backend response.
+
+    * 2a2. The system aborts rendering the specific results to prevent UI crashes.
+
+    * 2a3. The system displays a user-friendly error message stating that the simulation results could not be fully loaded.
+
+    * 2a4. The system provides a button to return to the empty Scenario Simulator configuration screen.

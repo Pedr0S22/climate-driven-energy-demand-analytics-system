@@ -19,17 +19,18 @@ Below there is a short presentation on what are the UCs, their numeration and ho
 
     ### Options
 
-- UC7 - Daily prediction generation
-    - UC10 - Daily prediction dashboard
+    - UC7 - Daily prediction generation
+        - UC10 - Daily prediction dashboard
 
-- UC8 - Hourly prediction generation
-    - UC11 - Hourly prediction dashboard
-- UC13 - Scenario simulation
+    - UC8 - Hourly prediction generation
+        - UC11 - Hourly prediction dashboard
 
-    ### Admin Only Options
-- UC9 - Admin model management
-- UC12 - App logging
+    - UC13 - Scenario simulation
+        - UC15 - Scenario Simulation Dashboard
 
+        ### Admin Only Options
+        - UC9 - Admin model management
+        - UC12 - App logging
 
 
 # Quality Attributes
