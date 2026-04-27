@@ -399,7 +399,8 @@ class TestPipelineOrchestrator:
         mock_model.predict.return_value = np.array([10, 20])
         orchestrator.manager.train_baseline.return_value = (mock_model, ["DriverA", "DriverB"])
         
-        orchestrator.evaluator.select_best_dataset = MagicMock(return_value=("full", {"rmse": 2.0, "r2": 0.9, "mae": 1.5}))
+        orchestrator.evaluator.select_best_dataset = MagicMock(return_value=("full", 
+                                                                             {"rmse": 2.0, "r2": 0.9, "mae": 1.5}))
 
         df = pd.DataFrame({"Load_MW": [10, 20, 30, 40], "Feature": [1, 2, 3, 4]})
         datasets = {"full": df}

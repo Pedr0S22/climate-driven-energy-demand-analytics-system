@@ -215,13 +215,13 @@ The primary objective of the Training & Evaluation Module is to autonomously sel
         - **Technical Rationale:** A constrained depth prevents the model from memorizing specific training spikes, while the number of estimators provides enough variance reduction.
 
     - **Overfitting Check & Mitigation:**
-        - **Train/Validation Gap Analysis:** The system logs mean metrics across all folds. A significant gap (e.g., R2 > 0.99 on train vs R2 < 0.80 on test) triggers a warning in the ELK logs.
+        - **Train/Validation Gap Analysis:** The system logs mean metrics across all folds. A significant gap triggers a warning in the ELK logs.
         - **Mitigation:** Nested validation during Optuna optimization forces the model to find parameters that work across multiple sub-folds within the training set before ever seeing the test data.
 
     - **Driver Analysis (Interpretability):**
         - **Linear Regression:** Extracts absolute coefficients to identify magnitude of impact.
         - **Random Forest:** Extracts Gini Importance.
-        - **Modification:** The "Top 2 Event Drivers" are persisted to the database per model. This allows the frontend to show users *why* the demand is high (e.g., "Driven by: Skewed Temperature, Solar Radiation").
+        - **Modification:** The "Top 2 Event Drivers" are persisted to the database per model. This allows the frontend to show users *why* the demand is high.
 
     - **Persistence & Versioning:**
         - Implements Rule 8: Models are saved as `[LR|RF]_vx.joblib`.
