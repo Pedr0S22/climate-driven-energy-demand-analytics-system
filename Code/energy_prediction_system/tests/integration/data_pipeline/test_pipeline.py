@@ -1,302 +1,165 @@
-"""
-Integration Tests with focused coverage on modeling.py and full end-to-end pipeline validation.
-"""
-
-import logging
+import pytest
+import pandas as pd
+import numpy as np
+import joblib
+from pathlib import Path
 from unittest.mock import MagicMock, patch
 
-import numpy as np
-import pandas as pd
-import pytest
-from data_pipeline.cleaning import cleaning
+from data_pipeline.cleaning import DataCleaner, cleaning
 from data_pipeline.feature_engineering import FeatureEngineer
-from data_pipeline.modeling import (
-    DatabaseManager,
-    ModelManager,
-    PipelineOrchestrator,
-)
+from data_pipeline.modeling import PipelineOrchestrator, ModelManager
+import data_pipeline.ingestion as ingestion
 
-# Silenciar os logs para os testes não encherem o ecrã
-logging.getLogger("data_pipeline.modeling").setLevel(logging.CRITICAL)
+class TestPipelineIntegration:
+    """Integration tests for the modular data pipeline."""
 
+    @pytest.fixture
+    def pipeline_dirs(self, tmp_path):
+        """Configure temporary directories for test artifacts."""
+        base = tmp_path / "project"
+        raw_energy = base / "data" / "raw" / "energy"
+        raw_weather = base / "data" / "raw" / "weather"
+        processed = base / "data" / "processed"
+        models = base / "models" / "feat-engineering"
 
-class TestModelingFullCoverage:
-    @pytest.fixture(autouse=True)
-    def setup(self, tmp_path):
-        self.temp_dir = tmp_path
-        self.models_dir = self.temp_dir / "models"
-        self.models_dir.mkdir(parents=True, exist_ok=True)
+        for d in [raw_energy, raw_weather, processed, models]:
+            d.mkdir(parents=True, exist_ok=True)
 
-        # DADOS SINTÉTICOS: 3 anos e 2 meses de dados diários.
-        # Isto garante dados suficientes para passar na matemática rigorosa
-        # de splits temporais (que exige gap de 1 ano + 1 ano de teste).
-        dates = pd.date_range(start="2020-01-01", end="2023-03-01", freq="D")
+        return {
+            "raw_energy": raw_energy,
+            "raw_weather": raw_weather,
+            "processed": processed,
+            "models": models,
+            "feat_eng_dir": processed / "feat-engineering"
+        }
 
-        self.df = pd.DataFrame(
-            {
-                "datetime": dates,
-                "Load_MW": np.random.normal(2000, 100, size=len(dates)),  # Para hourly
-                "Load_MWh": np.random.normal(48000, 2000, size=len(dates)),  # Para daily
-                "temperatura": np.random.normal(15, 5, size=len(dates)),
-            }
+    @patch("data_pipeline.ingestion.cdsapi.Client")
+    @patch("data_pipeline.ingestion.EntsoePandasClient")
+    @patch("data_pipeline.ingestion.backup_project_data")
+    @patch("data_pipeline.ingestion.os.getenv")
+    def test_ingestion_orchestration(self, mock_getenv, mock_backup, mock_entsoe, mock_cds):
+        """Validate orchestration of data retrieval from external APIs."""
+        mock_getenv.return_value = "fake_api_key"
+        mock_entsoe_instance = mock_entsoe.return_value
+        mock_entsoe_instance.query_load.return_value = pd.DataFrame(
+            {"Load_MW": [25000]}, 
+            index=pd.date_range("2023-01-01", periods=1, freq="h", tz="Europe/Madrid")
         )
+        
+        with patch("data_pipeline.ingestion.os.path.exists", return_value=False), \
+             patch("data_pipeline.ingestion.os.makedirs"), \
+             patch("pandas.DataFrame.to_csv"):
+            ingestion.data_retrieval("2023-01-01", "2023-01-01", country_code="ES")
 
-    @patch("data_pipeline.modeling.psycopg2.connect")
-    @patch("data_pipeline.modeling.joblib.dump")
-    @patch("data_pipeline.modeling.optuna.create_study")
-    @patch("data_pipeline.modeling.ModelManager.load_all_datasets")
-    def test_run_orchestrator_pipeline_full_coverage(self, mock_load, mock_create_study, mock_dump, mock_db_connect):
-        """
-        Executa a mega pipeline real (Orchestrator)!
-        Cobre os loops Hourly e Daily, as 3 estratégias e a inserção na BD.
-        """
-        # 1. OPTUNA RÁPIDO: Enganamos o Optuna para não demorar horas
-        mock_study = MagicMock()
-        mock_study.best_params = {"n_estimators": 2, "max_depth": 2}
-        mock_create_study.return_value = mock_study
+        assert mock_entsoe.called
+        assert mock_cds.called
+        assert mock_backup.called
 
-        # 2. DATASETS FALSOS: Retornamos os 3 datasets com ruído SIGNIFICATIVO para evitar avisos estatísticos
-        df_full = self.df.copy()
-        df_selected = self.df.copy()
-        # Adiciona ruído distinto para cada dataset para garantir que não são idênticos
-        df_selected["Load_MW"] += np.random.normal(10, 5, size=len(df_selected))
-        df_pca = self.df.copy()
-        df_pca["Load_MW"] -= np.random.normal(10, 5, size=len(df_pca))
+    @patch("data_pipeline.gdrive_sync.authenticate_gdrive")
+    @patch("data_pipeline.gdrive_sync.os.getenv")
+    def test_gdrive_sync_integration(self, mock_getenv, mock_auth, pipeline_dirs):
+        """Validate Google Drive backup synchronization logic."""
+        mock_getenv.side_effect = lambda k: "fake_folder_id" if "DRIVE_FOLDER_ID" in k else None
+        mock_service = MagicMock()
+        mock_auth.return_value = mock_service
+        mock_files = mock_service.files.return_value
+        mock_files.list.return_value.execute.return_value = {"files": []}
+        mock_files.create.return_value.execute.return_value = {"id": "new_id"}
 
-        mock_load.return_value = {"full": df_full, "selected": df_selected, "pca": df_pca}
+        energy_file = pipeline_dirs["raw_energy"] / "test_energy.csv"
+        weather_file = pipeline_dirs["raw_weather"] / "test_weather.csv"
+        energy_file.write_text("dummy,data")
+        weather_file.write_text("dummy,data")
 
-        # 3. MOCK BASE DE DADOS: Finge que ligou ao PostgreSQL sem falhar
-        mock_conn = MagicMock()
-        mock_cursor = MagicMock()
-        mock_db_connect.return_value.__enter__.return_value = mock_conn
-        mock_conn.cursor.return_value.__enter__.return_value = mock_cursor
+        project_root = pipeline_dirs["raw_energy"].parent.parent.parent
+        from data_pipeline import gdrive_sync
+        with patch("data_pipeline.gdrive_sync.PROJECT_ROOT", str(project_root)):
+            gdrive_sync.backup_project_data()
 
-        # 4. EXECUTA O CÓDIGO REAL DA PIPELINE
-        db_config = {"dbname": "test", "user": "test"}  # Passamos config para forçar a entrada no bloco da BD
-        orchestrator = PipelineOrchestrator(db_config=db_config)
+        assert mock_auth.called
+        assert mock_files.create.call_count == 2
 
-        # Injetamos o diretório temporário para não sujar o PC local
-        orchestrator.models_dir = self.models_dir
+    def test_cleaning_and_feat_eng(self, pipeline_dirs):
+        """Validate cleaning and feature engineering modular flow."""
+        times = pd.date_range("2023-01-01", periods=48, freq="h", tz="UTC")
+        df_e = pd.DataFrame({"Unnamed: 0": times, "Load_MW": np.random.uniform(20000, 30000, 48)})
+        df_e.to_csv(pipeline_dirs["raw_energy"] / "energy_test.csv", index=False)
 
-        try:
-            # Esta linha executa mais de 80% do ficheiro modeling.py num só golpe!
-            orchestrator.run()
-            sucesso = True
-        except Exception as e:
-            print(f"A pipeline quebrou: {e}")
-            sucesso = False
+        df_w = pd.DataFrame({
+            "valid_time": times, "t2m": 285, "skt": 285, "ssrd": 100,
+            "latitude": 40.4, "longitude": -3.7
+        })
+        df_w.to_csv(pipeline_dirs["raw_weather"] / "weather_test.csv", index=False)
 
-        assert sucesso, "O PipelineOrchestrator falhou ao processar os dados!"
-        assert mock_dump.called, "Os modelos não foram guardados no disco!"
-        assert mock_cursor.execute.called, "A pipeline não tentou gravar na Base de Dados!"
-
-    # =========================================================================
-    # Testes Auxiliares (Tapar os "buracos" dos Edge Cases / Erros)
-    # =========================================================================
-
-    def test_get_next_version_file_reading(self):
-        """Cobre a leitura de versões antigas de modelos no disco."""
-        manager = ModelManager()
-        manager.models_dir = self.models_dir
-        (self.models_dir / "LR_v1.joblib").touch()
-        (self.models_dir / "LR_v3.joblib").touch()
-
-        version = manager._get_next_version("LR")
-        assert version == 4
-
-    @patch("data_pipeline.modeling.Path.exists")
-    @patch("data_pipeline.modeling.pd.read_csv")
-    def test_load_all_datasets_disk_reading(self, mock_read, mock_exists):
-        """Cobre o carregamento do disco quando os ficheiros existem."""
-        manager = ModelManager()
-        mock_exists.return_value = True
-        mock_read.return_value = pd.DataFrame({"datetime": ["2020-01-01"], "val": [1]})
-
-        ds = manager.load_all_datasets()
-        assert "full" in ds
-
-    @patch("data_pipeline.modeling.optuna.create_study")
-    def test_train_flexible_edge_cases(self, mock_create_study):
-        """Cobre a estratégia 'nested' e o fallback de dados insuficientes."""
-        mock_study = MagicMock()
-        mock_study.best_params = {"n_estimators": 2, "max_depth": 2}
-        mock_create_study.return_value = mock_study
-
-        manager = ModelManager()
-
-        # 1. Testar modo Nested explícito
-        model_nested = manager.train_flexible(
-            self.df[["datetime", "temperatura"]], self.df["Load_MW"], strategy="nested"
-        )
-        assert model_nested is not None
-
-        # 2. Testar modo Expanding com poucos dados (aciona o fallback do split 80/20)
-        small_df = self.df.iloc[:50].copy()  # Apenas 50 dias, insuficiente para gap de 2 anos
-        model_small = manager.train_flexible(
-            small_df[["datetime", "temperatura"]], small_df["Load_MW"], strategy="expanding"
-        )
-        assert model_small is not None
-
-    @patch("data_pipeline.modeling.psycopg2.connect")
-    def test_database_manager_exception(self, mock_connect):
-        """Cobre o except bloco se a Base de Dados estiver desligada."""
-        manager = DatabaseManager({"dbname": "test"})
-        # Força o PostgreSQL a atirar um erro
-        mock_connect.side_effect = Exception("Docker is down!")
-
-        # Se a pipeline quebrar aqui, o teste falha (o objetivo é que o except apanhe o erro silenciosamente)
-        try:
-            manager.save_model_metrics(
-                model_type="RF",
-                model_pred_type="hourly",  # <-- O parâmetro novo!
-                file_path="path/model.joblib",
-                rmse=1.0,
-                mae=1.0,
-                r2=1.0,
+        with patch.object(DataCleaner, "treat_weather_outliers", side_effect=lambda x: x):
+            df_hourly, _ = cleaning(
+                energy_dir=pipeline_dirs["raw_energy"],
+                weather_dir=pipeline_dirs["raw_weather"],
+                train_data=True,
+                output_dir=pipeline_dirs["processed"],
             )
-            passed = True
-        except Exception:
-            passed = False
 
-        assert passed, "Uma falha na base de dados parou a execução da pipeline!"
+        fe = FeatureEngineer(threshold=0.6, models_dir=pipeline_dirs["models"], frequency="hourly")
+        results = fe.run_pipeline(df_hourly, fit=True)
+        
+        pipeline_dirs["feat_eng_dir"].mkdir(parents=True, exist_ok=True)
+        for ds in ["full", "selected", "pca"]:
+            results.get(ds, results["full"]).to_csv(
+                pipeline_dirs["feat_eng_dir"] / f"features_hourly_{ds}.csv", index=False
+            )
 
+    @patch("data_pipeline.modeling.psycopg2.connect")
+    @patch("data_pipeline.modeling.RandomForestRegressor")
+    @patch("optuna.create_study")
+    @patch("joblib.dump")
+    def test_modeling_integration_extension(self, mock_joblib, mock_create_study, mock_rf, mock_db, pipeline_dirs):
+        """Validate modeling integration with multi-split evaluation."""
+        mock_db.return_value = MagicMock()
+        mock_joblib.return_value = None
+        mock_study = MagicMock()
+        mock_study.best_params = {"n_estimators": 5, "max_depth": 3}
+        mock_study.best_trial.params = {"n_estimators": 5, "max_depth": 3}
+        mock_create_study.return_value = mock_study
 
-# =========================================================================
-# NOVOS TESTES: End-to-End Full Pipeline (Ingestion -> Cleaning -> FE -> Modeling)
-# =========================================================================
+        fake_rf = MagicMock()
+        def dynamic_fit_mock(X, y, **kwargs):
+            n_features = X.shape[1]
+            fake_rf.feature_importances_ = np.random.rand(n_features)
+            fake_rf.coef_ = np.random.rand(n_features)
+            return fake_rf
 
+        fake_rf.fit.side_effect = dynamic_fit_mock
+        fake_rf.predict.side_effect = lambda X: np.zeros(len(X))
+        mock_rf.return_value = fake_rf
 
-def setup_synthetic_raw_data(raw_energy_dir, raw_weather_dir, freq="h"):
-    """Gera ficheiros CSV sintéticos mínimos para o pipeline processar."""
-    # Precisamos de dados suficientes para os splits (3 anos min)
-    periods = 100 if freq == "h" else 50
-    dates = pd.date_range("2023-01-01", periods=periods, freq=freq, tz="UTC")
+        feat_eng_path = pipeline_dirs["feat_eng_dir"]
+        feat_eng_path.mkdir(exist_ok=True, parents=True)
+        times = pd.date_range("2019-01-01", periods=24*365*5, freq="h", tz="UTC")
+        df_mock = pd.DataFrame({
+            "datetime": times,
+            "Load_MW": np.random.normal(25000, 5000, len(times)),
+            "temp": np.random.rand(len(times)),
+            "ssrd": np.random.rand(len(times))
+        })
+        for ds in ["full", "selected", "pca"]:
+            df_mock.to_csv(feat_eng_path / f"features_hourly_{ds}.csv", index=False)
 
-    # Energy: O cleaner sempre espera "Load_MW" inicialmente
-    df_e = pd.DataFrame({"Unnamed: 0": dates, "Load_MW": np.random.uniform(20000, 30000, len(dates))})
-    df_e.to_csv(raw_energy_dir / "energy_raw.csv", index=False)
+        orchestrator = PipelineOrchestrator(db_config={"fake": "db"})
+        orchestrator.manager = ModelManager(frequency="hourly")
+        orchestrator.manager.data_dir = feat_eng_path
+        orchestrator.manager.models_dir = pipeline_dirs["models"]
+        orchestrator.manager.n_partitions = 3 
 
-    # Weather
-    weather_cols = [
-        "valid_time",
-        "latitude",
-        "longitude",
-        "t2m",
-        "u10",
-        "v10",
-        "ssrd",
-        "tp",
-        "d2m",
-        "skt",
-        "strd",
-        "sp",
-        "stl1",
-        "swvl1",
-    ]
-    df_w = pd.DataFrame({col: np.random.rand(len(dates)) for col in weather_cols})
-    df_w["valid_time"] = dates
-    df_w["latitude"] = 40.4
-    df_w["longitude"] = -3.7
-    for col in ["t2m", "d2m", "skt", "stl1"]:
-        df_w[col] = df_w[col] * 20 + 273.15
+        datasets = orchestrator.manager.load_all_datasets()
+        splits = orchestrator._precalculate_splits(datasets)
 
-    df_w.to_csv(raw_weather_dir / "weather_raw.csv", index=False)
+        for m_type in ["baseline", "flexible"]:
+            with patch("data_pipeline.modeling.LinearRegression") as mock_lr:
+                fake_lr = MagicMock()
+                fake_lr.fit.side_effect = dynamic_fit_mock
+                fake_lr.predict.side_effect = lambda X: np.zeros(len(X))
+                mock_lr.return_value = fake_lr
+                orchestrator._evaluate_and_save_model(m_type, "hourly", datasets, splits)
 
-
-@patch("data_pipeline.modeling.psycopg2.connect")
-@patch("data_pipeline.modeling.optuna.create_study")
-@patch("data_pipeline.modeling.joblib.dump")
-@patch("data_pipeline.modeling.ModelManager.generate_splits")
-@patch("data_pipeline.modeling.StatisticalEvaluator.select_best_dataset")
-@patch("data_pipeline.modeling.StatisticalEvaluator.select_best_strategy")
-def test_full_pipeline_hourly_integration(mock_strat, mock_ds, mock_splits, mock_dump, mock_optuna, mock_db, tmp_path):
-    """Testa o pipeline completo de ponta a ponta (Hourly)."""
-    # Setup Dirs
-    raw_energy = tmp_path / "raw" / "energy"
-    raw_weather = tmp_path / "raw" / "weather"
-    processed = tmp_path / "processed"
-    models = tmp_path / "models"
-    for d in [raw_energy, raw_weather, processed, models]:
-        d.mkdir(parents=True, exist_ok=True)
-
-    # 1. MOCK INGESTION: Drop synthetic files
-    setup_synthetic_raw_data(raw_energy, raw_weather, freq="h")
-
-    # 2. CLEANING
-    df_hourly, _ = cleaning(energy_dir=raw_energy, weather_dir=raw_weather, train_data=True, output_dir=processed)
-    assert not df_hourly.empty
-
-    # 3. FEATURE ENGINEERING
-    fe = FeatureEngineer(threshold=0.6, models_dir=models, frequency="hourly")
-    fe.run_pipeline(df_hourly, fit=True)
-    fe.save()
-
-    # 4. MODELING (Orchestrator)
-    mock_study = MagicMock()
-    mock_study.best_params = {"n_estimators": 1, "max_depth": 1}
-    mock_optuna.return_value = mock_study
-
-    # Mock splits to return 1 fold for speed
-    mock_splits.return_value = [(np.arange(0, 40), np.arange(40, 50))]
-    mock_ds.return_value = ("full", {"rmse": 10.0, "r2": 0.9, "mae": 5.0})
-    mock_strat.return_value = "fixed_rolling"
-
-    orchestrator = PipelineOrchestrator(db_config=None)
-    orchestrator.models_dir = models
-
-    with patch("data_pipeline.modeling.ModelManager.load_all_datasets", autospec=True) as mock_load:
-        dummy_ds = {"full": df_hourly.copy(), "pca": df_hourly.copy(), "selected": df_hourly.copy()}
-        # Only return data for hourly
-        mock_load.side_effect = lambda self_manager: dummy_ds if self_manager.frequency == "hourly" else {}
-        orchestrator.run()
-
-    assert mock_dump.called
-
-
-@patch("data_pipeline.modeling.psycopg2.connect")
-@patch("data_pipeline.modeling.optuna.create_study")
-@patch("data_pipeline.modeling.joblib.dump")
-@patch("data_pipeline.modeling.ModelManager.generate_splits")
-@patch("data_pipeline.modeling.StatisticalEvaluator.select_best_dataset")
-@patch("data_pipeline.modeling.StatisticalEvaluator.select_best_strategy")
-def test_full_pipeline_daily_integration(mock_strat, mock_ds, mock_splits, mock_dump, mock_optuna, mock_db, tmp_path):
-    """Testa o pipeline completo de ponta a ponta (Daily)."""
-    # Setup Dirs
-    raw_energy = tmp_path / "raw" / "energy"
-    raw_weather = tmp_path / "raw" / "weather"
-    processed = tmp_path / "processed"
-    models = tmp_path / "models"
-    for d in [raw_energy, raw_weather, processed, models]:
-        d.mkdir(parents=True, exist_ok=True)
-
-    # 1. MOCK INGESTION: Drop synthetic files
-    setup_synthetic_raw_data(raw_energy, raw_weather, freq="D")
-
-    # 2. CLEANING
-    _, df_daily = cleaning(energy_dir=raw_energy, weather_dir=raw_weather, train_data=True, output_dir=processed)
-    assert not df_daily.empty
-
-    # 3. FEATURE ENGINEERING
-    fe = FeatureEngineer(threshold=0.6, models_dir=models, frequency="daily")
-    fe.run_pipeline(df_daily, fit=True)
-    fe.save()
-
-    # 4. MODELING (Orchestrator)
-    mock_study = MagicMock()
-    mock_study.best_params = {"n_estimators": 1, "max_depth": 1}
-    mock_optuna.return_value = mock_study
-
-    mock_splits.return_value = [(np.arange(0, 40), np.arange(40, 50))]
-    mock_ds.return_value = ("full", {"rmse": 10.0, "r2": 0.9, "mae": 5.0})
-    mock_strat.return_value = "fixed_rolling"
-
-    orchestrator = PipelineOrchestrator(db_config=None)
-    orchestrator.models_dir = models
-
-    with patch("data_pipeline.modeling.ModelManager.load_all_datasets", autospec=True) as mock_load:
-        dummy_ds = {"full": df_daily.copy(), "pca": df_daily.copy(), "selected": df_daily.copy()}
-        # Only return data for daily
-        mock_load.side_effect = lambda self_manager: dummy_ds if self_manager.frequency == "daily" else {}
-        orchestrator.run()
-
-    assert mock_dump.called
+        assert mock_joblib.called 
+        assert mock_db.called

@@ -1,4 +1,4 @@
--- 1. Limpeza das tabelas (útil para rodar o script várias vezes)
+-- 1. Limpeza das tabelas 
 DROP TABLE IF EXISTS predictions_hourly CASCADE;
 DROP TABLE IF EXISTS predictions_daily CASCADE;
 DROP TABLE IF EXISTS request CASCADE;
@@ -10,9 +10,9 @@ DROP TABLE IF EXISTS users CASCADE;
 -- 2. Criação das Entidades Base
 CREATE TABLE users (
     id                  BIGSERIAL,
-    email               TEXT NOT NULL UNIQUE,          -- UNIQUE individual
+    email               TEXT NOT NULL UNIQUE,          
     password            VARCHAR(512) NOT NULL,
-    username            VARCHAR(512) NOT NULL UNIQUE,  -- UNIQUE individual
+    username            VARCHAR(512) NOT NULL UNIQUE,  
     account_regist_date TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
     failed_login_att    INTEGER NOT NULL DEFAULT 0,
     acc_locked_until    TIMESTAMP,
@@ -26,13 +26,15 @@ CREATE TABLE model (
     model_creation_date        TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
     model_pred_type		       VARCHAR(512) NOT NULL,
     model_server_relative_path VARCHAR(512) NOT NULL,
+    dataset_selected		   VARCHAR(512) NOT NULL,
+	top2_drivers		       VARCHAR(512) NOT NULL,
     rmse                       DOUBLE PRECISION NOT NULL,
     mae                        DOUBLE PRECISION NOT NULL,
     r2                         DOUBLE PRECISION NOT NULL,
     PRIMARY KEY(model_name_id)
 );
 
--- 3. Criação das Entidades de Herança (Admin e Client)
+
 CREATE TABLE client (
     users_id BIGINT,
     PRIMARY KEY(users_id),
@@ -45,7 +47,7 @@ CREATE TABLE admin (
     CONSTRAINT admin_fk1 FOREIGN KEY (users_id) REFERENCES users(id) ON DELETE CASCADE
 );
 
--- 4. Tabela de Request (Relacionamento entre Users e Model)
+
 CREATE TABLE request (
     id                  BIGSERIAL,
     date_req            TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
@@ -57,7 +59,6 @@ CREATE TABLE request (
     CONSTRAINT request_fk2 FOREIGN KEY (users_id) REFERENCES users(id) ON DELETE CASCADE
 );
 
--- 5. Tabelas de Previsão (Com Chave Primária Composta para relação 1:N)
 CREATE TABLE predictions_daily (
     request_id BIGINT,
     date_day   DATE NOT NULL,
