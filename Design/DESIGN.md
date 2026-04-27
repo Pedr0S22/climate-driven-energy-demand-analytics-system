@@ -193,21 +193,43 @@ The primary objective of the Feature Engineering Module is to transform synchron
 
 
 
-## 3. Core Backend Services Design
+### 3. Core Backend Services Design
 
-### 3.1.Authentication/Registration & Security Services
-[`TODO`] - (JWT lifecycle, Bcrypt salting details, login/logout)
+The system implements a modular, layered architecture for its backend services, ensuring separation of concerns and maintainability.
 
-#### 3.1.1 API Contrancts for Authentication/Registration [`TODO`]
+### 3.1. Authentication/Registration & Security Services
 
-* **Registration: `POST /api/auth/register`**
+The security layer provides robust protection for user data and system access, fulfilling strict Quality Attributes (QA10-QA14).
 
-  * **Payload:** `{"username": "...", "email": "...", "password": "...", timestamp: "xxx", role: "ROLE_USER"}`
-  * **Response:** `201 Created` or `400 Bad Request` (Validation failed).
+#### 3.1.1. Security Mechanisms
+- **JWT Lifecycle:** Authentication tokens are issued as signed JWTs (HS256) with a configurable expiration period.
+- **Bcrypt Salting:** All user passwords are hashed using `bcrypt` with unique salts before storage.
+- **Role-Based Access Control (RBAC):** Access to endpoints is restricted based on the `sub` (email) and verified against the database roles (`admin`, `client`).
+- **Brute Force Protection (QA13):** Accounts are automatically locked for 5 minutes after the 4th consecutive failed login attempt.
+- **Generic Failure Messages (QA10):** All authentication failures return generic "Invalid credentials" or "Account locked" messages to prevent username enumeration and leakage of system internals.
 
-* **Authentication: `POST /api/auth/login`**
-  * **Payload:** `{"email": "...", "password": "...", timestamp: "xxx"}`
-  * **Response:** `200 OK` with `{"status": "access_token": "...", "role": "...",}` or `401 Unauthorized` (Generic error).
+#### 3.1.2. Exception Handling Strategy
+FastAPI global exception handlers standardize responses:
+- **400 Bad Request:** For Pydantic schema validation failures.
+- **401 Unauthorized:** For invalid credentials or expired tokens.
+- **403 Forbidden:** For account lockouts or insufficient RBAC privileges.
+- **404 Not Found:** For non-existent resource requests.
+- **500 Internal Server Error:** For unhandled exceptions, ensuring no stack traces are leaked to the client.
+
+#### 3.1.3 API Contracts for Authentication/Registration
+
+* **Registration: `POST /api/v1/auth/register`**
+  * **Payload:** `{"username": "...", "email": "...", "password": "..."}`
+  * **Response:** `201 Created` with `{"status": 201, "message": "...", "user_id": 123, "timestamp": "..."}`
+
+* **Authentication: `POST /api/v1/auth/login`**
+  * **Payload:** `{"email": "...", "password": "..."}`
+  * **Response:** `200 OK` with `{"access_token": "...", "token_type": "bearer", "role": "...", "status": 200, "message": "...", "timestamp": "..."}`
+
+* **Logout: `POST /api/v1/auth/logout`**
+  * **Headers:** `Authorization: Bearer <token>`
+  * **Response:** `200 OK` with `{"status": 200, "message": "Successfully logged out", "user_id": 123, "timestamp": "..."}`
+
 
 ### 3.2. Prediction Inference Service
 [`TODO`] - (How the backend loads model binaries into memory without blocking API threads)
