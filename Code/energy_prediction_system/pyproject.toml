@@ -39,6 +39,7 @@ dependencies = [
     "pydantic-settings>=2.0.0",
     "passlib[bcrypt]>=1.7.4",
     "python-multipart>=0.0.6",
+    "email-validator>=2.0.0",
 
     # UI (Planned)
     # "PyQt6>=6.4.0",
@@ -54,7 +55,7 @@ dev = [
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
-pythonpath = ["."]
+pythonpath = [".", "src"]
 filterwarnings = [
     "ignore:pkg_resources is deprecated as an API:DeprecationWarning"
 ]
