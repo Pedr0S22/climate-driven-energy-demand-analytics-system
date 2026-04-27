@@ -35,10 +35,65 @@ class TestPipelineIntegration:
 
     @patch("data_pipeline.ingestion.cdsapi.Client")
     @patch("data_pipeline.ingestion.EntsoePandasClient")
-    def test_ingestion_mock(self, mock_entsoe, mock_cds):
-        mock_entsoe.return_value.query_load.return_value = pd.DataFrame([100], columns=["Load_MW"])
-        client = ingestion.EntsoePandasClient(api_key="fake")
-        assert client is not None
+    @patch("data_pipeline.ingestion.backup_project_data")
+    @patch("data_pipeline.ingestion.os.getenv")
+    def test_ingestion_orchestration(self, mock_getenv, mock_backup, mock_entsoe, mock_cds):
+        """Tests the orchestration of data retrieval from ENTSO-E and Copernicus."""
+        mock_getenv.return_value = "fake_api_key"
+        
+        # Mock ENTSO-E
+        mock_entsoe_instance = mock_entsoe.return_value
+        mock_entsoe_instance.query_load.return_value = pd.DataFrame(
+            {"Load_MW": [25000]}, 
+            index=pd.date_range("2023-01-01", periods=1, freq="h", tz="Europe/Madrid")
+        )
+
+        # Mock Copernicus
+        mock_cds_instance = mock_cds.return_value
+        
+        # Call the master retrieval function
+        with patch("data_pipeline.ingestion.os.path.exists", return_value=False), \
+             patch("data_pipeline.ingestion.os.makedirs"), \
+             patch("pandas.DataFrame.to_csv"):
+            ingestion.data_retrieval("2023-01-01", "2023-01-01", country_code="ES")
+
+        # Verify calls
+        assert mock_entsoe.called
+        assert mock_cds.called
+        assert mock_backup.called
+
+    @patch("data_pipeline.gdrive_sync.authenticate_gdrive")
+    @patch("data_pipeline.gdrive_sync.os.getenv")
+    def test_gdrive_sync_integration(self, mock_getenv, mock_auth, pipeline_dirs):
+        """Tests the GDrive backup logic with mocked authentication and upload calls."""
+        # 1. Setup Mock IDs and Service
+        mock_getenv.side_effect = lambda k: "fake_folder_id" if "DRIVE_FOLDER_ID" in k else None
+        mock_service = MagicMock()
+        mock_auth.return_value = mock_service
+        
+        # Mock the list and create methods
+        mock_files = mock_service.files.return_value
+        mock_files.list.return_value.execute.return_value = {"files": []}
+        mock_files.create.return_value.execute.return_value = {"id": "new_id"}
+
+        # 2. Create dummy files in pipeline_dirs to be backed up
+        energy_file = pipeline_dirs["raw_energy"] / "test_energy.csv"
+        weather_file = pipeline_dirs["raw_weather"] / "test_weather.csv"
+        energy_file.write_text("dummy,data")
+        weather_file.write_text("dummy,data")
+
+        # 3. Patch PROJECT_ROOT to use our tmp pipeline_dirs
+        # pipeline_dirs['raw_energy'] is project/data/raw/energy
+        # We need PROJECT_ROOT to be the 'project' directory
+        project_root = pipeline_dirs["raw_energy"].parent.parent.parent
+        from data_pipeline import gdrive_sync
+        with patch("data_pipeline.gdrive_sync.PROJECT_ROOT", str(project_root)):
+            gdrive_sync.backup_project_data()
+
+        # 4. Assertions
+        assert mock_auth.called
+        # Should be called once for each CSV file found (one in energy, one in weather)
+        assert mock_files.create.call_count == 2
 
     def test_cleaning_and_feat_eng(self, pipeline_dirs):
         times = pd.date_range("2023-01-01", periods=48, freq="h", tz="UTC")
