@@ -54,7 +54,7 @@ dev = [
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
-pythonpath = ["src"]
+pythonpath = ["."]
 filterwarnings = [
     "ignore:pkg_resources is deprecated as an API:DeprecationWarning"
 ]
