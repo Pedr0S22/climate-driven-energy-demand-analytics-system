@@ -45,7 +45,6 @@ class TestPipelineIntegration:
             {"Load_MW": [25000]}, 
             index=pd.date_range("2023-01-01", periods=1, freq="h", tz="Europe/Madrid")
         )
-        mock_cds_instance = mock_cds.return_value
         
         with patch("data_pipeline.ingestion.os.path.exists", return_value=False), \
              patch("data_pipeline.ingestion.os.makedirs"), \
