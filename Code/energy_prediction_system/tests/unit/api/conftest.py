@@ -1,10 +1,18 @@
+import os
+
 import pytest
 from fastapi.testclient import TestClient
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
 
-from src.api.database.session import Base, get_db
-from src.api.main import app
+# Set environment variables for testing before importing src modules
+os.environ["SECRET_KEY"] = "TEST_SECRET_KEY_REPLACE_ME"  # noqa: S105
+os.environ["DATABASE_URL"] = "sqlite:///./test.db"
+os.environ["MAX_FAILED_ATTEMPTS"] = "3"
+os.environ["LOCKOUT_DURATION_MINUTES"] = "5"
+
+from src.api.database.session import Base, get_db  # noqa: E402
+from src.api.main import app  # noqa: E402
 
 # Use SQLite for testing
 SQLALCHEMY_DATABASE_URL = "sqlite:///./test.db"
