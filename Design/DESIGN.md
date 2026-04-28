@@ -60,7 +60,7 @@ The technology stack used in the project is described below. Also FILE X and FIL
 
 ### 1.3. Infrastructure & Telemetry Stack
 
-* **Monitoring:** [`TODO`] ELK
+* **Monitoring:** [`TODO`] ELK 
 
 
 ## 2. Data Pipeline Design
@@ -193,14 +193,56 @@ The primary objective of the Feature Engineering Module is to transform synchron
 
 
 ### 2.4. Training & Evaluation Module
-* **Target:** Reads from `/data/feat-engineering/`, saves to ModelDB.
-* **Logic:** [`TODO`Uses TimeSeriesSplit (No random shuffling allowed). Evaluates using MAE, RMSE, R2. Saves output as a serialized model file...]
+
+The primary objective of the Training & Evaluation Module is to autonomously select the most robust model and dataset configuration through rigorous statistical validation. It transitions the pipeline from a "one-size-fits-all" approach to an adaptive strategy that handles both **Hourly** (short-term volatility) and **Daily** (long-term trend) demand patterns.
+
+*   **Target:** Reads from `/data/processed/feat-engineering/`, persists winning binaries to `/models/`, and metadata to the `model` table in PostgreSQL.
+*   **Logic & Mechanisms:**
+
+    - **Advanced Temporal Validation:**
+        - **The 1-Year Safety Gap:** All temporal splits implement a mandatory **1-year gap** between training and testing.
+        - **Technical Rationale:** Energy demand is heavily influenced by climate inertia and long-term economic cycles. A simple cross-validation or a short gap would lead to **data leakage** through temporal proximity. A 1-year gap ensures the model is tested on a completely different annual cycle, proving its generalization across seasonal boundaries.
+        - **Strategies Evaluated:**
+            - *Expanding Window:** Cumulative training from start of history.
+            - *Fixed Rolling:** Constant window size to capture only recent shifts in demand behavior.
+            - *Nested Validation (Random Forest):* Internal optimization loops within each fold to prevent hyperparameter overfitting.
+
+    - **Statistical Rigor in Selection:**
+        - Instead of picking the model with the lowest average error, the system employs a **Shapiro-Wilk** normality test on the RMSE distribution across 20 partitions.
+        - **Selection Decision Tree:**
+            - If Normal: Uses **One-Way ANOVA** to verify if dataset/strategy performance differences are statistically significant.
+            - If Non-Normal: Uses **Friedman** (for datasets) or **Kruskal-Wallis** (for strategies) tests.
+        - **Engineering Why:** Ensures that the "winner" is not just lucky on a specific time window, but consistently superior with statistical significance (p < 0.05).
+
+    - **Hyperparameter Optimization (Optuna):**
+        - Utilizes the `optuna` library to conduct 30 trials per model.
+        - **Search Space:** Focuses on `n_estimators` (20-100) and `max_depth` (5-15) for Random Forest.
+        - **Technical Rationale:** A constrained depth prevents the model from memorizing specific training spikes, while the number of estimators provides enough variance reduction.
+
+    - **Overfitting Check & Mitigation:**
+        - **Train/Validation Gap Analysis:** The system logs mean metrics across all folds. A significant gap triggers a warning in the ELK logs.
+        - **Mitigation:** Nested validation during Optuna optimization forces the model to find parameters that work across multiple sub-folds within the training set before ever seeing the test data.
+
+    - **Driver Analysis (Interpretability):**
+        - **Linear Regression:** Extracts absolute coefficients to identify magnitude of impact.
+        - **Random Forest:** Extracts Gini Importance.
+        - **Modification:** The "Top 2 Event Drivers" are persisted to the database per model. This allows the frontend to show users *why* the demand is high.
+
+    - **Persistence & Versioning:**
+        - Implements Rule 8: Models are saved as `[LR|RF]_vx.joblib`.
+        - Database entries link the file path with the exact `rmse`, `mae`, and `r2` metrics from the winning fold, enabling rollback to previous versions if performance degrades in production.
 
 
 
 ### 3. Core Backend Services Design
 
-The system implements a modular, layered architecture for its backend services, ensuring separation of concerns and maintainability.
+The backend is developed using **Python with FastAPI**, following a strict **Model-View-Controller (MVC)** architectural pattern to ensure modularity, testability, and scalability.
+
+*   **Model Layer:** Utilizes **SQLAlchemy** for database ORM mapping (Relational Model) and **Pydantic** for data validation and serialization (DTOs).
+*   **View Layer (Routers):** Located in `src/api/routers/`, these modules define the RESTful endpoints, handle HTTP status codes, and manage request/response documentation via OpenAPI.
+*   **Controller Layer (Services):** Located in `src/api/services/`, this layer contains the core business logic, isolating it from the web framework and the database details.
+
+**Engineering Why:** Using MVC allows us to swap the database or the web framework with minimal impact on the business logic. It also enables mocking dependencies for high-coverage unit testing.
 
 ### 3.1. Authentication/Registration & Security Services
 
@@ -223,47 +265,147 @@ FastAPI global exception handlers standardize responses:
 
 #### 3.1.3 API Contracts for Authentication/Registration
 
-* **Registration: `POST /api/v1/auth/register`**
-  * **Payload:** `{"username": "...", "email": "...", "password": "..."}`
-  * **Response:** `201 Created` with `{"status": 201, "message": "...", "user_id": 123, "timestamp": "..."}`
+*   **Registration: `POST /api/v1/auth/register`**
+    *   **Request Payload:**
+        ```json
+        {
+          "username": "johndoe",
+          "email": "john.doe@example.com",
+          "password": "securePassword123"
+        }
+        ```
+    *   **Successful Response (`201 Created`):**
+        ```json
+        {
+          "status": 201,
+          "message": "User registered successfully",
+          "user_id": 42,
+          "timestamp": "2026-04-28T10:00:00Z"
+        }
+        ```
 
-* **Authentication: `POST /api/v1/auth/login`**
-  * **Payload:** `{"email": "...", "password": "..."}`
-  * **Response:** `200 OK` with `{"access_token": "...", "token_type": "bearer", "role": "...", "status": 200, "message": "...", "timestamp": "..."}`
+*   **Authentication: `POST /api/v1/auth/login`**
+    *   **Request Payload:**
+        ```json
+        {
+          "email": "john.doe@example.com",
+          "password": "securePassword123"
+        }
+        ```
+    *   **Successful Response (`200 OK`):**
+        ```json
+        {
+          "access_token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...",
+          "token_type": "bearer",
+          "role": "client",
+          "status": 200,
+          "message": "Login successful",
+          "timestamp": "2026-04-28T10:05:00Z"
+        }
+        ```
 
-* **Logout: `POST /api/v1/auth/logout`**
-  * **Headers:** `Authorization: Bearer <token>`
-  * **Response:** `200 OK` with `{"status": 200, "message": "Successfully logged out", "user_id": 123, "timestamp": "..."}`
+*   **Logout: `POST /api/v1/auth/logout`**
+    *   **Headers:** `Authorization: Bearer <token>`
+    *   **Successful Response (`200 OK`):**
+        ```json
+        {
+          "status": 200,
+          "message": "Successfully logged out",
+          "user_id": 42,
+          "timestamp": "2026-04-28T10:10:00Z"
+        }
+        ```
 
 
 ### 3.2. Prediction Inference Service
-[`TODO`] - (How the backend loads model binaries into memory without blocking API threads)
 
-### 3.2.1 API Contracts for Prediction Service [`TODO`]
+The Prediction Inference Service manages the execution of trained ML models. It dynamically loads the production-ready model binaries and performs inference using real-time features provided by the Data Pipeline.
 
-* **Preditction using daily model: `GET /api/predict/daily`**
-  * **Headers:** `Authorization: Bearer <token>`
-  * **Query Params:** `?date=YYYY-MM-DD`
-  * **Response:** `200 OK` with `{"date": "...", "predicted_mw": 4500.5, "features_used": {...}}`
+### 3.2.1 API Contracts for Prediction Service
 
-* **Prediction using hourly model:`GET /api/predict/hourly`**
-  * **Headers:** `Authorization: Bearer <token>`
-  * **Query Params:** `?datetime=YYYY-MM-DDTHH:00`
-  * **Response:** `200 OK` with `{"datetime": "...", "predicted_mw": 4200.1, "features_used": {...}}`
+*   **Prediction using daily model: `GET /api/predict/daily`**
+    *   **Headers:** `Authorization: Bearer <token>`
+    *   **Query Params:** `?date=2026-05-01`
+    *   **Successful Response (`200 OK`):**
+        ```json
+        {
+          "date": "2026-05-01",
+          "predicted_mwh": 58420.5,
+          "model_version": "RF_v1",
+          "features_used": {
+            "t2m_mean": 18.5,
+            "is_weekend": false,
+            "season": 2
+          },
+          "timestamp": "2026-04-28T10:15:00Z"
+        }
+        ```
+
+*   **Prediction using hourly model: `GET /api/predict/hourly`**
+    *   **Headers:** `Authorization: Bearer <token>`
+    *   **Query Params:** `?datetime=2026-05-01T14:00`
+    *   **Successful Response (`200 OK`):**
+        ```json
+        {
+          "datetime": "2026-05-01T14:00:00Z",
+          "predicted_mw": 2450.1,
+          "model_version": "LR_v1",
+          "features_used": {
+            "t2m": 22.1,
+            "hour": 14,
+            "ssrd": 650.4
+          },
+          "timestamp": "2026-04-28T10:16:00Z"
+        }
+        ```
 
 
-### 3.3. Administrator & Management Services - [`TODO`]
+### 3.3. Administrator & Management Services
 
+These services allow authorized administrators to manage the system's operational state, including model promotion and system health monitoring.
 
-### 3.3.1 API Contrancts for Admin/Management Service [`TODO`]
+### 3.3.1 API Contracts for Admin/Management Service
 
-* **`GET /api/admin/models`**
-  * **Headers:** `Authorization: Bearer <token>` (Admin Only)
-  * **Response:** List of all trained models and their metrics.
-* **`POST /api/admin/models/activate`**
-  * **Headers:** `Authorization: Bearer <token>` (Admin Only)
-  * **Payload:** `{"model_id": "..."}`
-  * **Response:** `200 OK` (Updates global configuration).
+*   **List all models: `GET /api/admin/models`**
+    *   **Headers:** `Authorization: Bearer <token>` (Admin Only)
+    *   **Successful Response (`200 OK`):**
+        ```json
+        {
+          "models": [
+            {
+              "id": "model_001",
+              "type": "RandomForest",
+              "resolution": "daily",
+              "metrics": {"mae": 150.2, "rmse": 200.5, "r2": 0.92},
+              "is_active": true
+            },
+            {
+              "id": "model_002",
+              "type": "LinearRegression",
+              "resolution": "daily",
+              "metrics": {"mae": 180.1, "rmse": 230.4, "r2": 0.88},
+              "is_active": false
+            }
+          ]
+        }
+        ```
+
+*   **Promote model to production: `POST /api/admin/models/activate`**
+    *   **Headers:** `Authorization: Bearer <token>` (Admin Only)
+    *   **Request Payload:**
+        ```json
+        {
+          "model_id": "model_002"
+        }
+        ```
+    *   **Successful Response (`200 OK`):**
+        ```json
+        {
+          "status": 200,
+          "message": "Model model_002 successfully activated",
+          "timestamp": "2026-04-28T10:20:00Z"
+        }
+        ```
 
 ### 3.4. Live Data Scheduler Service
 [`TODO`] - (Technical implementation: What library runs it? How does it avoid race conditions with the database?)
@@ -315,11 +457,13 @@ Stores metadata and performance metrics of the trained models.
 | `model_name_id` | BIGSERIAL | Primary Key | Unique model identifier. |
 | `model_type` | VARCHAR(512) | Not Null | Type of machine learning model. |
 | `model_creation_date` | TIMESTAMP | Not Null, Default: CURRENT_TIMESTAMP | Date the model was registered or trained. |
-| `model_pred_type` | VARCHAR(512) | Not Null | Type of prediction the model makes (e.g., regression, classification). |
+| `model_pred_type` | VARCHAR(512) | Not Null | Frequency/Type of prediction the model makes. |
 | `model_server_relative_path`| VARCHAR(512) | Not Null | Server path to the model file. |
-| `rmse` | DOUBLE PRECISION | Not Null | Root Mean Square Error metric. |
-| `mae` | DOUBLE PRECISION | Not Null | Mean Absolute Error metric. |
-| `r2` | DOUBLE PRECISION | Not Null | R-squared metric. |
+| `dataset_selected` | VARCHAR(512) | Not Null | The specific dataset version/strategy that yielded the best performance. |
+| `top2_drivers` | VARCHAR(512) | Not Null | The top 2 most influential features for the model's predictions. |
+| `rmse` | DOUBLE PRECISION | Not Null | Root Mean Square Error metric of the winning fold. |
+| `mae` | DOUBLE PRECISION | Not Null | Mean Absolute Error metric of the winning fold. |
+| `r2` | DOUBLE PRECISION | Not Null | R-squared metric of the winning fold. |
 
 **Table `request`**
 Logs the history of prediction requests made by users.
@@ -368,7 +512,11 @@ Standard practices often expose plaintext passwords during initial database migr
 [`TODO`] - (Directory structures for raw/processed data, and .pkl/joblib model binary storage rules)
 
 ### 4.3. Log Storage ELK
-[`TODO`] - (What indices you are using for logs if any!!)
+
+The system uses the ELK Stack to centralize performance and audit logs. The primary index used is `energy-demand-logs-*`.
+
+*   **Model Training Logs:** Every pipeline run pushes a structured JSON payload containing the full metric suite and driver analysis.
+*   **Audit Trail:** Logs include the `user` and `timestamp` for every model update.
 
 
 ## 5. Frontend UI & Dashboard Design
@@ -385,10 +533,36 @@ Standard practices often expose plaintext passwords during initial database migr
 ### 6. Telemetry & Observability Design
 
 ### 6.1. Application Log Formatting
-[`TODO`] - (Standardized JSON log payloads for FastAPI)
+
+To enable automated ingestion by Logstash, the pipeline utilizes a standardized structured logging format.
+
+**Structured Log Payload (JSON):**
+```json
+{
+  "event": "model_training_completed",
+  "user": "system_pipeline",
+  "timestamp": "ISO-8601-String",
+  "model_info": {
+    "name": "Random Forest",
+    "frequency": "hourly",
+    "version": 2,
+    "dataset": "pca"
+  },
+  "metrics": {
+    "rmse": 0.12,
+    "mae": 0.08,
+    "r2": 0.94
+  },
+  "analysis": {
+    "top2_drivers": ["t2m_rolling_mean", "L24"]
+  },
+  "status": "success"
+}
+```
 
 ### 6.2. Logstash Parsing Rules
-[`TODO`] - (How ELK ingests the Python logs)
+
+Logstash is configured with a `grok` filter that identifies the `ELK_JSON_LOG:` prefix. Once identified, the `json` filter parses the payload directly into Elasticsearch fields, allowing Kibana to build real-time dashboards of model accuracy over time without manual data entry.
 
 ## 7. Deployment & Operations
 
