@@ -35,6 +35,11 @@ This document captures the low-level system design decisions, technical stack, d
 * #### 6.1. Application Log Formatting
 * #### 6.2. Logstash Parsing Rules
 
+### 7. Deployment & Operations
+* #### 7.1. Database Management
+* #### 7.2. Docker Environment
+* #### 7.3. API Interaction Guide
+
 
 ## 1. Technology Stack
 
@@ -198,8 +203,8 @@ The primary objective of the Training & Evaluation Module is to autonomously sel
         - **The 1-Year Safety Gap:** All temporal splits implement a mandatory **1-year gap** between training and testing.
         - **Technical Rationale:** Energy demand is heavily influenced by climate inertia and long-term economic cycles. A simple cross-validation or a short gap would lead to **data leakage** through temporal proximity. A 1-year gap ensures the model is tested on a completely different annual cycle, proving its generalization across seasonal boundaries.
         - **Strategies Evaluated:**
-            - *Expanding Window:* Cumulative training from start of history.
-            - *Fixed Rolling:* Constant window size to capture only recent shifts in demand behavior.
+            - *Expanding Window:** Cumulative training from start of history.
+            - *Fixed Rolling:** Constant window size to capture only recent shifts in demand behavior.
             - *Nested Validation (Random Forest):* Internal optimization loops within each fold to prevent hyperparameter overfitting.
 
     - **Statistical Rigor in Selection:**
@@ -229,50 +234,177 @@ The primary objective of the Training & Evaluation Module is to autonomously sel
 
 
 
-## 3. Core Backend Services Design
+### 3. Core Backend Services Design
 
-### 3.1.Authentication/Registration & Security Services
-[`TODO`] - (JWT lifecycle, Bcrypt salting details, login/logout)
+The backend is developed using **Python with FastAPI**, following a strict **Model-View-Controller (MVC)** architectural pattern to ensure modularity, testability, and scalability.
 
-#### 3.1.1 API Contrancts for Authentication/Registration [`TODO`]
+*   **Model Layer:** Utilizes **SQLAlchemy** for database ORM mapping (Relational Model) and **Pydantic** for data validation and serialization (DTOs).
+*   **View Layer (Routers):** Located in `src/api/routers/`, these modules define the RESTful endpoints, handle HTTP status codes, and manage request/response documentation via OpenAPI.
+*   **Controller Layer (Services):** Located in `src/api/services/`, this layer contains the core business logic, isolating it from the web framework and the database details.
 
-* **Registration: `POST /api/auth/register`**
+**Engineering Why:** Using MVC allows us to swap the database or the web framework with minimal impact on the business logic. It also enables mocking dependencies for high-coverage unit testing.
 
-  * **Payload:** `{"username": "...", "email": "...", "password": "...", timestamp: "xxx", role: "ROLE_USER"}`
-  * **Response:** `201 Created` or `400 Bad Request` (Validation failed).
+### 3.1. Authentication/Registration & Security Services
 
-* **Authentication: `POST /api/auth/login`**
-  * **Payload:** `{"email": "...", "password": "...", timestamp: "xxx"}`
-  * **Response:** `200 OK` with `{"status": "access_token": "...", "role": "...",}` or `401 Unauthorized` (Generic error).
+The security layer provides robust protection for user data and system access, fulfilling strict Quality Attributes (QA10-QA14).
+
+#### 3.1.1. Security Mechanisms
+- **JWT Lifecycle:** Authentication tokens are issued as signed JWTs (HS256) with a configurable expiration period.
+- **Bcrypt Salting:** All user passwords are hashed using `bcrypt` with unique salts before storage.
+- **Role-Based Access Control (RBAC):** Access to endpoints is restricted based on the `sub` (email) and verified against the database roles (`admin`, `client`).
+- **Brute Force Protection (QA13):** Accounts are automatically locked for 5 minutes after the 4th consecutive failed login attempt.
+- **Generic Failure Messages (QA10):** All authentication failures return generic "Invalid credentials" or "Account locked" messages to prevent username enumeration and leakage of system internals.
+
+#### 3.1.2. Exception Handling Strategy
+FastAPI global exception handlers standardize responses:
+- **400 Bad Request:** For Pydantic schema validation failures.
+- **401 Unauthorized:** For invalid credentials or expired tokens.
+- **403 Forbidden:** For account lockouts or insufficient RBAC privileges.
+- **404 Not Found:** For non-existent resource requests.
+- **500 Internal Server Error:** For unhandled exceptions, ensuring no stack traces are leaked to the client.
+
+### 3.1.3 API Contracts for Authentication/Registration
+
+* **Registration:** `POST /api/v1/auth/register`
+    * **Payload:**
+        ```json
+        {
+          "username": "johndoe",
+          "email": "john.doe@example.com",
+          "password": "securePassword123"
+        }
+        ```
+    * **Response:** `201 Created` with 
+        ```json
+        {
+          "status": 201,
+          "message": "User registered successfully",
+          "user_id": 123,
+          "timestamp": "2023-10-27T10:00:00Z"
+        }
+        ```
+
+* **Authentication:** `POST /api/v1/auth/login`
+    * **Payload:**
+        ```json
+        {
+          "email": "john.doe@example.com",
+          "password": "securePassword123"
+        }
+        ```
+    * **Response:** `200 OK` with 
+        ```json
+        {
+          "access_token": "eyJhbGciOiJIUzI...",
+          "token_type": "bearer",
+          "role": "user",
+          "status": 200,
+          "message": "Login successful",
+          "timestamp": "2023-10-27T10:05:00Z"
+        }
+        ```
+
+* **Logout:** `POST /api/v1/auth/logout`
+    * **Headers:** `Authorization: Bearer <token>`
+    * **Response:** `200 OK` with
+        ```json
+        {
+          "status": 200,
+          "message": "Successfully logged out",
+          "user_id": 123,
+          "timestamp": "2023-10-27T10:30:00Z"
+        }
+        ```
 
 ### 3.2. Prediction Inference Service
-[`TODO`] - (How the backend loads model binaries into memory without blocking API threads)
 
-### 3.2.1 API Contracts for Prediction Service [`TODO`]
+The Prediction Inference Service manages the execution of trained ML models. It dynamically loads the production-ready model binaries and performs inference using real-time features provided by the Data Pipeline.
 
-* **Preditction using daily model: `GET /api/predict/daily`**
-  * **Headers:** `Authorization: Bearer <token>`
-  * **Query Params:** `?date=YYYY-MM-DD`
-  * **Response:** `200 OK` with `{"date": "...", "predicted_mw": 4500.5, "features_used": {...}}`
+### 3.2.1 API Contracts for Prediction Service
 
-* **Prediction using hourly model:`GET /api/predict/hourly`**
-  * **Headers:** `Authorization: Bearer <token>`
-  * **Query Params:** `?datetime=YYYY-MM-DDTHH:00`
-  * **Response:** `200 OK` with `{"datetime": "...", "predicted_mw": 4200.1, "features_used": {...}}`
+*   **Prediction using daily model: `GET /api/predict/daily`**
+    *   **Headers:** `Authorization: Bearer <token>`
+    *   **Query Params:** `?date=2026-05-01`
+    *   **Successful Response (`200 OK`):**
+        ```json
+        {
+          "date": "2026-05-01",
+          "predicted_mwh": 58420.5,
+          "model_version": "RF_v1",
+          "features_used": {
+            "t2m_mean": 18.5,
+            "is_weekend": false,
+            "season": 2
+          },
+          "timestamp": "2026-04-28T10:15:00Z"
+        }
+        ```
+
+*   **Prediction using hourly model: `GET /api/predict/hourly`**
+    *   **Headers:** `Authorization: Bearer <token>`
+    *   **Query Params:** `?datetime=2026-05-01T14:00`
+    *   **Successful Response (`200 OK`):**
+        ```json
+        {
+          "datetime": "2026-05-01T14:00:00Z",
+          "predicted_mw": 2450.1,
+          "model_version": "LR_v1",
+          "features_used": {
+            "t2m": 22.1,
+            "hour": 14,
+            "ssrd": 650.4
+          },
+          "timestamp": "2026-04-28T10:16:00Z"
+        }
+        ```
 
 
-### 3.3. Administrator & Management Services - [`TODO`]
+### 3.3. Administrator & Management Services
 
+These services allow authorized administrators to manage the system's operational state, including model promotion and system health monitoring.
 
-### 3.3.1 API Contrancts for Admin/Management Service [`TODO`]
+### 3.3.1 API Contracts for Admin/Management Service
 
-* **`GET /api/admin/models`**
-  * **Headers:** `Authorization: Bearer <token>` (Admin Only)
-  * **Response:** List of all trained models and their metrics.
-* **`POST /api/admin/models/activate`**
-  * **Headers:** `Authorization: Bearer <token>` (Admin Only)
-  * **Payload:** `{"model_id": "..."}`
-  * **Response:** `200 OK` (Updates global configuration).
+*   **List all models: `GET /api/admin/models`**
+    *   **Headers:** `Authorization: Bearer <token>` (Admin Only)
+    *   **Successful Response (`200 OK`):**
+        ```json
+        {
+          "models": [
+            {
+              "id": "model_001",
+              "type": "RandomForest",
+              "resolution": "daily",
+              "metrics": {"mae": 150.2, "rmse": 200.5, "r2": 0.92},
+              "is_active": true
+            },
+            {
+              "id": "model_002",
+              "type": "LinearRegression",
+              "resolution": "daily",
+              "metrics": {"mae": 180.1, "rmse": 230.4, "r2": 0.88},
+              "is_active": false
+            }
+          ]
+        }
+        ```
+
+*   **Promote model to production: `POST /api/admin/models/activate`**
+    *   **Headers:** `Authorization: Bearer <token>` (Admin Only)
+    *   **Request Payload:**
+        ```json
+        {
+          "model_id": "model_002"
+        }
+        ```
+    *   **Successful Response (`200 OK`):**
+        ```json
+        {
+          "status": 200,
+          "message": "Model model_002 successfully activated",
+          "timestamp": "2026-04-28T10:20:00Z"
+        }
+        ```
 
 ### 3.4. Live Data Scheduler Service
 [`TODO`] - (Technical implementation: What library runs it? How does it avoid race conditions with the database?)
@@ -430,3 +562,48 @@ To enable automated ingestion by Logstash, the pipeline utilizes a standardized 
 ### 6.2. Logstash Parsing Rules
 
 Logstash is configured with a `grok` filter that identifies the `ELK_JSON_LOG:` prefix. Once identified, the `json` filter parses the payload directly into Elasticsearch fields, allowing Kibana to build real-time dashboards of model accuracy over time without manual data entry.
+
+## 7. Deployment & Operations
+
+### 7.1. Database Management
+
+The PostgreSQL database is managed via Docker Compose. It is configured to run on port `5433` to avoid conflicts with local PostgreSQL instances.
+
+- **Start Database:**
+  ```bash
+  docker-compose -f Code/energy_prediction_system/src/databases/docker-compose.db.yml up -d
+  ```
+- **Stop Database:**
+  ```bash
+  docker-compose -f Code/energy_prediction_system/src/databases/docker-compose.db.yml down
+  ```
+- **Initialization:**
+  The database automatically initializes using scripts in `Code/energy_prediction_system/src/databases/init-scripts/`:
+  - `01-create-tables.sql`: Defines the schema.
+  - `02-insert-data.sql`: Seeds the database with initial admin and client users.
+
+### 7.2. Docker Environment
+
+The system uses Docker for containerizing the database and potentially other services (ELK stack, Backend).
+
+- **Prerequisites:** Docker Desktop must be installed and running.
+- **Service Isolation:** Currently, the database is isolated in its own compose file to allow for flexible development (running the backend locally or in a container).
+
+### 7.3. API Interaction Guide
+
+Once the backend is running (`python Code/energy_prediction_system/src/api/main.py`), you can interact with the API.
+
+#### Authentication Flow
+1. **Register:** `POST /api/v1/auth/register` with username, email, and password.
+2. **Login:** `POST /api/v1/auth/login` with email and password. This returns an `access_token`.
+3. **Authorized Requests:** Include the token in the header: `Authorization: Bearer <your_token>`.
+
+#### Key Endpoints
+- **User Info:** `GET /api/v1/auth/me` (Requires Token)
+- **Admin Check:** `GET /api/v1/auth/admin-only` (Requires Admin Role)
+- **Predictions (Planned):** `GET /api/predict/daily` and `GET /api/predict/hourly`.
+
+#### Documentation
+FastAPI provides interactive Swagger documentation at:
+- **Swagger UI:** `http://localhost:8000/docs`
+- **ReDoc:** `http://localhost:8000/redoc`

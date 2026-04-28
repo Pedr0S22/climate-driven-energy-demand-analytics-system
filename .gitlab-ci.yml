@@ -43,7 +43,7 @@ integration-tests:
     - cd $APP_DIR
     - pip install -r requirements.txt
     - pip install -r requirements-dev.txt
-    - pytest --cov=src --cov-report=term-missing --cov-report=html:../../Testing/automated_tests/integration --cov-fail-under=70 --ignore=tests/unit
+    - pytest --cov=src/data_pipeline --cov-report=term-missing --cov-report=html:../../Testing/automated_tests/integration --cov-fail-under=70 --ignore=tests/unit
   artifacts:
     paths:
       - Testing/automated_tests/integration/

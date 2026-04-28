@@ -27,12 +27,16 @@ dependencies = [
     "google-auth-oauthlib>=1.0.0",
 
     # Backend & Security (Planned)
-    # "fastapi>=0.95.0",
-    # "uvicorn>=0.21.0",
-    # "sqlalchemy>=2.0.0",
+    "fastapi>=0.95.0",
+    "uvicorn>=0.21.0",
+    "sqlalchemy>=2.0.0",
     "psycopg2-binary>=2.9.5",
     "bcrypt>=4.0.1",
-    # "pyjwt>=2.6.0",
+    "pyjwt>=2.6.0",
+    "pydantic-settings>=2.0.0",
+    "passlib[bcrypt]>=1.7.4",
+    "python-multipart>=0.0.6",
+    "email-validator>=2.0.0",
 
     # UI (Planned)
     # "PyQt6>=6.4.0",
@@ -43,11 +47,12 @@ dev = [
     "pytest>=7.3.0",
     "pytest-cov>=4.0.0",
     "ruff==0.3.5",
+    "httpx>=0.24.1",
 ]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
-pythonpath = ["src"]
+pythonpath = [".", "src"]
 filterwarnings = [
     "ignore:pkg_resources is deprecated as an API:DeprecationWarning"
 ]
@@ -66,9 +71,13 @@ select = [
     "UP",  # pyupgrade
     "S",   # flake8-bandit (Security)
 ]
+ignore = [
+    "B008", # Do not perform function call `Depends` in argument defaults
+]
 
 [tool.ruff.lint.per-file-ignores]
-"tests/**" = ["S101"]
+"tests/**" = ["S101", "S106"]
+"src/api/main.py" = ["S104"]
 
 [tool.ruff.lint.mccabe]
 max-complexity = 15
