@@ -263,10 +263,10 @@ FastAPI global exception handlers standardize responses:
 - **404 Not Found:** For non-existent resource requests.
 - **500 Internal Server Error:** For unhandled exceptions, ensuring no stack traces are leaked to the client.
 
-#### 3.1.3 API Contracts for Authentication/Registration
+### 3.1.3 API Contracts for Authentication/Registration
 
-*   **Registration: `POST /api/v1/auth/register`**
-    *   **Request Payload:**
+* **Registration:** `POST /api/v1/auth/register`
+    * **Payload:**
         ```json
         {
           "username": "johndoe",
@@ -274,48 +274,47 @@ FastAPI global exception handlers standardize responses:
           "password": "securePassword123"
         }
         ```
-    *   **Successful Response (`201 Created`):**
+    * **Response:** `201 Created` with 
         ```json
         {
           "status": 201,
           "message": "User registered successfully",
-          "user_id": 42,
-          "timestamp": "2026-04-28T10:00:00Z"
+          "user_id": 123,
+          "timestamp": "2023-10-27T10:00:00Z"
         }
         ```
 
-*   **Authentication: `POST /api/v1/auth/login`**
-    *   **Request Payload:**
+* **Authentication:** `POST /api/v1/auth/login`
+    * **Payload:**
         ```json
         {
           "email": "john.doe@example.com",
           "password": "securePassword123"
         }
         ```
-    *   **Successful Response (`200 OK`):**
+    * **Response:** `200 OK` with 
         ```json
         {
-          "access_token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...",
+          "access_token": "eyJhbGciOiJIUzI...",
           "token_type": "bearer",
-          "role": "client",
+          "role": "user",
           "status": 200,
           "message": "Login successful",
-          "timestamp": "2026-04-28T10:05:00Z"
+          "timestamp": "2023-10-27T10:05:00Z"
         }
         ```
 
-*   **Logout: `POST /api/v1/auth/logout`**
-    *   **Headers:** `Authorization: Bearer <token>`
-    *   **Successful Response (`200 OK`):**
+* **Logout:** `POST /api/v1/auth/logout`
+    * **Headers:** `Authorization: Bearer <token>`
+    * **Response:** `200 OK` with
         ```json
         {
           "status": 200,
           "message": "Successfully logged out",
-          "user_id": 42,
-          "timestamp": "2026-04-28T10:10:00Z"
+          "user_id": 123,
+          "timestamp": "2023-10-27T10:30:00Z"
         }
         ```
-
 
 ### 3.2. Prediction Inference Service
 
