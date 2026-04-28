@@ -35,6 +35,11 @@ This document captures the low-level system design decisions, technical stack, d
 * #### 6.1. Application Log Formatting
 * #### 6.2. Logstash Parsing Rules
 
+### 7. Deployment & Operations
+* #### 7.1. Database Management
+* #### 7.2. Docker Environment
+* #### 7.3. API Interaction Guide
+
 
 ## 1. Technology Stack
 
@@ -384,3 +389,48 @@ Standard practices often expose plaintext passwords during initial database migr
 
 ### 6.2. Logstash Parsing Rules
 [`TODO`] - (How ELK ingests the Python logs)
+
+## 7. Deployment & Operations
+
+### 7.1. Database Management
+
+The PostgreSQL database is managed via Docker Compose. It is configured to run on port `5433` to avoid conflicts with local PostgreSQL instances.
+
+- **Start Database:**
+  ```bash
+  docker-compose -f Code/energy_prediction_system/src/databases/docker-compose.db.yml up -d
+  ```
+- **Stop Database:**
+  ```bash
+  docker-compose -f Code/energy_prediction_system/src/databases/docker-compose.db.yml down
+  ```
+- **Initialization:**
+  The database automatically initializes using scripts in `Code/energy_prediction_system/src/databases/init-scripts/`:
+  - `01-create-tables.sql`: Defines the schema.
+  - `02-insert-data.sql`: Seeds the database with initial admin and client users.
+
+### 7.2. Docker Environment
+
+The system uses Docker for containerizing the database and potentially other services (ELK stack, Backend).
+
+- **Prerequisites:** Docker Desktop must be installed and running.
+- **Service Isolation:** Currently, the database is isolated in its own compose file to allow for flexible development (running the backend locally or in a container).
+
+### 7.3. API Interaction Guide
+
+Once the backend is running (`python Code/energy_prediction_system/src/api/main.py`), you can interact with the API.
+
+#### Authentication Flow
+1. **Register:** `POST /api/v1/auth/register` with username, email, and password.
+2. **Login:** `POST /api/v1/auth/login` with email and password. This returns an `access_token`.
+3. **Authorized Requests:** Include the token in the header: `Authorization: Bearer <your_token>`.
+
+#### Key Endpoints
+- **User Info:** `GET /api/v1/auth/me` (Requires Token)
+- **Admin Check:** `GET /api/v1/auth/admin-only` (Requires Admin Role)
+- **Predictions (Planned):** `GET /api/predict/daily` and `GET /api/predict/hourly`.
+
+#### Documentation
+FastAPI provides interactive Swagger documentation at:
+- **Swagger UI:** `http://localhost:8000/docs`
+- **ReDoc:** `http://localhost:8000/redoc`
