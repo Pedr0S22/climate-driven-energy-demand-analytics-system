@@ -102,37 +102,32 @@ The system is designed around two primary architectural patterns to ensure modul
 
 **Client-Server Architecture:** The frontend UI communicates with the backend server using standard API calls. The client asks for something - like a prediction - and the server does the heavy lifting. Then the server sends the results back via an HTTP response. For each request, the user is logged through a bearer token.
 
-**MVC Pattern (Backend):** The backend API is structured using the Model-View-Controller (MVC) pattern to ensure a clean separation of concerns.
-*   **Models:** Define the data structures and database schemas (using SQLAlchemy and Pydantic).
-*   **Views (Routers):** Act as the interface, handling HTTP requests, validating inputs, and returning JSON responses to the client.
-*   **Controllers (Services/Core):** Contain the core business logic, orchestrating interactions between the models and external services (like the ML models or the Live Data Scheduler).
-This decoupling allows for independent testing of business logic and ensures that changes to the database schema or API interface do not ripple through the entire system.
-
 ## 3. Data Flow
 
-The system orchestrates a complex flow of data between external APIs, local storage, machine learning models, and the end-user interface. This flow is categorized into two main pipelines:
+The data pipeline is designed to be fully reproducible and executable via code, avoiding any manual steps. The workflow consists of the following stages:
 
-### 3.1 Offline Data Pipeline (Batch Processing)
-This pipeline is responsible for historical data acquisition and model training. It is designed to be fully reproducible and executable via code, avoiding any manual steps.
+### 3.1 Data Ingestion
+The system pulls electricity load data from the ENTSO-E Transparency Platform and meteorological variables from the Copernicus Climate Data Store.
 
-1.  **Data Ingestion:** The system pulls electricity load data from the ENTSO-E Transparency Platform and meteorological variables from the Copernicus Climate Data Store.
-    *   **Raw Storage:** This ingested data is saved directly, without manual modification, into `/data/raw/energy/` and `/data/raw/weather/` in CSV format.
-2.  **Cleaning and Alignment:** The cleaning module reads the raw files, resolves inconsistencies (e.g., timezone offsets), removes corrupted records, handles missing values (using linear interpolation or rolling means), and aligns both datasets to a common hourly temporal resolution.
-    *   **Processed Storage:** The cleaned, aligned dataset is saved securely into `/data/processed/`.
-3.  **Feature Engineering:** The module reads the processed data and generates predictive features, including temporal indicators (hour, day, season), rolling climate averages (RMS, derivatives), and lagged demand features (L1, L24, L168).
-    *   **Feature Storage:** The engineered features are saved into `/data/processed/feat-engineering/`, partitioned by resolution (hourly vs daily).
-4.  **Modeling and Training:** The engineered features are fed into the training module (e.g., Random Forest or Linear Regression). Models are evaluated using a time-aware split to prevent data leakage.
-    *   **Model Storage:** Serialized models (`.joblib`) and their associated scalers/PCA transformers are saved to `/models/` and registered in the `ModelDB`.
 
-### 3.2 Online Data Pipeline (Real-Time Inference)
-This pipeline handles live user requests and ensures that predictions are based on the most recent data.
+* **Raw Storage:** This ingested data is saved directly, without manual modification, into `/data/raw/energy/` and `/data/raw/weather/`.
 
-1.  **Request Initiation:** A user (via the Interface Layer) sends a prediction request for a specific date or hour to the Backend Layer.
-2.  **Authentication & Authorization:** The `AuthService` validates the user's JWT and checks permissions.
-3.  **Live Data Synchronization:** The `Live Data Scheduler` checks if the required recent historical data (lags and rolling windows) exists. If not, it triggers a "mini-ingestion" cycle for the missing temporal window.
-4.  **Real-Time Processing:** The new raw data is cleaned and features are engineered "on-the-fly" using the same parameters (scalers/PCA) stored during the offline phase.
-5.  **Inference:** The `Prediction Service` loads the active model from `ModelDB`, performs the inference, and stores the result in `PredDB`.
-6.  **Response:** The result is returned to the user in a standardized JSON format.
+
+### 3.2 Cleaning and Alignment
+The cleaning module reads the raw files, resolves inconsistencies, removes corrupted records, handles missing values and outliers and aligns both datasets to a common hourly temporal resolution.
+
+
+* **Processed Storage:** The cleaned, aligned dataset is saved securely into `/data/processed/`.
+
+
+### 3.3 Feature Engineering
+The module reads the processed data and generates predictive features, including temporal indicators (hour, day, season), rolling climate averages, and others, and lagged demand features.
+
+* **Processed Feature Engineering:** The different cases of feature engineering datasets are saved securely into `/data/processed/feat-engineering/`.
+
+
+### 3.4 Modeling and Prediction
+The engineered features are fed into the modeling component to train models using a time-aware split. The trained models are then queried by the client to generate predictions.
 
 
 ## 4. Application Layers & Core Services
