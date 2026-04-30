@@ -34,7 +34,7 @@ class StatisticalEvaluator:
                 return False
             stat, p_val = shapiro(data)
             if p_val < alpha:
-                return False  
+                return False
         return True
 
     @staticmethod
@@ -61,7 +61,7 @@ class StatisticalEvaluator:
             is_diff = True
 
         logger.info(f"    Statistical Analysis ({test_used}): p-value = {p_val:.4e}")
-        
+
         best_ds = None
         best_metrics = {"rmse": float("inf"), "r2": float("-inf"), "mae": float("inf")}
 
@@ -69,9 +69,11 @@ class StatisticalEvaluator:
             mean_rmse = np.mean(results_dict[ds]["rmse"])
             mean_r2 = np.mean(results_dict[ds]["r2"])
             mean_mae = np.mean(results_dict[ds]["mae"])
-            
-            logger.info(f"    - Candidate Dataset: {ds.upper()} | Mean RMSE: {mean_rmse:.4f} | " \
-            f"Mean R2: {mean_r2:.4f} | Mean MAE: {mean_mae:.4f}")
+
+            logger.info(
+                f"    - Candidate Dataset: {ds.upper()} | Mean RMSE: {mean_rmse:.4f} | "
+                f"Mean R2: {mean_r2:.4f} | Mean MAE: {mean_mae:.4f}"
+            )
 
             if mean_rmse < best_metrics["rmse"]:
                 best_ds = ds
@@ -85,12 +87,16 @@ class StatisticalEvaluator:
                     best_metrics = {"rmse": mean_rmse, "r2": mean_r2, "mae": mean_mae}
 
         if not is_diff:
-            logger.info("Dataset Selection Conclusion: No statistical significance." \
-                        f" Selecting {best_ds} based on raw mean performance.")
+            logger.info(
+                "Dataset Selection Conclusion: No statistical significance."
+                f" Selecting {best_ds} based on raw mean performance."
+            )
         else:
-            logger.info("Dataset Selection Conclusion: Statistical significance detected." \
-                         f"Selecting {best_ds} as the optimal dataset.")
-        
+            logger.info(
+                "Dataset Selection Conclusion: Statistical significance detected."
+                f"Selecting {best_ds} as the optimal dataset."
+            )
+
         return best_ds, best_metrics
 
     @staticmethod
@@ -170,7 +176,7 @@ class ModelManager:
         start_date = df["datetime"].min()
 
         one_year = DateOffset(years=1)
-        two_years = DateOffset(years=2) 
+        two_years = DateOffset(years=2)
 
         step_offset = DateOffset(months=1)
 
@@ -217,7 +223,7 @@ class ModelManager:
     def train_baseline(self, X_train, y_train):
         model = LinearRegression()
         model.fit(X_train, y_train)
-        if hasattr(X_train, 'columns'):
+        if hasattr(X_train, "columns"):
             importance = np.abs(model.coef_)
             top_2_idx = np.argsort(importance)[-2:][::-1]
             top_2_drivers = X_train.columns[top_2_idx].tolist()
@@ -299,7 +305,7 @@ class ModelManager:
         X_final = X_train.drop(columns=["datetime"]) if "datetime" in X_train.columns else X_train
         best_model.fit(X_final, y_train)
 
-        if hasattr(X_final, 'columns'):
+        if hasattr(X_final, "columns"):
             importance = best_model.feature_importances_
             top_2_idx = np.argsort(importance)[-2:][::-1]
             top_2_drivers = X_final.columns[top_2_idx].tolist()
@@ -332,20 +338,22 @@ class DatabaseManager:
                           top2_drivers, rmse, mae, r2) 
                         VALUES (%s, %s, %s, %s, %s, %s, %s, %s)
                     """
-                    cur.execute(query, (
-                        model_type, 
-                        model_pred_type, 
-                        file_path, 
-                        dataset_selected, 
-                        top2_drivers_str, 
-                        float(rmse), 
-                        float(mae), 
-                        float(r2)
-                    ))
+                    cur.execute(
+                        query,
+                        (
+                            model_type,
+                            model_pred_type,
+                            file_path,
+                            dataset_selected,
+                            top2_drivers_str,
+                            float(rmse),
+                            float(mae),
+                            float(r2),
+                        ),
+                    )
                     conn.commit()
         except Exception as e:
             print(f"Erro ao guardar na base de dados: {e}")
-
 
 
 class PipelineOrchestrator:
@@ -398,13 +406,13 @@ class PipelineOrchestrator:
             strategy_results[strategy] = self._run_strategy_loops(model_type, strategy, datasets, splits_by_strategy)
 
         best_strat = self.evaluator.select_best_strategy(strategy_results)
-        
+
         best_dataset_name = strategy_results[best_strat]["dataset"]
         vencedora_metrics = strategy_results[best_strat]["metrics"]
 
         melhor_idx = self._find_best_fold_index(vencedora_metrics)
         best_final_model = vencedora_metrics["models"][melhor_idx]
-        
+
         best_top2_drivers = vencedora_metrics["drivers"][melhor_idx]
 
         best_rmse = vencedora_metrics["rmse"][melhor_idx]
@@ -415,7 +423,6 @@ class PipelineOrchestrator:
             f"  => [Best Individual Fold: #{melhor_idx}] RMSE: {best_rmse:.2f} "
             f"| R2: {best_r2:.4f} | MAE: {best_mae:.2f}"
         )
-
 
         prefix = "LR" if model_type == "baseline" else "RF"
         version = self.manager._get_next_version(prefix)
@@ -453,19 +460,14 @@ class PipelineOrchestrator:
                 "frequency": freq,
                 "version": version,
                 "dataset": best_dataset_name,
-                "path": caminho_relativo
+                "path": caminho_relativo,
             },
-            "metrics": {
-                "rmse": float(best_rmse),
-                "mae": float(best_mae),
-                "r2": float(best_r2)
-            },
-            "analysis": {
-                "top2_drivers": best_top2_drivers
-            },
-            "status": "success"
+            "metrics": {"rmse": float(best_rmse), "mae": float(best_mae), "r2": float(best_r2)},
+            "analysis": {"top2_drivers": best_top2_drivers},
+            "status": "success",
         }
         logger.info(f"ELK_JSON_LOG: {json.dumps(elk_payload)}")
+
     def _run_strategy_loops(self, model_type, strategy, datasets, splits_by_strategy):
         """Executa os loops de treino para uma estratégia específica sobre os datasets."""
         logger.info(f"  Strategy: {strategy}")
@@ -502,7 +504,7 @@ class PipelineOrchestrator:
         )
 
         return {"dataset": best_ds, "metrics": dataset_results[best_ds]}
-    
+
     def _find_best_fold_index(self, vencedora_metrics):
         """Lógica de desempate para encontrar o melhor fold individual da estratégia vencedora."""
         melhor_idx = 0

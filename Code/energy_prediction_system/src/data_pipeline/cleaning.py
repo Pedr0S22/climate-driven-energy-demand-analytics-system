@@ -1,4 +1,5 @@
 import logging
+import os
 import time
 from pathlib import Path
 
@@ -115,6 +116,14 @@ class DataCleaner:
     def clean_weather_dataframe(self, df: pd.DataFrame) -> pd.DataFrame:
         """Modular weather cleaning for a single file/dataset."""
         df = df.copy()
+
+        # Handle Open-Meteo wind components if present
+        if "wind_speed_10m" in df.columns and "wind_direction_10m" in df.columns:
+            # u = -speed * sin(dir), v = -speed * cos(dir) (Meteorological convention)
+            rad = np.deg2rad(df["wind_direction_10m"])
+            df["u10"] = -df["wind_speed_10m"] * np.sin(rad)
+            df["v10"] = -df["wind_speed_10m"] * np.cos(rad)
+
         df = self.convert_era5_units(df)
         time_col = "valid_time" if "valid_time" in df.columns else "datetime"
         df[time_col] = pd.to_datetime(df[time_col], utc=True).dt.round("15min")
@@ -125,17 +134,25 @@ class DataCleaner:
         return self.aggregate_hourly_weather(df_no_outliers)
 
     def convert_era5_units(self, df: pd.DataFrame) -> pd.DataFrame:
+        """
+        Converts ERA5 units (Kelvin, Pa, m, J/m^2) to (Celsius, hPa, mm, W/m^2).
+        Skips conversion for Open-Meteo data which is already in target units.
+        """
         df = df.copy()
-        for var in ["skt", "t2m", "d2m", "stl1"]:
-            if var in df.columns:
-                df[var] = df[var] - 273.15
-        for var in ["ssrd", "strd"]:
-            if var in df.columns:
-                df[var] = df[var] / 900
-        if "sp" in df.columns:
-            df["sp"] = df["sp"] / 100
-        if "tp" in df.columns:
-            df["tp"] = df["tp"] * 1000
+        # Heuristic: Open-Meteo data contains wind speed/direction instead of components initially
+        is_open_meteo = "wind_speed_10m" in df.columns
+
+        if not is_open_meteo:
+            for var in ["skt", "t2m", "d2m", "stl1"]:
+                if var in df.columns:
+                    df[var] = df[var] - 273.15
+            for var in ["ssrd", "strd"]:
+                if var in df.columns:
+                    df[var] = df[var] / 900
+            if "sp" in df.columns:
+                df["sp"] = df["sp"] / 100
+            if "tp" in df.columns:
+                df["tp"] = df["tp"] * 1000
         return df
 
     def _align_weather_time(self, df: pd.DataFrame) -> pd.DataFrame:
@@ -322,9 +339,9 @@ def cleaning(energy_dir, weather_dir, train_data, output_dir=None):
         default_folder = root / "data" / "processed"
         prefix = "complete_train_data"
     else:
-        # Real-time/Prediction specific folder
-        default_folder = root / "data" / "processed" / "real-time"
-        prefix = "prediction_data"
+        # Real-time/Prediction specific folder: as per requirements, saved in data/processed/
+        default_folder = root / "data" / "processed"
+        prefix = "realtime"
 
     output_path = Path(output_dir or default_folder)
     output_path.mkdir(parents=True, exist_ok=True)
@@ -333,9 +350,19 @@ def cleaning(energy_dir, weather_dir, train_data, output_dir=None):
 
     # 1. Energy
     logger.info("Cleaning Energy data...")
-    energy_files = sorted(Path(energy_dir).glob("*.csv"))
+    all_energy_files = sorted(Path(energy_dir).glob("*.csv"))
+
+    # Optimization: If not training, only use realtime files to keep it fast
+    if not train_data:
+        energy_files = [f for f in all_energy_files if f.name.startswith("realtime")]
+        if not energy_files:  # Fallback
+            energy_files = all_energy_files
+    else:
+        energy_files = all_energy_files
+
     if not energy_files:
         raise FileNotFoundError(f"No energy files in {energy_dir}")
+
     df_energy_raw = pd.concat([pd.read_csv(f) for f in energy_files], ignore_index=True)
     df_e = cleaner.clean_energy_dataframe(df_energy_raw)
     df_e = df_e.rename(columns={df_e.columns[0]: "datetime"})
@@ -343,7 +370,15 @@ def cleaning(energy_dir, weather_dir, train_data, output_dir=None):
 
     # 2. Weather (Individual file cleaning then join)
     logger.info("Cleaning Weather files individually...")
-    weather_files = sorted(Path(weather_dir).glob("*.csv"))
+    all_weather_files = sorted(Path(weather_dir).glob("*.csv"))
+
+    if not train_data:
+        weather_files = [f for f in all_weather_files if f.name.startswith("realtime")]
+        if not weather_files:  # Fallback
+            weather_files = all_weather_files
+    else:
+        weather_files = all_weather_files
+
     if not weather_files:
         raise FileNotFoundError(f"No weather files in {weather_dir}")
 
@@ -374,10 +409,15 @@ def cleaning(energy_dir, weather_dir, train_data, output_dir=None):
     hourly_file = output_path / f"{prefix}_hourly.csv"
     daily_file = output_path / f"{prefix}_daily.csv"
 
-    # For real-time, we might want to append or overwrite.
-    # Usually, we overwrite the consolidated prediction file with the full updated history.
-    df_hourly.to_csv(hourly_file, index=False)
-    df_daily.to_csv(daily_file, index=False)
+    # Robust Export: Save to .tmp and rename only on success
+    tmp_hourly = f"{hourly_file}.tmp"
+    tmp_daily = f"{daily_file}.tmp"
+
+    df_hourly.to_csv(tmp_hourly, index=False)
+    df_daily.to_csv(tmp_daily, index=False)
+
+    os.replace(tmp_hourly, hourly_file)
+    os.replace(tmp_daily, daily_file)
 
     logger.info(f"Synchronized Dataset: {df_hourly.shape[0]} rows. Saved to {output_path}")
     return df_hourly, df_daily

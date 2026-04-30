@@ -1,14 +1,13 @@
-import pytest
-import pandas as pd
-import numpy as np
-import joblib
-from pathlib import Path
 from unittest.mock import MagicMock, patch
 
+import data_pipeline.ingestion as ingestion
+import numpy as np
+import pandas as pd
+import pytest
 from data_pipeline.cleaning import DataCleaner, cleaning
 from data_pipeline.feature_engineering import FeatureEngineer
-from data_pipeline.modeling import PipelineOrchestrator, ModelManager
-import data_pipeline.ingestion as ingestion
+from data_pipeline.modeling import ModelManager, PipelineOrchestrator
+
 
 class TestPipelineIntegration:
     """Integration tests for the modular data pipeline."""
@@ -30,7 +29,7 @@ class TestPipelineIntegration:
             "raw_weather": raw_weather,
             "processed": processed,
             "models": models,
-            "feat_eng_dir": processed / "feat-engineering"
+            "feat_eng_dir": processed / "feat-engineering",
         }
 
     @patch("data_pipeline.ingestion.cdsapi.Client")
@@ -42,13 +41,14 @@ class TestPipelineIntegration:
         mock_getenv.return_value = "fake_api_key"
         mock_entsoe_instance = mock_entsoe.return_value
         mock_entsoe_instance.query_load.return_value = pd.DataFrame(
-            {"Load_MW": [25000]}, 
-            index=pd.date_range("2023-01-01", periods=1, freq="h", tz="Europe/Madrid")
+            {"Load_MW": [25000]}, index=pd.date_range("2023-01-01", periods=1, freq="h", tz="Europe/Madrid")
         )
-        
-        with patch("data_pipeline.ingestion.os.path.exists", return_value=False), \
-             patch("data_pipeline.ingestion.os.makedirs"), \
-             patch("pandas.DataFrame.to_csv"):
+
+        with (
+            patch("data_pipeline.ingestion.os.path.exists", return_value=False),
+            patch("data_pipeline.ingestion.os.makedirs"),
+            patch("pandas.DataFrame.to_csv"),
+        ):
             ingestion.data_retrieval("2023-01-01", "2023-01-01", country_code="ES")
 
         assert mock_entsoe.called
@@ -73,6 +73,7 @@ class TestPipelineIntegration:
 
         project_root = pipeline_dirs["raw_energy"].parent.parent.parent
         from data_pipeline import gdrive_sync
+
         with patch("data_pipeline.gdrive_sync.PROJECT_ROOT", str(project_root)):
             gdrive_sync.backup_project_data()
 
@@ -85,10 +86,9 @@ class TestPipelineIntegration:
         df_e = pd.DataFrame({"Unnamed: 0": times, "Load_MW": np.random.uniform(20000, 30000, 48)})
         df_e.to_csv(pipeline_dirs["raw_energy"] / "energy_test.csv", index=False)
 
-        df_w = pd.DataFrame({
-            "valid_time": times, "t2m": 285, "skt": 285, "ssrd": 100,
-            "latitude": 40.4, "longitude": -3.7
-        })
+        df_w = pd.DataFrame(
+            {"valid_time": times, "t2m": 285, "skt": 285, "ssrd": 100, "latitude": 40.4, "longitude": -3.7}
+        )
         df_w.to_csv(pipeline_dirs["raw_weather"] / "weather_test.csv", index=False)
 
         with patch.object(DataCleaner, "treat_weather_outliers", side_effect=lambda x: x):
@@ -101,7 +101,7 @@ class TestPipelineIntegration:
 
         fe = FeatureEngineer(threshold=0.6, models_dir=pipeline_dirs["models"], frequency="hourly")
         results = fe.run_pipeline(df_hourly, fit=True)
-        
+
         pipeline_dirs["feat_eng_dir"].mkdir(parents=True, exist_ok=True)
         for ds in ["full", "selected", "pca"]:
             results.get(ds, results["full"]).to_csv(
@@ -122,6 +122,7 @@ class TestPipelineIntegration:
         mock_create_study.return_value = mock_study
 
         fake_rf = MagicMock()
+
         def dynamic_fit_mock(X, y, **kwargs):
             n_features = X.shape[1]
             fake_rf.feature_importances_ = np.random.rand(n_features)
@@ -134,13 +135,15 @@ class TestPipelineIntegration:
 
         feat_eng_path = pipeline_dirs["feat_eng_dir"]
         feat_eng_path.mkdir(exist_ok=True, parents=True)
-        times = pd.date_range("2019-01-01", periods=24*365*5, freq="h", tz="UTC")
-        df_mock = pd.DataFrame({
-            "datetime": times,
-            "Load_MW": np.random.normal(25000, 5000, len(times)),
-            "temp": np.random.rand(len(times)),
-            "ssrd": np.random.rand(len(times))
-        })
+        times = pd.date_range("2019-01-01", periods=24 * 365 * 5, freq="h", tz="UTC")
+        df_mock = pd.DataFrame(
+            {
+                "datetime": times,
+                "Load_MW": np.random.normal(25000, 5000, len(times)),
+                "temp": np.random.rand(len(times)),
+                "ssrd": np.random.rand(len(times)),
+            }
+        )
         for ds in ["full", "selected", "pca"]:
             df_mock.to_csv(feat_eng_path / f"features_hourly_{ds}.csv", index=False)
 
@@ -148,7 +151,7 @@ class TestPipelineIntegration:
         orchestrator.manager = ModelManager(frequency="hourly")
         orchestrator.manager.data_dir = feat_eng_path
         orchestrator.manager.models_dir = pipeline_dirs["models"]
-        orchestrator.manager.n_partitions = 3 
+        orchestrator.manager.n_partitions = 3
 
         datasets = orchestrator.manager.load_all_datasets()
         splits = orchestrator._precalculate_splits(datasets)
@@ -161,5 +164,5 @@ class TestPipelineIntegration:
                 mock_lr.return_value = fake_lr
                 orchestrator._evaluate_and_save_model(m_type, "hourly", datasets, splits)
 
-        assert mock_joblib.called 
+        assert mock_joblib.called
         assert mock_db.called

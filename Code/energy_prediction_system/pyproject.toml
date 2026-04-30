@@ -19,6 +19,7 @@ dependencies = [
     "optuna>=3.1.0",
 
     # API & Sync
+    "requests>=2.32.5",
     "cdsapi>=0.6.1",
     "entsoe-py>=0.5.10",
     "python-dotenv>=1.0.0",
