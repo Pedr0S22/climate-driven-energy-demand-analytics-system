@@ -31,8 +31,11 @@ CREATE TABLE model (
     rmse                       DOUBLE PRECISION NOT NULL,
     mae                        DOUBLE PRECISION NOT NULL,
     r2                         DOUBLE PRECISION NOT NULL,
+    is_active                  BOOLEAN NOT NULL DEFAULT FALSE,
     PRIMARY KEY(model_name_id)
 );
+
+CREATE UNIQUE INDEX one_active_model_per_type ON model (model_pred_type) WHERE (is_active = true);
 
 
 CREATE TABLE client (
@@ -60,17 +63,21 @@ CREATE TABLE request (
 );
 
 CREATE TABLE predictions_daily (
-    request_id BIGINT,
-    date_day   DATE NOT NULL,
-    value_pred DOUBLE PRECISION NOT NULL,
-    PRIMARY KEY(request_id, date_day), -- Chave composta permite várias previsões diárias para a mesma request
+    request_id      BIGINT,
+    date_day        DATE NOT NULL,
+    value_pred      DOUBLE PRECISION NOT NULL,
+    historical_load JSONB,
+    prediction_load JSONB,
+    PRIMARY KEY(request_id, date_day),
     CONSTRAINT predictions_daily_fk1 FOREIGN KEY (request_id) REFERENCES request(id) ON DELETE CASCADE
 );
 
 CREATE TABLE predictions_hourly (
-    request_id BIGINT,
-    date_hour  TIMESTAMP NOT NULL,
-    value_pred DOUBLE PRECISION NOT NULL,
-    PRIMARY KEY(request_id, date_hour), -- Chave composta permite várias previsões por hora para a mesma request
+    request_id      BIGINT,
+    date_hour       TIMESTAMP NOT NULL,
+    value_pred      DOUBLE PRECISION NOT NULL,
+    historical_load JSONB,
+    prediction_load JSONB,
+    PRIMARY KEY(request_id, date_hour), 
     CONSTRAINT predictions_hourly_fk1 FOREIGN KEY (request_id) REFERENCES request(id) ON DELETE CASCADE
 );
