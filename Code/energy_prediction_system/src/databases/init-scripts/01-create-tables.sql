@@ -35,7 +35,7 @@ CREATE TABLE model (
     PRIMARY KEY(model_name_id)
 );
 
-CREATE UNIQUE INDEX one_active_model_per_type ON model (model_pred_type) WHERE (is_active = true);
+CREATE UNIQUE INDEX one_active_model_per_type ON model (model_type) WHERE (is_active = true);
 
 
 CREATE TABLE client (
