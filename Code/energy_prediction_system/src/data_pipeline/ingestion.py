@@ -160,6 +160,7 @@ def fetch_realtime_energy_load(days: int = 7, country_code: str = "ES"):
     """
     Fetches the latest Actual Total Load from ENTSO-E for the last N days.
     Saves to data/raw/energy/realtime_load.csv.
+    Uses the same approach as historical ingestion (Europe/Madrid timezone, day boundaries).
     """
     logging.info(f"Fetching real-time ENTSO-E load data for {country_code} (last {days} days)...")
     SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
@@ -177,16 +178,18 @@ def fetch_realtime_energy_load(days: int = 7, country_code: str = "ES"):
         logging.error(f"ENTSOE_API_KEY not found! Looked in: {env_path}")
         return
 
-    now_utc = pd.Timestamp.now(tz="UTC")
-    start_date_dt = now_utc - pd.Timedelta(days=days)
+    # Align with historical approach: Use Europe/Madrid and full day boundaries
+    now = pd.Timestamp.now(tz="Europe/Madrid")
+    start_date_dt = (now - pd.Timedelta(days=days)).normalize()
+    end_date_dt = now.normalize() + pd.Timedelta(days=1)
 
     for attempt in range(MAX_RETRIES):
         try:
             logging.info(f"Querying ENTSO-E API... [Attempt {attempt + 1}/{MAX_RETRIES}]")
             client = EntsoePandasClient(api_key=api_key)
 
-            # Querying with UTC timestamps
-            load_data = client.query_load(country_code, start=start_date_dt, end=now_utc)
+            # Querying with Madrid timestamps to match training data retrieval
+            load_data = client.query_load(country_code, start=start_date_dt, end=end_date_dt)
 
             if isinstance(load_data, pd.Series):
                 load_data = load_data.to_frame(name="Load_MW")
@@ -294,10 +297,9 @@ def data_retrieval(start_date: str, end_date: str, country_code: str = "ES"):
 
 
 def realtime_data_retrieval(days: int = 7, country_code: str = "ES"):
-    """Master function to orchestrate real-time data ingestion and backup."""
+    """Master function to orchestrate real-time data ingestion."""
     fetch_realtime_energy_load(days, country_code)
     fetch_realtime_weather(days)
-    backup_project_data()
 
 
 if __name__ == "__main__":

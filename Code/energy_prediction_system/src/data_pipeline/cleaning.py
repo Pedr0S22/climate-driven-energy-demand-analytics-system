@@ -402,10 +402,24 @@ def cleaning(energy_dir, weather_dir, train_data, output_dir=None):
     df_hourly = pd.merge(df_weather_final, df_e, on="datetime", how="inner")
     df_hourly = df_hourly.sort_values("datetime").reset_index(drop=True)
 
-    # 4. Daily
-    df_daily = cleaner.create_daily_aggregation(df_hourly)
+    # 4. Enforce Column Order and Drop Extras
+    # Training columns order for Hourly: datetime, u10, v10, d2m, t2m, sp, tp, ssrd, strd, skt, stl1, swvl1, Load_MW
+    # Training columns order for Daily: datetime, u10, v10, d2m, t2m, sp, tp, ssrd, strd, skt, stl1, swvl1, Load_MWh
+    common_weather = ["u10", "v10", "d2m", "t2m", "sp", "tp", "ssrd", "strd", "skt", "stl1", "swvl1"]
+    hourly_order = ["datetime"] + common_weather
+    daily_order = ["datetime"] + common_weather
 
-    # 5. Export
+    hourly_order.append("Load_MW")
+    daily_order.append("Load_MWh")
+
+    # Ensure only expected columns are kept and in the correct order
+    df_hourly = df_hourly[[c for c in hourly_order if c in df_hourly.columns]]
+
+    # 5. Daily
+    df_daily = cleaner.create_daily_aggregation(df_hourly)
+    df_daily = df_daily[[c for c in daily_order if c in df_daily.columns]]
+
+    # 6. Export
     hourly_file = output_path / f"{prefix}_hourly.csv"
     daily_file = output_path / f"{prefix}_daily.csv"
 
