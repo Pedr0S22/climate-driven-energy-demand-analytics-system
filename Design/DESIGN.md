@@ -14,6 +14,7 @@ This document captures the low-level system design decisions, technical stack, d
 * #### 2.2. Cleaning & Temporal Alignment Module
 * #### 2.3. Feature Engineering Module
 * #### 2.4. Training & Evaluation
+* #### 2.5. Real-Time Data Pipeline Design
 
 ### 3. Core Backend Services Design
 * #### 3.1.Authentication/Registration & Security Services
@@ -60,7 +61,7 @@ The technology stack used in the project is described below. Also FILE X and FIL
 
 ### 1.3. Infrastructure & Telemetry Stack
 
-* **Monitoring:** [`TODO`] ELK 
+* **Monitoring:** [`TODO`] ELK
 
 
 ## 2. Data Pipeline Design
@@ -102,7 +103,7 @@ The primary objective of Ingestion Module is to reliably, securely, and reproduc
     - **Engineering Why:** Redundancy is critical for research reproducibility. By syncing to Google Drive, the team maintains a shared, persistent source of truth for raw data that survives local environment resets.
 
 
-### 2.2. Cleaning & Temporal Alignment Module (UC2)
+### 2.2. Cleaning & Temporal Alignment Module
 
 The primary objective of the Cleaning & Temporal Alignment Module is to transform raw, heterogeneous energy and meteorological data into synchronized, clean, and aggregated datasets. Refactored into a modular `DataCleaner` class, it supports both high-performance batch processing of historical files and real-time ingestion for inference.
 
@@ -191,7 +192,6 @@ The primary objective of the Feature Engineering Module is to transform synchron
         - Saves fitted states to `/models/feat-engineering/` with frequency-specific suffixes.
         - **Engineering Why:** Essential for the **Live Data Scheduler**, ensuring real-time daily or hourly inference uses the exact statistical parameters of the corresponding training set.
 
-
 ### 2.4. Training & Evaluation Module
 
 The primary objective of the Training & Evaluation Module is to autonomously select the most robust model and dataset configuration through rigorous statistical validation. It transitions the pipeline from a "one-size-fits-all" approach to an adaptive strategy that handles both **Hourly** (short-term volatility) and **Daily** (long-term trend) demand patterns.
@@ -232,6 +232,31 @@ The primary objective of the Training & Evaluation Module is to autonomously sel
         - Implements Rule 8: Models are saved as `[LR|RF]_vx.joblib`.
         - Database entries link the file path with the exact `rmse`, `mae`, and `r2` metrics from the winning fold, enabling rollback to previous versions if performance degrades in production.
 
+### 2.5. Real-Time Data Pipeline Design
+
+The Real-Time Data Pipeline is a high-availability version of the main pipeline, optimized for low-latency inference while maintaining strict mathematical parity with the training environment.
+
+*   **Orchestration:** Driven by `real_time_pipeline.py`, which coordinates the retrieval, cleaning, and multi-resolution feature engineering of live data.
+*   **Target:** Reads from live APIs, outputs to `/data/processed/feat-engineering/real-time/`.
+
+#### 2.5.1. Real-Time Ingestion Strategy (31-Day Window)
+To satisfy the requirements of high-dimensional feature engineering, the real-time ingestion fetch window is set to **31 days** (configurable via `REAL_TIME_DAYS`).
+*   **Engineering Why:**
+    *   **Rolling Windows:** The `rolling_30` feature requires 30 days of prior history to calculate a valid mean/std for the current day.
+    *   **Lagged Features:** The `L28_Load` feature requires data from exactly 28 days ago.
+    *   **PCA Stability:** Without a 31-day buffer, these features would be filled with zeros (`NaN` fill), causing the PCA projection to "tilt" and produce values inconsistent with the training set, leading to inaccurate predictions.
+
+#### 2.5.2. Technical Mechanisms:
+*   **Resolution Alignment:** ENTSO-E queries use the `Europe/Madrid` timezone and normalized day boundaries. This ensures the API returns standard hourly data for Spain, matching the training data resolution without requiring manual resampling.
+*   **Multi-Dataset Generation:** For every frequency (Hourly/Daily), the real-time pipeline generates three distinct files:
+    1.  `realtime_[freq]_full.csv`: All engineered features.
+    2.  `realtime_[freq]_selected.csv`: Features filtered by the 0.6 association threshold.
+    3.  `realtime_[freq]_pca.csv`: Data projected into the pre-fitted PCA space.
+*   **Robust File Persistence (Windows-Safe):** 
+    *   Implements an **Atomic Write** pattern using `.tmp` files.
+    *   Explicitly handles Windows file-locking issues by catching `PermissionError` and logging descriptive diagnostics.
+    *   Uses `os.replace` with string-path conversion to ensure cross-platform compatibility and prevent file corruption during high-frequency updates.
+*   **Security:** Cloud synchronization (`gdrive_sync.py`) is explicitly disabled for real-time retrieval to protect API throughput and prevent uncleaned live data from polluting the research backup.
 
 
 ### 3. Core Backend Services Design
