@@ -36,4 +36,4 @@ COPY . .
 ENV DISPLAY=:0
 
 # Comando para iniciar a aplicação
-CMD ["python", "main.py"]
+CMD ["python", "src/app/main.py"]
