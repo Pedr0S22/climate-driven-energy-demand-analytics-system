@@ -1,17 +1,19 @@
 #!/bin/bash
 set -e
 
-echo "--- Iniciando Ingestion ---"
-python /src/data_pipeline/ingestion.py
+# Garante que o PYTHONPATH inclui a raiz do código
+export PYTHONPATH=$PYTHONPATH:/app/src
 
+echo "--- Iniciando Ingestion ---"
+python /app/src/data_pipeline/ingestion.py
 
 echo "--- Iniciando Cleaning ---"
-python /src/data_pipeline/cleaning.py
+python /app/src/data_pipeline/cleaning.py
 
 echo "--- Iniciando Feature Engineering ---"
-python /src/data_pipeline/feature_engineering.py
+python /app/src/data_pipeline/feature_engineering.py
 
 echo "--- Iniciando Modeling ---"
-python /src/data_pipeline/modeling.py
+python /app/src/data_pipeline/modeling.py
 
-echo "--- Pipeline concluído com sucesso! ---"
+echo "--- Pipeline executado com sucesso! ---"

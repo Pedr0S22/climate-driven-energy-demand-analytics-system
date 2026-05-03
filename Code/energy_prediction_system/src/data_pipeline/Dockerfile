@@ -1,22 +1,27 @@
 FROM python:3.11-slim
 
-WORKDIR /
+# Define o diretório de trabalho
+WORKDIR /app
 
 # Instala dependências do sistema
-RUN apt-get update && apt-get install -y libpq-dev gcc && rm -rf /var/lib/apt/lists/*
+RUN apt-get update && apt-get install -y \
+    libpq-dev \
+    gcc \
+    curl \
+    && rm -rf /var/lib/apt/lists/*
 
-# Copia os requirements da raiz do projeto para o contentor
+# Copia os requisitos (contexto de build: energy_prediction_system/)
 COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 
-# Copia a tua pasta src local para a pasta /src no contentor
-COPY src/ /src/
+# Copia a pasta src para /app/src
+COPY src/ /app/src/
 
 # Define o PYTHONPATH para a nova localização
-ENV PYTHONPATH=/src
+ENV PYTHONPATH=/app/src
 
-# Dá permissões de execução ao script na nova localização
-RUN chmod +x /src/data_pipeline/run_pipeline.sh
+# Dá permissões de execução ao script
+RUN chmod +x /app/src/data_pipeline/run_pipeline.sh
 
 # Comando para arrancar
-CMD ["/src/data_pipeline/run_pipeline.sh"]
+CMD ["/app/src/data_pipeline/run_pipeline.sh"]
