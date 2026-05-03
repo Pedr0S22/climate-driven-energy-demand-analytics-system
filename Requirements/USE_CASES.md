@@ -1,4 +1,4 @@
-# USE CASE DEFINITIONS - V3.0
+# USE CASE DEFINITIONS - V3.4
 
 This file contains all UCs for the development of this project.
 
@@ -114,8 +114,10 @@ Land Hourly data from 1950 to present" dataset found at [https://cds.climate.cop
 5. The system handles data types and features conversions.
 6. The system detects outliers using the IQR method for all variables except electricity load. For each detected value, the system verifies whether it is plausible according to the predefined limits.
 7. The system aggregates data every hour, averaging temperature, wind, radiation, and precipitation; for electrical charge, we use the maximum value for that interval.
-8. The system merges both datasets into a single dataset and saves the processed data in the `/data/processed/` folder.
-9. The system logs all events and the execution time to ELK.
+8. The system merges both datasets into a single dataset
+9. The system aggregates daily dataset using the sum of load_MW for 24h and uses a simple aveage for continous variables.
+10. The system saves the processed datasets (daily and hourly) in the `/data/processed/` folder.
+11. The system logs all events and the execution time to ELK.
 
 
 **Extensions:**
@@ -183,12 +185,17 @@ User goal.
     - variance;
     - root mean square;
     - average derivatives;
-    - skewness, kurtosis, IQR, zero crossing rate, mean crossing rate, and pairwise correlation;
+    - skewness, kurtosis, and IQR;
 
 6. The system extracts lagged demand features, such as:
-    - L1 Load: Electrical load one hour ago;
-    - L24 Load: Load one day ago;
-    - L168 Load: Load one week ago;
+    - Hourly dataset:
+        - L1 Load: Electrical load one hour ago;
+        - L24 Load: Load one day ago;
+        - L168 Load: Load one week ago;
+    - Daily dataset:
+        - L1 Load: Electrical load one day ago;
+        - L7 Load: Load one week ago;
+        - L28 Load: Load one month ago;
 
 7. The system derives new features from the data to provide additional analytical depth, such as:
     - Temperature Anomalies: Deviation from seasonal/monthly means;
@@ -197,29 +204,27 @@ User goal.
 
 8. The system validates that the features obtained don't include invalid values generated during the feature extraction process.
 
-9. The system measures and logs the execution time and total feature count and other events to ELK.
+9. The system measures and logs the execution time, relevant feature count, and other processing events.
 
-10. The system saves the full feature sets in `/data/processed/feat-engineering/`, ensuring the output format is compatible with the model training pipeline.
+10. The system saves the full sets in `/data/processed/feat-engineering/`, for both hourly and daily data models, ensuring the output format is compatible with the model training pipeline.
 
 **Extensions**:
 
 8. a) Minor domain inconsistencies detected (e.g., a few records with values that do not align with physical constraints):
     * 8a1. The system handles them by dropping or imputing the affected rows to maintain dataset quality.
 
-    b) Critical domain-context errors detected (e.g., widespread anomalies where feature values are physically implausible):
-    * 8b1. The system logs a domain consistency error to ELK and the process terminates to prevent training a model on nonsensical data.
-
-    * 8b2. The developer must review the previous extraction logic or source data to identify the source of the contextual mistake.
+    b) Domain inconsistencies detected:
+    * 8b1. The system utilizes forward and backward filling to handle invalid values generated during extraction, ensuring a complete dataset for the modeling stage.
 
     c) High dimensionality detected:
 
-    * 8c1. The system performs feature selection (e.g., Fisher Score, ReliefF) to identify the most predictive variables.
+    * 8c1. The system performs feature selection using correlation metrics (labda, spearman, logist regression/ANOVA) to identify the most predictive variables.
 
-    * 8c2. The system performs dimensionality reduction (e.g., PCA) to compress information.
+    * 8c2. The system performs dimensionality reduction PCA to compress information.
 
     * 8c3. The system generates and labels these new dataset versions.
 
-    * 8c4. The system saves each resulting dataset version as a separate file to allow for comparative training and evaluation in the next stage.
+    * 8c4. The system saves each resulting dataset version as a separate file to allow for comparative training and evaluation in the next stage (full, selected, pca feature sets) for both daily and hourly models.
 
     * 8c5. The system ensures these new versions are compatible with the model training pipeline.
 
@@ -480,7 +485,7 @@ User goal.
 
 1. a. User requests a custom prediction timeframe:
 
-    * 1a1. The user selects a custom number of historical hours (between 1 to 5) and/or forecast hours (between 1 to 24).
+    * 1a1. The user selects a custom number of historical hours (between 3 to 5) and/or forecast hours (between 1 to 24).
 
     * 1a2. The system proceeds to Step 2 using the newly specified parameters.
 
@@ -642,7 +647,7 @@ Allow the user to access a dashboard to view the time series of the hourly elect
 3. The system renders a time series chart displaying the continuous trend from actual values to predicted values.
 4. The system displays visual indicators with the main 2 variables associated with the forecast.
 5. The user hovers or interacts with the chart to view the precise demand values for specific individual hours.
-6. The user adjusts the parameters for the chart, changing the historical context (between 1 to 5 hours) and the forecast horizon (between 1 to 24 hours).
+6. The user adjusts the parameters for the chart, changing the historical context (between 3 to 5 hours) and the forecast horizon (between 1 to 24 hours).
 7. The user asks for a new prediction based on the new parameters.
 8. The system retrieves the recalculated prediction and smoothly updates the chart and top 2 drivers.
 9. The System logs every event into ELK.
@@ -738,23 +743,111 @@ Allow the user to access a dashboard to view the time series of the hourly elect
 6.  The user modifies none, one or more of these parameters. Other features required by the model (e.g., lagged load, rolling climate statistics) are automatically calculated using neutral/median values from the training history.
 7.  The user hits the **"Run Simulation"** button.
 8.  The system performs **Frontend/Backend Validation** to ensure all inputs are within the physical and logical limits defined in the cleaning module (UC2).
-9.  The system feeds the synthesized feature vector into the active model.
-10. The system calculates the predicted load (MW) and identifies the **Top 2 Drivers** most heavily influencing this result.
-11. The system displays the simulation result (Predicted MW) and visual indicators for the drivers on the simulator dashboard.
-12. The user can adjust parameters and **Re-run** the experiment to observe changes in real-time.
-13. The system logs the simulation event (input parameters, results and timestamps) to ELK for audit and monitoring.
+9. The system feeds the synthesized feature vector into the active model.
+10. The system calculates the predicted load (MW) and identifies the Top 2 Drivers most heavily influencing this result.
+11. The system securely passes the generated prediction (Predicted MW), the identified top 2 drivers, the selected template, and the custom input parameters to the presentation layer for visualization.
+12. The system logs the simulation event (input parameters, results, and timestamps) to ELK for audit and monitoring.
 
 **Extensions:**
 
-2. a. **The user selects the Hourly resolution:**
-    *   2a1. The user selects the specific **Hour of the Day** (0-23) in the Temporal Context section.
-    *   2a2. The system continues to Step 3 using the Hourly model.
+2. a. The user selects the Hourly resolution:
+    * 2a1. The user selects the specific Hour of the Day (0-23) in the Temporal Context section.
+    * 2a2. The system continues to Step 3 using the Hourly model.
 
-8) a. **Validation Failure (Invalid Inputs):**
-    *   8a1. The system detects inputs that are physically impossible or logically inconsistent.
-    *   8a2. The system logs the failure details to ELK
-    *   8a3. The system denies the simulation, highlights the offending fields, and prompts the user for correction.
+8) a. Validation Failure (Invalid Inputs):
+    * 8a1. The system detects inputs that are physically impossible or logically inconsistent.
+    * 8a2. The system logs the failure details to ELK.
+    * 8a3. The system denies the simulation, highlights the offending fields, and prompts the user for correction.
 
-9. a. **The system catches an error during the model's inference phase.:**
-    *   9a1. The system logs the failure details to ELK.
-    *   9a2. The system displays a pop-up error message to the user
+9. a. The system catches an error during the model's inference phase:
+    * 9a1. The system logs the failure details to ELK.
+    * 9a2. The system displays a pop-up error message to the user.
+
+
+## UC14: User Logout
+
+**Primary Actor:** User or Admin
+
+**Scope/Goal:** Allow an authenticated user to securely terminate their session, invalidating any active authentication tokens and preventing unauthorized access to their account on the device.
+
+**Level:** User Goal
+
+**Stakeholders and Interests:**
+    
+*   **User:** Wants to ensure their account is secure when they finish using the application or step away from their device.
+*   **Security Administrator:** Needs assurance that sessions are properly terminated, tokens are invalidated or discarded, and the action is logged for auditing.
+
+**Preconditions:**
+
+1.  **Authentication:** The user must be currently authenticated and have an active session in the system.
+
+**Main Success Scenario:**
+
+1.  The user requests to log out of the application via the user interface (e.g., clicking a "Logout" button).
+2.  The system invalidates the user's active session and securely clears any locally stored authentication tokens (e.g., JWT).
+3.  The system logs the logout event, recording the timestamp, the user's email, and username to ELK.
+4.  The system redirects the user to the login/authentication screen.
+
+**Extensions:**
+
+2. a. The system fails to communicate with the backend to invalidate the token (if applicable):
+    *   2a1. The system catches the network or server error.
+    *   2a2. The system forces a local logout by discarding the token on the client side.
+    *   2a3. The system proceeds to Step 3, logging the local logout and the backend communication failure to ELK.
+
+
+
+## UC15: Scenario Simulation Dashboard
+
+**Primary Actor:** User
+
+**Scope/Goal:**
+The visualization layer for the Scenario Simulation module. The goal is to clearly render the calculated prediction alongside the specific context of the simulation, showing the user exactly what parameters and templates drove the displayed forecast.
+
+**Level:** User Goal
+
+**Stakeholders and Interests:**
+
+* **User:** Needs a clear, intuitive dashboard to interpret the results of their "What-if" scenario, verifying the inputs they chose against the final predicted demand.
+
+* **Developer:** Needs a modular component that solely handles UI rendering based on the data payload delivered by the simulation engine.
+
+**Preconditions:**
+
+1. **Authentication:** The user must be successfully authenticated in the system.
+
+2. **Simulation Execution:** The backend must have successfully completed a scenario simulation (UC13) and generated a valid data payload.
+
+**Main Success Scenario:**
+
+1. The use case begins immediately after the backend calculates a scenario simulation prediction.
+
+2. The system receives the simulation payload, which includes the Predicted Load (MW), the Base Scenario Template utilized, the custom Temporal/Meteorological parameters, and the Top 2 Drivers.
+
+3. The system renders the Simulation Results Dashboard.
+
+4. The system prominently displays the Predicted Load in megawatts (MW).
+
+5. The system displays a summary card detailing the context of the run, specifically showing the chosen Base Scenario Template (e.g., "Heatwave", "Winter Storm").
+
+6. The system displays a categorized breakdown of the exact variables used for the prediction:
+
+    * The Temporal Context (Month, Day of Week, Year, and Hour if applicable).
+
+    * The Meteorological Parameters (Temperature, Pressure, Precipitation, Wind).
+
+7. The system visualizes the Top 2 Drivers with indicators or charts to show how strongly they influenced the final MW prediction.
+
+8. The system provides an interactive "Adjust Scenario" button, allowing the user to tweak their previously chosen parameters and seamlessly trigger a new simulation run (routing back to UC13).
+
+**Extensions:**
+
+2. a. Missing or Corrupted Payload Data:
+
+    * 2a1. The system detects that required components (e.g., the predicted MW value or the template name) are missing from the backend response.
+
+    * 2a2. The system aborts rendering the specific results to prevent UI crashes.
+
+    * 2a3. The system displays a user-friendly error message stating that the simulation results could not be fully loaded.
+
+    * 2a4. The system provides a button to return to the empty Scenario Simulator configuration screen.

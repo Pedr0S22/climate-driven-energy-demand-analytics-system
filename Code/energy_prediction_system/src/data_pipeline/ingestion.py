@@ -1,17 +1,20 @@
-# for copernicus
 import logging
 import os
 import time
 import zipfile
 
+# for copernicus
 import cdsapi
-
-# for entso/e
 import pandas as pd
 
 # for gdrive
-from data_pipeline.gdrive_sync import backup_project_data
+try:
+    from data_pipeline.gdrive_sync import backup_project_data
+except (ImportError, ModuleNotFoundError):
+    from gdrive_sync import backup_project_data
 from dotenv import load_dotenv
+
+# for entsoe
 from entsoe import EntsoePandasClient
 
 MAX_RETRIES = 3

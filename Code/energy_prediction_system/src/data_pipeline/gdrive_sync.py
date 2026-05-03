@@ -18,8 +18,8 @@ PROJECT_ROOT = os.path.abspath(os.path.join(SCRIPT_DIR, "..", ".."))
 
 def authenticate_gdrive():
     creds = None
-    token_path = os.path.join(SCRIPT_DIR, "token.json")
-    creds_path = os.path.join(SCRIPT_DIR, "credentials.json")
+    token_path = os.path.join(SCRIPT_DIR, "..", "token.json")
+    creds_path = os.path.join(SCRIPT_DIR, "..", "credentials.json")
 
     if os.path.exists(token_path):
         creds = Credentials.from_authorized_user_file(token_path, SCOPES)

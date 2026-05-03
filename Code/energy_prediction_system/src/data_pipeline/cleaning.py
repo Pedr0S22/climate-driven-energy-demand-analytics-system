@@ -1,731 +1,391 @@
 import logging
-import os
 import time
 from pathlib import Path
 
 import numpy as np
 import pandas as pd
 
-# =======================================
-# DADOS ENERGY
-# =======================================
+logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(levelname)s - %(message)s")
+logger = logging.getLogger(__name__)
 
 
-def fill_nan_energy(df):
-    df["Load_MW"] = pd.to_numeric(df["Load_MW"], errors="coerce")
-    if df["Load_MW"].isna().sum() == 0:
+class DataCleaner:
+    """
+    Modular Data Cleaning Pipeline for Energy and Weather data.
+
+    Refactored for high performance using vectorized Pandas operations where possible,
+    and targeted loops for mathematical correctness on missing value imputation.
+    Follows UC2 requirements and supports Real-Time data processing.
+    """
+
+    def __init__(self):
+        # Physical limits for data validation (UC2)
+        # u10 and v10 are vector components and can be negative.
+        self.physical_limits = {
+            "t2m": (-40, 55),
+            "skt": (-40, 55),
+            "d2m": (-40, 55),
+            "stl1": (-40, 65),
+            "u10": (-69.4, 69.4),
+            "v10": (-69.4, 69.4),
+            "tp": (0, 55),
+            "ssrd": (0, float("inf")),
+        }
+        self.iqr_only_vars = ["strd", "sp", "swvl1"]
+
+    # =======================================
+    # ENERGY PROCESSING
+    # =======================================
+
+    def fill_nan_energy(self, df: pd.DataFrame) -> pd.DataFrame:
+        """
+        UC2 Imputation for Electricity Load:
+        - Isolated (1 per hour): Linear interpolation.
+        - Multiple (>1 per hour): Mean of the last 6 valid observations.
+        """
+        df = df.copy()
+        df["Load_MW"] = pd.to_numeric(df["Load_MW"], errors="coerce")
+        if df["Load_MW"].isna().sum() == 0:
+            return df
+
+        time_col = "datetime" if "datetime" in df.columns else "Unnamed: 0"
+        df[time_col] = pd.to_datetime(df[time_col], utc=True)
+
+        # Legacy Rule: First row NaN -> copy from next row
+        if pd.isna(df.loc[0, "Load_MW"]) and len(df) > 1:
+            if pd.notna(df.loc[1, "Load_MW"]):
+                df.loc[0, "Load_MW"] = df.loc[1, "Load_MW"]
+
+        # Identify isolated vs multiple NaNs in 1-hour window
+        nan_counts = df["Load_MW"].isna().groupby(df[time_col].dt.floor("h")).transform("sum")
+
+        # Pre-calculate candidate values
+        interp = df["Load_MW"].interpolate(method="linear")
+
+        # Mean of exactly the LAST 6 valid observations (UC2 Multiple rule)
+        valid_only = df["Load_MW"].dropna()
+        rolling_mean_6 = valid_only.rolling(window=6, min_periods=1).mean()
+        rolling_mean_6 = rolling_mean_6.reindex(df.index, method="ffill")
+
+        mask_isolated = (df["Load_MW"].isna()) & (nan_counts == 1)
+        mask_multiple = (df["Load_MW"].isna()) & (nan_counts > 1)
+
+        df.loc[mask_isolated, "Load_MW"] = interp[mask_isolated]
+        df.loc[mask_multiple, "Load_MW"] = rolling_mean_6[mask_multiple]
+
+        # Final fallback for start of dataset
+        df["Load_MW"] = df["Load_MW"].ffill().bfill()
         return df
 
-    # quando for NaN na 1 linha
-    for idx in df[df["Load_MW"].isna()].index:
-        if idx == 0:  # Primeira linha
-            if idx + 1 < len(df) and pd.notna(df.loc[idx + 1, "Load_MW"]):
-                df.loc[idx, "Load_MW"] = df.loc[idx + 1, "Load_MW"]
-                continue
-
-    # Identificar cada NaN e quantos existem na mesma hora
-    for idx in df[df["Load_MW"].isna()].index:
-        hora_atual = df.loc[idx, "Unnamed: 0"].floor("h")
-        mask_mesma_hora = df["Unnamed: 0"].dt.floor("h") == hora_atual
-        num_nan_hora = df.loc[mask_mesma_hora, "Load_MW"].isna().sum()
-
-        if num_nan_hora == 1:
-            # Apenas 1 NaN na hora - interpolação (apenas neste ponto)
-            df.loc[idx, "Load_MW"] = df["Load_MW"].interpolate(method="linear").loc[idx]
-        else:
-            # Mais que 1 NaN na hora - média das últimas 6 observações válidas
-            dados_anteriores = df.loc[: idx - 1, "Load_MW"].dropna().tail(6)
-            if len(dados_anteriores) > 0:
-                df.loc[idx, "Load_MW"] = dados_anteriores.mean()
-
-    return df
-
-
-def aggregate_hour(df):
-    time_col = "Unnamed: 0"
-    value_col = "Load_MW"
-
-    df = df.sort_values(time_col).reset_index(drop=True)
-    df[time_col] = pd.to_datetime(df[time_col], utc=True)
-
-    idx_15_start = df.attrs.get("idx_15_start", None)
-
-    # --- CASO 1: 15 min contínuo (sem idx_15_start guardado) ---
-    if idx_15_start is None:
-        # assume que TUDO é 15 min
-        i = 0
-        indices_para_apagar = []
-
-        while i < len(df):
-            hora_atual = df.loc[i, time_col].floor("h")
-            valores_hora = []
-            indices_hora = []
-
-            while i < len(df) and df.loc[i, time_col].floor("h") == hora_atual:
-                valores_hora.append(df.loc[i, value_col])
-                indices_hora.append(i)
-                i += 1
-
-            if valores_hora:
-                valor_max = max(valores_hora)
-                df.loc[indices_hora[0], value_col] = valor_max
-                for idx in indices_hora[1:]:
-                    indices_para_apagar.append(idx)
-
-        df = df.drop(indices_para_apagar).reset_index(drop=True)
-        logging.debug("  Shape antes: %d (15min)", len(df) + len(indices_para_apagar))
-        logging.debug("  Shape depois: %d (1h com máximo)", len(df))
-
-    # --- CASO 2: mistura 1h + 15 min (com idx_15_start guardado) ---
-    else:
-        df_horario = df.iloc[:idx_15_start].copy().reset_index(drop=True)
-        df_15min = df.iloc[idx_15_start:].copy().reset_index(drop=True)
-
-        i = 0
-        indices_para_apagar = []
-
-        while i < len(df_15min):
-            hora_atual = df_15min.loc[i, time_col].floor("h")
-            valores_hora = []
-            indices_hora = []
-
-            while i < len(df_15min) and df_15min.loc[i, time_col].floor("h") == hora_atual:
-                valores_hora.append(df_15min.loc[i, value_col])
-                indices_hora.append(i)
-                i += 1
-
-            if valores_hora:
-                valor_max = max(valores_hora)
-                df_15min.loc[indices_hora[0], value_col] = valor_max
-                for idx in indices_hora[1:]:
-                    indices_para_apagar.append(idx)
-
-        df_15min = df_15min.drop(indices_para_apagar).reset_index(drop=True)
-
-        df_final = pd.concat([df_horario, df_15min], ignore_index=True)
-        df_final = df_final.sort_values(time_col).reset_index(drop=True)
-
-        logging.info("  Mistura 1h + 15 min")
-        logging.debug("  Shape final: %d ", len(df_final))
-
-        return df_final
-
-    return df
-
-
-def energy(pasta_energy, pasta_saida=None):
-    for nomefich in sorted(os.listdir(pasta_energy)):
-        if nomefich.endswith(".csv"):
-            caminho = os.path.join(pasta_energy, nomefich)
-            df = pd.read_csv(caminho)
-            logging.info("=== %s ===", nomefich)
-            logging.debug("Colunas: %s", list(df.columns))
-            logging.debug("Tipos:\n%s", df.dtypes.to_string())
-            logging.debug("Primeiras linhas:\n%s", df.head().to_string())
-            logging.debug("Shape: %s", df.shape)
-            n_nan_total = df["Load_MW"].isna().sum()
-            logging.info("Total: %d missing", n_nan_total)
-
-            # mudar o timestamp para formato UTC
-            # em 2020 e 2021 o horário está de 1h em 1h; 2022 tem de 1h em 1h e
-            # de 15min em 15min; o resto é de 15min em 15min
-            df["Unnamed: 0"] = pd.to_datetime(df["Unnamed: 0"], utc=True)
-            logging.debug(
-                "Coluna 'Unnamed: 0' em UTC (5 primeiras linhas):\n%s",
-                df["Unnamed: 0"].head(5).to_string(),
-            )
-            logging.debug(
-                "DataFrame com coluna em UTC (5 primeiras linhas):\n%s",
-                df.head(5).to_string(),
-            )
-
-            df_e = time_alignment_energy(df)
-
-            if pasta_saida:
-                os.makedirs(pasta_saida, exist_ok=True)
-                caminho_saida = os.path.join(pasta_saida, nomefich)
-                df_e.to_csv(caminho_saida, index=False)
-                logging.info("Ficheiro corrigido guardado em: %s", caminho_saida)
-
-
-def time_alignment_energy(df):
-    time_col = "Unnamed: 0"
-    df = df.copy()
-    df = df.sort_values(time_col).reset_index(drop=True)
-
-    # Diferenças entre linhas consecutivas
-    ts = df["Unnamed: 0"]
-    diffs = ts.diff().dropna().unique()
-
-    logging.debug("FREQUÊNCIA TEMPORAL:")
-    logging.debug("Diferenças encontradas no dataset: %s", [str(d) for d in diffs])
-
-    if len(diffs) == 1:
-        d = diffs[0]
-        if d == pd.Timedelta(hours=1):
-            return df
-        elif d == pd.Timedelta(minutes=15):
-            return g15_energy(df)
-        else:
-            return ajust15_energy(df)
-
-    else:
-        # Tem mais do que um intervalo
-        unique_diffs = set(diffs)
-
-        if {pd.Timedelta(hours=1), pd.Timedelta(minutes=15)}.issubset(unique_diffs):
-            return g115g1(df)
-        else:
-            return g15_energy(df)
-
-
-def g15_energy(df):
-    time_col = "Unnamed: 0"
-    df = df.sort_values(time_col).reset_index(drop=True)
-    novas_linhas = []
-
-    for i in range(len(df) - 1):
-        linha_atual = df.iloc[i].to_dict()
-        tempo_atual = df.loc[i, time_col]
-        prox_tempo = df.loc[i + 1, time_col]
-
-        novas_linhas.append(linha_atual)
-        diff = prox_tempo - tempo_atual
-
-        if diff > pd.Timedelta(minutes=15):
-            # Todos os intervalos de 15 min entre tempo_atual e prox_tempo
-            tempos_em_falta = pd.date_range(
-                start=tempo_atual + pd.Timedelta(minutes=15),
-                end=prox_tempo - pd.Timedelta(minutes=15),
-                freq="15min",
-                name=time_col,
-            )
-            for t in tempos_em_falta:
-                nova_linha = {col: pd.NA for col in df.columns}
-                nova_linha[time_col] = t
-                novas_linhas.append(nova_linha)
-    # Adicionar última linha
-    novas_linhas.append(df.iloc[-1].to_dict())
-
-    # Construir novo df
-    df_novo = pd.DataFrame(novas_linhas)
-    df_novo = df_novo.sort_values(time_col).reset_index(drop=True)
-    df_novo_energy = fill_nan_energy(df_novo)
-    df_fim = aggregate_hour(df_novo_energy)
-    return df_fim
-
-
-def ajust15_energy(df):
-    df["Unnamed: 0"] = df["Unnamed: 0"].dt.round("15min")
-    return g15_energy(df)
-
-
-def g115g1(df):
-    time_col = "Unnamed: 0"
-    df = df.sort_values(time_col).reset_index(drop=True)
-
-    # Calcular diferenças entre linhas consecutivas
-    diffs = df[time_col].diff().dropna().values
-
-    # Procurar onde a dif passa de 1h para 15 min
-    idx_15_start = None
-    for i in range(1, len(diffs)):
-        prev_diff = diffs[i - 1]
-        this_diff = diffs[i]
-        if prev_diff >= pd.Timedelta(hours=1) and this_diff == pd.Timedelta(minutes=15):
-            idx_15_start = i - 1  # 2 linhas acima da linha onde encontra a dif 15min
-            break
-
-    # Verificar se encontrou transição válida
-    if idx_15_start is None:
-        return df  # Se não encontrar transição, retorna df original
-
-    # Acima (1h): até idx_15_start (inclusive)
-    df_1H = df.iloc[: idx_15_start + 1].copy().reset_index(drop=True)
-
-    # A partir da linha seguinte (15 min): chama g15_energy
-    df_15 = df.iloc[idx_15_start + 1 :].copy().reset_index(drop=True)
-    df_15 = g15_energy(df_15)
-    df_15.attrs["idx_15_start"] = idx_15_start
-
-    # Junta tudo
-    df_final = pd.concat([df_1H, df_15], ignore_index=True)
-    df_final = df_final.sort_values(time_col).reset_index(drop=True)
-    df_final.attrs["idx_15_start"] = idx_15_start
-
-    return df_final
-
-
-# =======================================
-# DADOS WEATHER
-# =======================================
-
-
-def weather(pasta_entrada=None, pasta_saida=None):
-    # Fallbacks para o ambiente de produção
-    if pasta_entrada is None:
-        root = Path(__file__).parent.parent.parent.parent.parent
-        pasta_entrada = root / "Code" / "energy_prediction_system" / "data" / "raw" / "weather"
-
-    if pasta_saida is None:
-        root = Path(__file__).parent.parent.parent.parent.parent
-        pasta_saida = root / "Code" / "energy_prediction_system" / "data" / "raw" / "weather_corrigido"
-
-    pasta_entrada = Path(pasta_entrada)
-    pasta_saida = Path(pasta_saida)
-    pasta_saida.mkdir(parents=True, exist_ok=True)
-    datasets = [
-        pasta_entrada / "era5_timeseries_2020-01-01_to_2025-12-31.csv",
-        pasta_entrada / "reanalysis-era5-land-timeseries-sfc-2m-temperatureauafbxo0.csv",
-        pasta_entrada / "reanalysis-era5-land-timeseries-sfc-pressure-precipitationtwpvvkbd.csv",
-        pasta_entrada / "reanalysis-era5-land-timeseries-sfc-radiation-heathoyt7mym.csv",
-        pasta_entrada / "reanalysis-era5-land-timeseries-sfc-skin-temperaturercarv5g8.csv",
-        pasta_entrada / "reanalysis-era5-land-timeseries-sfc-soil-temperatureokgb55eq.csv",
-        pasta_entrada / "reanalysis-era5-land-timeseries-sfc-soil-waterp9pn16zx.csv",
-    ]
-
-    for arquivo in datasets:
-        logging.info("--- %s ---", arquivo)
-        df = pd.read_csv(arquivo)
-
-        logging.debug("Colunas: %s", list(df.columns))
-        logging.debug("Info:\n%s", df.dtypes.to_string())
-        nulos = df.isnull().sum()
-        logging.debug("Valores nulos por coluna:\n%s", nulos.to_string())
-        logging.debug("Primeiras linhas:\n%s", df.head().to_string())
-        logging.debug("Shape: %s", df.shape)
-
-        df = convert_era5_units(df)
-        logging.debug("=== DEPOIS DAS CONVERSÕES ===")
-        logging.debug("Head após conversões:\n%s", df.head().to_string())
-        logging.debug("Shape após conversões: %s", df.shape)
-
-        df_aligned = time_alignment(df)
-        df_clean = outliers_treatment(df_aligned)
-
-        df_hourly = hourly_aggregation(df_clean)
-        if pasta_saida:
-            nome_saida = os.path.basename(arquivo)
-            caminho_saida = os.path.join(pasta_saida, nome_saida)
-            df_hourly.to_csv(caminho_saida, index=False)
-
-
-def convert_era5_units(df):
-    df = df.copy()
-
-    # TEMPERATURAS: Kelvin → Celsius
-    temp_vars = ["skt", "t2m", "d2m", "stl1"]
-    for var in temp_vars:
-        if var in df.columns:
-            df[var] = df[var] - 273.15
-
-    # RADIAÇÃO: J/m² → W/m²
-    rad_vars = ["ssrd", "strd"]
-    for var in rad_vars:
-        if var in df.columns:
-            df[var] = df[var] / 900
-
-    # PRESSÃO: Pa → hPa
-    if "sp" in df.columns:
-        df["sp"] = df["sp"] / 100
-
-    # PRECIPITAÇÃO: m → mm
-    if "tp" in df.columns:
-        df["tp"] = df["tp"] * 1000
-
-    return df
-
-
-def time_alignment(df):
-    df["valid_time"] = pd.to_datetime(df["valid_time"], utc=True)
-
-    # Diferença entre cada linha e a anterior
-    df["diff"] = df["valid_time"].diff()
-
-    # Pega apenas as diferenças válidas e únicas
-    diffs_unicos = df["diff"].dropna().unique()
-    logging.debug("Diferenças encontradas no dataset: %s", [str(d) for d in diffs_unicos])
-
-    if len(diffs_unicos) == 1:
-        if diffs_unicos[0] == pd.Timedelta(hours=1):
-            return df
-        elif diffs_unicos[0] == pd.Timedelta(minutes=15):
-            df = g15min(df)
-        else:
-            df = ajust15(df)
-    else:
-        df = ajust15(df)
-
-    return df
-
-
-def g15min(df):
-    df = df.sort_values("valid_time").reset_index(drop=True)
-    novas_linhas = []
-
-    for i in range(len(df) - 1):
-        linha_atual = df.iloc[i].to_dict()
-        prox_tempo = df.loc[i + 1, "valid_time"]
-        tempo_atual = df.loc[i, "valid_time"]
-
-        novas_linhas.append(linha_atual)
-        diff = prox_tempo - tempo_atual
-        if diff > pd.Timedelta(minutes=15):
-            tempos_em_falta = pd.date_range(
-                start=tempo_atual + pd.Timedelta(minutes=15),
-                end=prox_tempo - pd.Timedelta(minutes=15),
-                freq="15min",
-            )
-            for t in tempos_em_falta:
-                nova_linha = {col: np.nan for col in df.columns}
-                nova_linha["valid_time"] = t
-                novas_linhas.append(nova_linha)
-
-    novas_linhas.append(df.iloc[-1].to_dict())
-    df_novo = pd.DataFrame(novas_linhas)
-    df_novo = df_novo.sort_values("valid_time").reset_index(drop=True)
-
-    return missingValuesFind(df_novo)
-
-
-def ajust15(df):
-    df["valid_time"] = df["valid_time"].dt.round("15min")
-    return g15min(df)
-
-
-def missingValuesFind(df):
-    ignore_cols = ["valid_time", "latitude", "longitude"]
-    vars_analisar = [col for col in df.columns if col not in ignore_cols]
-    df = df.copy()
-    df.set_index("valid_time", inplace=True)
-    for var in vars_analisar:
-        df[var] = missingImputation(df, var)
-    return df.reset_index()
-
-
-def missingImputation(df, var):
-    hourly_groups = df.groupby(df.index.floor("1h"))
-    resultado = []
-
-    for _hora, group in hourly_groups:
-        serie = group[var]
-        nan_count = serie.isna().sum()
-        if nan_count == 0:
-            resultado.append(serie)
-        elif nan_count == 1:
-            resultado.append(serie.interpolate(method="linear", limit_direction="both"))
-        else:
+    def aggregate_hourly_energy(self, df: pd.DataFrame) -> pd.DataFrame:
+        """UC2: Aggregate 15-min to 1-hour using MAX for load."""
+        time_col = "datetime" if "datetime" in df.columns else "Unnamed: 0"
+        df = df.copy()
+        df[time_col] = pd.to_datetime(df[time_col], utc=True)
+        df["hour"] = df[time_col].dt.floor("h")
+        df_hourly = df.groupby("hour")["Load_MW"].max().reset_index()
+        df_hourly = df_hourly.rename(columns={"hour": time_col})
+        return df_hourly
+
+    def clean_energy_dataframe(self, df: pd.DataFrame) -> pd.DataFrame:
+        """Main entry point for energy cleaning."""
+        time_col = "Unnamed: 0" if "Unnamed: 0" in df.columns else "datetime"
+        df = df.copy()
+        # UC2: Timestamp Rounding
+        df[time_col] = pd.to_datetime(df[time_col], utc=True).dt.round("15min")
+        return self._align_15min_energy(df)
+
+    def _align_15min_energy(self, df: pd.DataFrame) -> pd.DataFrame:
+        """UC2: Time Alignment & Missing Rows insertion."""
+        time_col = "Unnamed: 0" if "Unnamed: 0" in df.columns else "datetime"
+        df = df.set_index(time_col).sort_index()
+        df = df[~df.index.duplicated(keep="first")]
+
+        # Continuous 15-min interval index
+        new_index = pd.date_range(start=df.index.min(), end=df.index.max(), freq="15min", name=time_col)
+        df_aligned = df.reindex(new_index).reset_index()
+
+        df_imputed = self.fill_nan_energy(df_aligned)
+        return self.aggregate_hourly_energy(df_imputed)
+
+    # =======================================
+    # WEATHER PROCESSING
+    # =======================================
+
+    def clean_weather_dataframe(self, df: pd.DataFrame) -> pd.DataFrame:
+        """Modular weather cleaning for a single file/dataset."""
+        df = df.copy()
+        df = self.convert_era5_units(df)
+        time_col = "valid_time" if "valid_time" in df.columns else "datetime"
+        df[time_col] = pd.to_datetime(df[time_col], utc=True).dt.round("15min")
+
+        df_aligned = self._align_weather_time(df)
+        df_imputed = self._impute_missing_weather(df_aligned)
+        df_no_outliers = self.treat_weather_outliers(df_imputed)
+        return self.aggregate_hourly_weather(df_no_outliers)
+
+    def convert_era5_units(self, df: pd.DataFrame) -> pd.DataFrame:
+        df = df.copy()
+        for var in ["skt", "t2m", "d2m", "stl1"]:
+            if var in df.columns:
+                df[var] = df[var] - 273.15
+        for var in ["ssrd", "strd"]:
+            if var in df.columns:
+                df[var] = df[var] / 900
+        if "sp" in df.columns:
+            df["sp"] = df["sp"] / 100
+        if "tp" in df.columns:
+            df["tp"] = df["tp"] * 1000
+        return df
+
+    def _align_weather_time(self, df: pd.DataFrame) -> pd.DataFrame:
+        time_col = "valid_time" if "valid_time" in df.columns else "datetime"
+        df = df.set_index(time_col).sort_index()
+        df = df[~df.index.duplicated(keep="first")]
+        new_index = pd.date_range(start=df.index.min(), end=df.index.max(), freq="15min", name=time_col)
+        return df.reindex(new_index).reset_index()
+
+    def _impute_missing_weather(self, df: pd.DataFrame) -> pd.DataFrame:
+        time_col = "valid_time" if "valid_time" in df.columns else "datetime"
+        ignore = [time_col, "latitude", "longitude"]
+        vars_to_impute = [c for c in df.columns if c not in ignore]
+
+        df = df.copy().set_index(time_col)
+        if not isinstance(df.index, pd.DatetimeIndex):
+            df.index = pd.to_datetime(df.index, utc=True)
+
+        for var in vars_to_impute:
+            df[var] = self._impute_var(df, var)
+        return df.reset_index()
+
+    def _impute_var(self, df: pd.DataFrame, var: str) -> pd.Series:
+        """UC2 Imputation rules for weather."""
+        series = df[var]
+        mask_nan = series.isna()
+        if not mask_nan.any():
+            return series
+
+        nan_counts = mask_nan.groupby(series.index.floor("1h")).transform("sum")
+        mask_isolated = mask_nan & (nan_counts == 1)
+        mask_multiple = mask_nan & (nan_counts > 1)
+
+        result = series.copy()
+
+        # Case 1: Isolated -> Linear Interpolation
+        if mask_isolated.any():
+            interp = series.interpolate(method="linear", limit_direction="both")
+            result.loc[mask_isolated] = interp.loc[mask_isolated]
+
+        # Case 2: Multiple -> Rule-based windows
+        if mask_multiple.any():
             if var in ["t2m", "skt", "stl1", "d2m", "strd"]:
-                resultado.append(temp_termicRad_imputation(serie))
+                custom = self._media_custom(series, 4, 2)
             elif var in ["u10", "v10"]:
-                resultado.append(wind_imputation(serie))
+                custom = self._media_custom(series, 3, 0)
             elif var == "ssrd":
-                resultado.append(solar_imputation(serie))
+                custom = self._solar_impute(series)
             elif var == "tp":
-                resultado.append(precip_imputation(serie))
+                custom = self._precip_impute(series)
             elif var == "sp":
-                resultado.append(pressure_imputation(serie))
+                custom = self._media_custom(series, 4, 0)
             elif var == "swvl1":
-                resultado.append(soil_imputation(serie))
+                custom = self._media_custom(series, 6, 0)
             else:
-                resultado.append(serie.interpolate(method="linear"))
+                custom = series.interpolate(method="linear", limit_direction="both")
 
-    return pd.concat(resultado)
+            result.loc[mask_multiple] = custom.loc[mask_multiple]
 
+        return result.ffill().bfill()
 
-# FUNÇÕES ESPECÍFICAS POR TIPO
-def temp_termicRad_imputation(series):
-    """Média 4 anteriores + 2 seguintes válidas"""
-    return media_custom(series, n_prev=4, n_next=2)
+    def _media_custom(self, series: pd.Series, n_prev: int, n_next: int) -> pd.Series:
+        """Matches legacy media_custom: index-window based mean."""
+        s = series.copy()
+        res = s.copy()
+        nan_indices = s.index[s.isna()]
+        if len(nan_indices) == 0:
+            return s
 
+        # Convert to row-index for slicing parity
+        s_values = s.values
+        idx_map = {val: i for i, val in enumerate(s.index)}
 
-def wind_imputation(series):
-    """Média últimas 3"""
-    return media_custom(series, n_prev=3, n_next=0)
-
-
-def solar_imputation(series):
-    s = series.copy()
-
-    for idx in range(len(s)):
-        hora = s.index[idx].hour
-        if (hora >= 22 or hora <= 4) and pd.isna(s.iloc[idx]):
-            s.iloc[idx] = 0
-        elif pd.isna(s.iloc[idx]):
-            s.iloc[idx] = media_custom(s, n_prev=4, n_next=2).iloc[idx]
-
-    return s
-
-
-def precip_imputation(series):
-    s = series.astype(float).copy()
-    zeros_vizinhos = s.rolling(3, center=True, min_periods=1).sum() == 0
-    s[zeros_vizinhos] = 0
-    s = media_custom(s, n_prev=3, n_next=0)
-    return s
-
-
-def pressure_imputation(series):
-    """Média últimas 4"""
-    return media_custom(series, n_prev=4, n_next=0)
-
-
-def soil_imputation(series):
-    """Média últimas 6"""
-    return media_custom(series, n_prev=6, n_next=0)
-
-
-def media_custom(series, n_prev, n_next):
-    """Média N prev + N next válidas"""
-    s = series.copy()
-    result = s.copy()
-
-    for i in range(len(s)):
-        if pd.isna(s.iloc[i]):
+        for dt in nan_indices:
+            i = idx_map[dt]
             start = max(0, i - n_prev)
             end = min(len(s), i + n_next + 1)
-            window_vals = s.iloc[start:end].dropna()
-            if len(window_vals) > 0:
-                result.iloc[i] = window_vals.mean()
+            window = s_values[start:end]
+            valid_window = window[~pd.isna(window)]
+            if len(valid_window) > 0:
+                res.loc[dt] = np.mean(valid_window)
+        return res
 
-    return result.ffill().bfill()
+    def _solar_impute(self, series: pd.Series) -> pd.Series:
+        """Solar Radiation logic: Night=0, else custom(4,2)."""
+        hour = series.index.hour
+        is_night = (hour >= 22) | (hour <= 4)
+        custom = self._media_custom(series, 4, 2)
+        result = series.copy()
+        result.loc[is_night & series.isna()] = 0.0
+        result.loc[~is_night & series.isna()] = custom
+        return result
 
+    def _precip_impute(self, series: pd.Series) -> pd.Series:
+        """Precipitation logic: Surround zero check."""
+        s = series.astype(float)
+        # Surround zeros check
+        zeros = (s.shift(1) == 0) & (s.shift(-1) == 0)
+        custom = self._media_custom(s, 3, 0)
+        result = s.copy()
+        result.loc[zeros & s.isna()] = 0.0
+        result.loc[~zeros & s.isna()] = custom
+        return result
 
-# outliers
-def outliers_treatment(df):
-    ignore_cols = ["valid_time", "latitude", "longitude"]
-    vars_analisar = [col for col in df.columns if col not in ignore_cols]
+    def treat_weather_outliers(self, df: pd.DataFrame) -> pd.DataFrame:
+        """IQR and Physical Limits outlier treatment."""
+        time_col = "valid_time" if "valid_time" in df.columns else "datetime"
+        ignore = [time_col, "latitude", "longitude"]
+        vars_to_check = [c for c in df.columns if c not in ignore]
 
-    df = df.copy()
-    df.set_index("valid_time", inplace=True)
+        df = df.copy().set_index(time_col)
+        for var in vars_to_check:
+            q1, q3 = df[var].quantile(0.25), df[var].quantile(0.75)
+            iqr = q3 - q1
+            low, high = q1 - 1.5 * iqr, q3 + 1.5 * iqr
+            candidatos = (df[var] < low) | (df[var] > high)
 
-    limites_fisicos = {
-        # Temperature: -40°C a 55°C (solo até 65°C)
-        "t2m": (-40, 55),
-        "skt": (-40, 55),
-        "d2m": (-40, 55),
-        "stl1": (-40, 65),
-        # Wind: 0-250 km/h- 69.4 m/s
-        "u10": (0, 69.4),
-        "v10": (0, 69.4),
-        # Precipitation: 0-55 mm/15min
-        "tp": (0, 55),
-        # Solar: >=0 dia
-        "ssrd": (0, float("inf")),
-    }
-    iqr_only = ["strd", "sp", "swvl1"]  # Só IQR
-    for var in vars_analisar:
-        # IQR para TODAS variáveis
-        Q1 = df[var].quantile(0.25)
-        Q3 = df[var].quantile(0.75)
-        IQR = Q3 - Q1
-        lower_bound = Q1 - 1.5 * IQR
-        upper_bound = Q3 + 1.5 * IQR
+            if var in self.physical_limits:
+                l_min, l_max = self.physical_limits[var]
+                reais = candidatos & ((df[var] < l_min) | (df[var] > l_max))
+                if reais.any():
+                    df.loc[reais, var] = np.nan
+                    if var in ["t2m", "skt", "d2m", "stl1", "u10", "v10"]:
+                        df[var] = self._media_custom(df[var], 4, 2)
+                    elif var in ["ssrd", "tp"]:
+                        df[var] = self._media_nearest(df[var], 2)
+            elif var in self.iqr_only_vars:
+                if candidatos.any():
+                    df.loc[candidatos, var] = np.nan
+                    if var == "strd":
+                        df[var] = self._media_nearest(df[var], 2)
+                    elif var == "sp":
+                        df[var] = self._media_custom(df[var], 4, 2)
+                    elif var == "swvl1":
+                        df[var] = self._media_custom(df[var], 6, 0)
+        return df.reset_index()
 
-        # Detecta outliers IQR
-        outliers_candidatos = (df[var] < lower_bound) | (df[var] > upper_bound)
-        n_candidatos = outliers_candidatos.sum()
-        logging.debug("%s — IQR outliers: %d", var, n_candidatos)
+    def _media_nearest(self, series: pd.Series, n: int) -> pd.Series:
+        """Mean of n closest valid observations."""
+        s = series.copy()
+        valid = s.dropna()
+        if valid.empty:
+            return s
+        res = s.copy()
+        nan_indices = s.index[s.isna()]
+        for idx in nan_indices:
+            diff_sec = pd.Series(np.abs((valid.index - idx).total_seconds()), index=valid.index)
+            closest_indices = diff_sec.nsmallest(n).index
+            res.loc[idx] = valid.loc[closest_indices].mean()
+        return res
 
-        # Verifica limites físicos
-        if var in limites_fisicos:
-            limite_min, limite_max = limites_fisicos[var]
-            outliers_reais = outliers_candidatos & ((df[var] < limite_min) | (df[var] > limite_max))
-            n_outliers_reais = outliers_reais.sum()
-            logging.debug("%s — Limites físicos: %d outliers reais", var, n_outliers_reais)
+    def aggregate_hourly_weather(self, df: pd.DataFrame) -> pd.DataFrame:
+        """UC2: Aggregate 15-min to 1-hour using MEAN for weather."""
+        time_col = "valid_time" if "valid_time" in df.columns else "datetime"
+        df = df.copy()
+        df["hour_group"] = df[time_col].dt.floor("h")
+        cols_agg = [c for c in df.columns if c not in [time_col, "latitude", "longitude", "hour_group"]]
+        df_hourly = df.groupby("hour_group")[cols_agg].mean().reset_index()
+        df_hourly = df_hourly.rename(columns={"hour_group": time_col})
+        return df_hourly
 
-            # outliers fora dos limites físicos
-            if n_outliers_reais > 0:
-                df.loc[outliers_reais, var] = np.nan
-                outliers_tratar = outliers_reais
-                if var in ["t2m", "skt", "d2m", "stl1", "u10", "v10"]:
-                    # média 4 prev + 2 next
-                    df.loc[outliers_tratar, var] = media_custom(df[var], 4, 2)
-
-                elif var in ["ssrd", "tp"]:
-                    # média 2 mais próximas
-                    df.loc[outliers_tratar, var] = media_nearest(df[var], n_nearest=2)
-
-        elif var in iqr_only:
-            if n_candidatos > 0:
-                df.loc[outliers_candidatos, var] = np.nan
-                if var == "strd":
-                    # média 2 vizinhos mais próximos
-                    df.loc[outliers_candidatos, var] = media_nearest(df[var], n_nearest=2)
-                elif var == "sp":
-                    # média 4 prev + 2 next
-                    df.loc[outliers_candidatos, var] = media_custom(df[var], 4, 2)
-                elif var == "swvl1":
-                    # últimas 6
-                    df.loc[outliers_candidatos, var] = media_custom(df[var], 6, 0)
-
-        else:
-            logging.debug("%s — sem tratamento de outliers (manter)", var)
-
-    return df.reset_index()
-
-
-def media_nearest(series, n_nearest=2):
-    s = series.copy()
-    result = s.copy()
-
-    for i in range(len(s)):
-        validos_antes = []
-        j = i - 1
-        while len(validos_antes) < n_nearest and j >= 0:
-            if pd.notna(s.iloc[j]) and np.isfinite(s.iloc[j]):
-                validos_antes.append(s.iloc[j])
-            j -= 1
-
-        if len(validos_antes) == 2:
-            result.iloc[i] = np.mean(validos_antes)
-
-    return result.ffill().bfill()
+    def create_daily_aggregation(self, df_hourly: pd.DataFrame) -> pd.DataFrame:
+        """Derives daily dataset: Sum for load, Mean for climate."""
+        df = df_hourly.copy()
+        df["date"] = df["datetime"].dt.date
+        agg_rules = {col: "mean" for col in df.columns if col not in ["datetime", "date", "Load_MW"]}
+        agg_rules["Load_MW"] = "sum"
+        df_daily = df.groupby("date").agg(agg_rules).reset_index()
+        df_daily = df_daily.rename(columns={"date": "datetime", "Load_MW": "Load_MWh"})
+        df_daily["datetime"] = pd.to_datetime(df_daily["datetime"], utc=True)
+        return df_daily
 
 
-def hourly_aggregation(df):
-    df = df.copy()
-    diffs = df["valid_time"].diff().dropna()
-    if len(diffs.unique()) == 1 and diffs.iloc[0] == pd.Timedelta(minutes=15):
-        i = 0
-        indices_para_apagar = []
-        while i < len(df):
-            hora_atual = df.loc[i, "valid_time"].floor("h")
-            indices_hora = []
-            # mesma hora
-            while i < len(df) and df.loc[i, "valid_time"].floor("h") == hora_atual:
-                indices_hora.append(i)
-                i += 1
-            if len(indices_hora) > 1:
-                primeiro_idx = indices_hora[0]
-                # MÉDIA de TODAS colunas exceto valid_time, latitude, longitude
-                cols_to_average = [col for col in df.columns if col not in ["valid_time", "latitude", "longitude"]]
-                for col in cols_to_average:
-                    df.loc[primeiro_idx, col] = df.loc[indices_hora, col].mean()
-                # Apaga xx:15, xx:30, xx:45
-                for idx in indices_hora[1:]:
-                    indices_para_apagar.append(idx)
-        df = df.drop(indices_para_apagar).reset_index(drop=True)
+def cleaning(energy_dir, weather_dir, train_data, output_dir=None):
+    """
+    Unified cleaning entry point.
+    Processes weather files individually to match legacy behavior and ensure correctness.
+    Supports real-time predictions by consolidating data into separate folders.
+    """
+    root = Path(__file__).parent.parent.parent
 
+    # Path logic for Real-Time vs Batch
+    if train_data:
+        default_folder = root / "data" / "processed"
+        prefix = "complete_train_data"
     else:
-        logging.info("Já está de 1h em 1h")
+        # Real-time/Prediction specific folder
+        default_folder = root / "data" / "processed" / "real-time"
+        prefix = "prediction_data"
 
-    return df.sort_values("valid_time").reset_index(drop=True)
+    output_path = Path(output_dir or default_folder)
+    output_path.mkdir(parents=True, exist_ok=True)
 
+    cleaner = DataCleaner()
 
-# =======================================
-# JUNTAR DATASETS
-# =======================================
-def cleaning(pasta_energy_corrigido, pasta_weather_corrigido, train_data, pasta_saida=None):
-    if pasta_saida is None:
-        root = Path(__file__).parent.parent.parent.parent
-        pasta_saida = root / "Code" / "energy_prediction_system" / "data" / "processed"
+    # 1. Energy
+    logger.info("Cleaning Energy data...")
+    energy_files = sorted(Path(energy_dir).glob("*.csv"))
+    if not energy_files:
+        raise FileNotFoundError(f"No energy files in {energy_dir}")
+    df_energy_raw = pd.concat([pd.read_csv(f) for f in energy_files], ignore_index=True)
+    df_e = cleaner.clean_energy_dataframe(df_energy_raw)
+    df_e = df_e.rename(columns={df_e.columns[0]: "datetime"})
+    df_e = df_e[["datetime", "Load_MW"]].drop_duplicates("datetime")
 
-    pasta_saida = Path(pasta_saida)
-    pasta_saida.mkdir(parents=True, exist_ok=True)
+    # 2. Weather (Individual file cleaning then join)
+    logger.info("Cleaning Weather files individually...")
+    weather_files = sorted(Path(weather_dir).glob("*.csv"))
+    if not weather_files:
+        raise FileNotFoundError(f"No weather files in {weather_dir}")
 
-    pasta_energy_corrigido = Path(pasta_energy_corrigido)
-    pasta_weather_corrigido = Path(pasta_weather_corrigido)
+    weather_dfs_hourly = []
+    for f in weather_files:
+        df_w_raw = pd.read_csv(f)
+        df_w_clean = cleaner.clean_weather_dataframe(df_w_raw)
+        time_col = "datetime" if "datetime" in df_w_clean.columns else "valid_time"
+        df_w_clean = df_w_clean.rename(columns={time_col: "datetime"})
+        cols_to_keep = [c for c in df_w_clean.columns if c not in ["latitude", "longitude", "hour_group"]]
+        weather_dfs_hourly.append(df_w_clean[cols_to_keep])
 
-    # 1. energy
-    dfs_energy = []
-    # Usando pathlib.glob em vez de os.listdir para pegar apenas CSVs
-    for caminho in sorted(pasta_energy_corrigido.glob("*.csv")):
-        df = pd.read_csv(caminho)
-        df["datetime"] = pd.to_datetime(df["Unnamed: 0"], utc=True)
-        df = df[["datetime", "Load_MW"]]
-        dfs_energy.append(df)
+    # Outer join weather variables
+    df_weather_combined = weather_dfs_hourly[0]
+    for df in weather_dfs_hourly[1:]:
+        df_weather_combined = pd.merge(df_weather_combined, df, on="datetime", how="outer")
 
-    # Check de segurança para produção
-    if not dfs_energy:
-        logging.error("Nenhum ficheiro CSV de energia encontrado em %s", pasta_energy_corrigido)
-        raise FileNotFoundError(f"Missing energy data in {pasta_energy_corrigido}")
+    df_weather_final = df_weather_combined.groupby("datetime").mean(numeric_only=True).reset_index()
 
-    df_energy = pd.concat(dfs_energy, ignore_index=True)
-    df_energy = df_energy.drop_duplicates("datetime").sort_values("datetime").reset_index(drop=True)
-    logging.info("Energy: %d registos únicos", len(df_energy))
+    # 3. Join
+    df_hourly = pd.merge(df_weather_final, df_e, on="datetime", how="inner")
+    df_hourly = df_hourly.sort_values("datetime").reset_index(drop=True)
 
-    # 2. weather
-    dfs_weather = []
-    cols_excluir = {"latitude", "longitude", "diff"}
+    # 4. Daily
+    df_daily = cleaner.create_daily_aggregation(df_hourly)
 
-    for caminho in sorted(pasta_weather_corrigido.glob("*.csv")):
-        df = pd.read_csv(caminho)
-        df["datetime"] = pd.to_datetime(df["valid_time"], utc=True)
+    # 5. Export
+    hourly_file = output_path / f"{prefix}_hourly.csv"
+    daily_file = output_path / f"{prefix}_daily.csv"
 
-        cols_manter = [col for col in df.columns if col not in cols_excluir]
-        df = df[cols_manter]
-        dfs_weather.append(df)
+    # For real-time, we might want to append or overwrite.
+    # Usually, we overwrite the consolidated prediction file with the full updated history.
+    df_hourly.to_csv(hourly_file, index=False)
+    df_daily.to_csv(daily_file, index=False)
 
-    # Check de segurança para produção
-    if not dfs_weather:
-        logging.error("Nenhum ficheiro CSV de meteorologia encontrado em %s", pasta_weather_corrigido)
-        raise FileNotFoundError(f"Missing weather data in {pasta_weather_corrigido}")
+    logger.info(f"Synchronized Dataset: {df_hourly.shape[0]} rows. Saved to {output_path}")
+    return df_hourly, df_daily
 
-    df_weather = pd.concat(dfs_weather, ignore_index=True)
-    df_weather = df_weather.groupby("datetime").mean(numeric_only=True).reset_index()
-    logging.info("Weather: %d registos únicos", len(df_weather))
-
-    # 3. juntar
-    df_final = pd.merge(df_weather, df_energy, on="datetime", how="inner")
-
-    # 4. verificar
-    logging.info("DATASET FINAL:")
-    logging.info("  Shape: %s", df_final.shape)
-    logging.info("  Colunas: %s", list(df_final.columns))
-    logging.info(
-        "  Período: %s - %s",
-        df_final["datetime"].min(),
-        df_final["datetime"].max(),
-    )
-
-    nulos = df_final.isnull().sum()
-    if nulos.sum() > 0:
-        logging.warning("Valores em falta no dataset final:\n%s", nulos[nulos > 0].to_string())
-    else:
-        logging.info("Sem valores em falta no dataset final.")
-
-    # 5. Exportar
-    nome_final = "dados_treino_completos.csv" if train_data else "dados_predicao.csv"
-    caminho_final = pasta_saida / nome_final
-
-    df_final.to_csv(caminho_final, index=False)
-    logging.info("Ficheiro guardado com sucesso em: %s", caminho_final)
-
-    return df_final
-
-
-# =======================================
-# MAIN
-# =======================================
 
 if __name__ == "__main__":
-    logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(levelname)s - %(message)s")
-
-    ROOT = Path(__file__).parent.parent.parent.parent
-    DATA_RAW = ROOT / "Code" / "energy_prediction_system" / "data" / "raw"
-
-    caminho_energy = DATA_RAW / "energy"
-    caminho_weather = DATA_RAW / "weather"
-
-    caminho_energy_corrigido = DATA_RAW / "energy_corrigido"
-    caminho_weather_corrigido = DATA_RAW / "weather_corrigido"
-
-    start_time = time.time()
-
-    logging.info("Iniciando pipeline de processamento de energia...")
-    energy(caminho_energy, pasta_saida=caminho_energy_corrigido)
-
-    logging.info("Iniciando pipeline de processamento de meteorologia...")
-    weather(pasta_entrada=caminho_weather, pasta_saida=caminho_weather_corrigido)
-
-    logging.info("Iniciando junção e limpeza final...")
-
-    cleaning(
-        pasta_energy_corrigido=caminho_energy_corrigido,
-        pasta_weather_corrigido=caminho_weather_corrigido,
-        train_data=True,
-    )
-    end_time = time.time()
-    elapsed_time = end_time - start_time
-    logging.info("Tempo de processamento do Módulo da Limpeza: %.2f segundos", elapsed_time)
+    ROOT = Path(__file__).parent.parent.parent
+    DATA_RAW = ROOT / "data" / "raw"
+    start = time.time()
+    cleaning(energy_dir=DATA_RAW / "energy", weather_dir=DATA_RAW / "weather", train_data=True)
+    logger.info(f"Total processing time: {time.time() - start:.2f}s")
