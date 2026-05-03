@@ -1,13 +1,15 @@
 import keyring
+from dotenv import find_dotenv, load_dotenv
+
+load_dotenv(find_dotenv())
 
 class SessionManager:
     """
     Handles secure storage of user session data using the OS keyring
     """
-    _SERVICE_NAME = "energy_prediction_system"
-    _TOKEN_KEY = "access_token"
-    _ROLE_KEY = "user_role"
-
+    _SERVICE_NAME = os.getenv("_SERVICE_NAME")
+    _TOKEN_KEY = os.getenv("_TOKEN_KEY")
+    _ROLE_KEY = os.getenv("_ROLE_KEY")
     @staticmethod
     def set_session(token: str, role: str):
         """
