@@ -1,3 +1,4 @@
+import os
 import keyring
 from dotenv import find_dotenv, load_dotenv
 
