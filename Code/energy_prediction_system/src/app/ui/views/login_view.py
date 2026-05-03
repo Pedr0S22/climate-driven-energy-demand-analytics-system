@@ -21,8 +21,9 @@ class Ui_MainWindow(object):
         self.verticalLayout.setObjectName("verticalLayout")
         self.up_bar = QtWidgets.QWidget(parent=self.centralwidget)
         self.up_bar.setMinimumSize(QtCore.QSize(0, 30))
-        self.up_bar.setStyleSheet("\n"
-"background-color: rgb(0, 1, 128);")
+        self.up_bar.setStyleSheet(
+            "background-color: rgb(0, 1, 128);"
+        )
         self.up_bar.setObjectName("up_bar")
         self.Login_label = QtWidgets.QLabel(parent=self.up_bar)
         self.Login_label.setGeometry(QtCore.QRect(110, 0, 51, 31))
@@ -81,12 +82,13 @@ class Ui_MainWindow(object):
         self.email_layout.addWidget(self.email_label)
         self.email_input = QtWidgets.QLineEdit(parent=self.centralwidget)
         self.email_input.setMinimumSize(QtCore.QSize(0, 25))
-        self.email_input.setStyleSheet("background-color: rgb(234, 234, 239);\n"
-"border-color: black;\n"
-"border-radius: 4px;\n"
-"border: 1px solid black;\n"
-"color: black;\n"
-"")
+        self.email_input.setStyleSheet(
+            "background-color: rgb(234, 234, 239);\n"
+            "border-color: black;\n"
+            "border-radius: 4px;\n"
+            "border: 1px solid black;\n"
+            "color: black;\n"
+        )
         self.email_input.setObjectName("email_input")
         self.email_layout.addWidget(self.email_input)
         self.pass_layout.addLayout(self.email_layout)
@@ -102,12 +104,19 @@ class Ui_MainWindow(object):
         self.pass_layout.addWidget(self.pass_label)
         self.pass_input = QtWidgets.QLineEdit(parent=self.centralwidget)
         self.pass_input.setMinimumSize(QtCore.QSize(0, 25))
-        self.pass_input.setStyleSheet("background-color: rgb(234, 234, 239);\n"
-"border-color: black;\n"
-"border-radius: 4px;\n"
-"color: black;\n"
-"border: 1px solid black;")
-        self.pass_input.setInputMethodHints(QtCore.Qt.InputMethodHint.ImhHiddenText|QtCore.Qt.InputMethodHint.ImhNoAutoUppercase|QtCore.Qt.InputMethodHint.ImhNoPredictiveText|QtCore.Qt.InputMethodHint.ImhSensitiveData)
+        self.pass_input.setStyleSheet(
+            "background-color: rgb(234, 234, 239);\n"
+            "border-color: black;\n"
+            "border-radius: 4px;\n"
+            "color: black;\n"
+            "border: 1px solid black;"
+        )
+        self.pass_input.setInputMethodHints(
+            QtCore.Qt.InputMethodHint.ImhHiddenText
+            | QtCore.Qt.InputMethodHint.ImhNoAutoUppercase
+            | QtCore.Qt.InputMethodHint.ImhNoPredictiveText
+            | QtCore.Qt.InputMethodHint.ImhSensitiveData
+        )
         self.pass_input.setEchoMode(QtWidgets.QLineEdit.EchoMode.Password)
         self.pass_input.setObjectName("pass_input")
         self.pass_layout.addWidget(self.pass_input)
@@ -119,20 +128,19 @@ class Ui_MainWindow(object):
         font.setPointSize(12)
         font.setUnderline(True)
         self.pushButton_2.setFont(font)
-        self.pushButton_2.setStyleSheet("QPushButton {\n"
-"    background: transparent;   /* remove o fundo */\n"
-"    border: none;              /* remove bordas */\n"
-"    \n"
-"    color: rgb(0, 1, 128);\n"
-"    text-decoration: underline; /* sublinhado */\n"
-"}\n"
-"\n"
-"QPushButton:hover {\n"
-"    color: #3498db;            /* muda cor ao passar o rato */\n"
-"}\n"
-"\n"
-"\n"
-"")
+        self.pushButton_2.setStyleSheet(
+            "QPushButton {\n"
+            "    background: transparent;   /* remove o fundo */\n"
+            "    border: none;              /* remove bordas */\n"
+            "    \n"
+            "    color: rgb(0, 1, 128);\n"
+            "    text-decoration: underline; /* sublinhado */\n"
+            "}\n"
+            "\n"
+            "QPushButton:hover {\n"
+            "    color: #3498db;            /* muda cor ao passar o rato */\n"
+            "}\n"
+        )
         self.pushButton_2.setObjectName("pushButton_2")
         self.forgot_pass_layut.addWidget(self.pushButton_2)
         spacerItem6 = QtWidgets.QSpacerItem(40, 20, QtWidgets.QSizePolicy.Policy.Expanding, QtWidgets.QSizePolicy.Policy.Minimum)
@@ -164,24 +172,25 @@ class Ui_MainWindow(object):
         font.setBold(True)
         font.setWeight(75)
         self.login_button.setFont(font)
-        self.login_button.setStyleSheet("QPushButton {\n"
-"    border: 1px solid black;\n"
-"    \n"
-"    \n"
-"    background-color: rgb(0, 1, 128);\n"
-"    border-radius: 8px;\n"
-"    color: white;\n"
-"    padding: 4px;\n"
-"}\n"
-"\n"
-"QPushButton:pressed {\n"
-"    \n"
-"    \n"
-"    background-color: rgb(4, 6, 89);\n"
-"    padding-top: 6 px;\n"
-"    padding-left: 6  px;\n"
-"}\n"
-"")
+        self.login_button.setStyleSheet(
+            "QPushButton {\n"
+            "    border: 1px solid black;\n"
+            "    \n"
+            "    \n"
+            "    background-color: rgb(0, 1, 128);\n"
+            "    border-radius: 8px;\n"
+            "    color: white;\n"
+            "    padding: 4px;\n"
+            "}\n"
+            "\n"
+            "QPushButton:pressed {\n"
+            "    \n"
+            "    \n"
+            "    background-color: rgb(4, 6, 89);\n"
+            "    padding-top: 6 px;\n"
+            "    padding-left: 6  px;\n"
+            "}\n"
+        )
         self.login_button.setInputMethodHints(QtCore.Qt.InputMethodHint.ImhHiddenText|QtCore.Qt.InputMethodHint.ImhSensitiveData)
         self.login_button.setFlat(False)
         self.login_button.setObjectName("login_button")
@@ -195,19 +204,19 @@ class Ui_MainWindow(object):
         font.setPointSize(14)
         font.setUnderline(True)
         self.register_button.setFont(font)
-        self.register_button.setStyleSheet("QPushButton {\n"
-"    background: transparent;   /* remove o fundo */\n"
-"    border: none;              /* remove bordas */\n"
-"    \n"
-"    color: rgb(0, 1, 128);\n"
-"    text-decoration: underline; /* sublinhado */\n"
-"}\n"
-"\n"
-"QPushButton:hover {\n"
-"    color: #3498db;            /* muda cor ao passar o rato */\n"
-"}\n"
-"\n"
-"")
+        self.register_button.setStyleSheet(
+            "QPushButton {\n"
+            "    background: transparent;   /* remove o fundo */\n"
+            "    border: none;              /* remove bordas */\n"
+            "    \n"
+            "    color: rgb(0, 1, 128);\n"
+            "    text-decoration: underline; /* sublinhado */\n"
+            "}\n"
+            "\n"
+            "QPushButton:hover {\n"
+            "    color: #3498db;            /* muda cor ao passar o rato */\n"
+            "}\n"
+        )
         self.register_button.setObjectName("register_button")
         self.verticalLayout.addWidget(self.register_button)
         spacerItem12 = QtWidgets.QSpacerItem(20, 40, QtWidgets.QSizePolicy.Policy.Minimum, QtWidgets.QSizePolicy.Policy.Expanding)
