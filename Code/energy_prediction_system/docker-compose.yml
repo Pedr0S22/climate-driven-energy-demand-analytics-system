@@ -1,4 +1,22 @@
 services:
+  # --- CAMADA 0: GATEWAY (TRAEFIK) ---
+  traefik:
+    image: traefik:v2.10
+    container_name: energy_gateway
+    restart: always
+    command:
+      - "--api.insecure=true"
+      - "--providers.docker=true"
+      - "--providers.docker.exposedbydefault=false"
+      - "--entrypoints.web.address=:80"
+    ports:
+      - "80:80"       # Entrada principal (API e App)
+      - "8080:8080"   # Dashboard do Traefik
+    volumes:
+      - "/var/run/docker.sock:/var/run/docker.sock:ro"
+    networks:
+      - api_net
+
   # --- CAMADA 1: DATABASES (Relational & ELK) ---
   db_server:
     container_name: energy_db_server
@@ -88,6 +106,15 @@ services:
       interval: 10s
       timeout: 5s
       retries: 3
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.energy-api.rule=Host(`localhost`) && PathPrefix(`/api`)"
+      - "traefik.http.routers.energy-api.entrypoints=web"
+      # QA6: Rate Limiting (Average 5 req/s, Burst 10)
+      - "traefik.http.middlewares.api-ratelimit.ratelimit.average=5"
+      - "traefik.http.middlewares.api-ratelimit.ratelimit.burst=10"
+      - "traefik.http.routers.energy-api.middlewares=api-ratelimit"
+      - "traefik.http.services.energy-api.loadbalancer.server.port=8000"
 
   # --- CAMADA 3: FRONTEND (APP) ---
   app:
@@ -104,6 +131,12 @@ services:
     depends_on:
       api:
         condition: service_healthy
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.energy-app.rule=Host(`localhost`)"
+      - "traefik.http.routers.energy-app.entrypoints=web"
+      - "traefik.http.routers.energy-app.priority=1"
+      - "traefik.http.services.energy-app.loadbalancer.server.port=3000"
 
   # --- AUXILIAR: DATA PIPELINE ---
   pipeline:

@@ -9,36 +9,42 @@ This document captures the low-level system design decisions, technical stack, d
 * #### 1.2. Frontend & Visualization Stack
 * #### 1.3. Infrastructure & Telemetry Stack
 
-### 2. Data Pipeline Design
-* #### 2.1. Ingestion Module
-* #### 2.2. Cleaning & Temporal Alignment Module
-* #### 2.3. Feature Engineering Module
-* #### 2.4. Training & Evaluation
+### 2. Microservices & Containerization
+* #### 2.1. Architectural Pattern
+* #### 2.2. Service Breakdown & Folder Organization
+* #### 2.3. Containerization Strategy (Dockerfiles)
+* #### 2.4. Orchestration & API Gateway (Docker Compose & Traefik)
 
-### 3. Core Backend Services Design
-* #### 3.1.Authentication/Registration & Security Services
-* #### 3.2. Prediction Inference Service
-* #### 3.3. Administrator & Management Services
-* #### 3.4. Live Data Scheduler Service
+### 3. Data Pipeline Design
+* #### 3.1. Ingestion Module
+* #### 3.2. Cleaning & Temporal Alignment Module
+* #### 3.3. Feature Engineering Module
+* #### 3.4. Training & Evaluation
 
-### 4. Databases & Data Storage Design
-* #### 4.1. Relational Database - PostgreSQL
-* #### 4.2. File Storage System
-* #### 4.3. Log Storage ELK
+### 4. Core Backend Services Design
+* #### 4.1. Authentication/Registration & Security Services
+* #### 4.2. Prediction Inference Service
+* #### 4.3. Administrator & Management Services
+* #### 4.4. Live Data Scheduler Service
 
-### 5. Frontend UI & Dashboard Design
-* #### 5.1. Application State Management
-* #### 5.2. View Layouts & Navigation
-* #### 5.3. Data Visualization
+### 5. Databases & Data Storage Design
+* #### 5.1. Relational Database - PostgreSQL
+* #### 5.2. File Storage System
+* #### 5.3. Log Storage ELK
 
-### 6. Telemetry & Observability Design
-* #### 6.1. Application Log Formatting
-* #### 6.2. Logstash Parsing Rules
+### 6. Frontend UI & Dashboard Design
+* #### 6.1. Application State Management
+* #### 6.2. View Layouts & Navigation
+* #### 6.3. Data Visualization
 
-### 7. Deployment & Operations
-* #### 7.1. Database Management
-* #### 7.2. Docker Environment
-* #### 7.3. API Interaction Guide
+### 7. Telemetry & Observability Design
+* #### 7.1. Application Log Formatting
+* #### 7.2. Logstash Parsing Rules
+
+### 8. Deployment & Operations
+* #### 8.1. Database Management
+* #### 8.2. Docker Environment
+* #### 8.3. API Interaction Guide
 
 
 ## 1. Technology Stack
@@ -63,18 +69,64 @@ The technology stack used in the project is described below. Also FILE X and FIL
 * **Monitoring:** [`TODO`] ELK 
 
 
-## 2. Data Pipeline Design
+## 2. Microservices & Containerization
+
+The system is built on a containerized microservices architecture to ensure high availability, scalability, and strict isolation between data processing, user interfaces, and the core backend.
+
+### 2.1. Architectural Pattern
+
+The project follows a **Layered Microservices** pattern:
+1.  **Gateway Layer:** Traefik handles all incoming traffic, providing routing and security.
+2.  **Application Layer:** Decoupled Frontend (PyQt6) and Backend (FastAPI).
+3.  **Persistence Layer:** PostgreSQL for relational data and ELK for observability.
+4.  **Batch Processing Layer:** Isolated Data Pipeline for heavy ML workloads.
+
+### 2.2. Service Breakdown & Folder Organization
+
+The source code is organized into a modular structure under `src/`, where each subdirectory represents a distinct service or shared resource:
+*   `src/api/`: Core Backend (FastAPI). Contains the MVC logic, routers, and database models.
+*   `src/app/`: Frontend Application (PyQt6).
+*   `src/data_pipeline/`: Machine Learning modules (Ingestion, Cleaning, Feature Engineering, Modeling).
+*   `src/databases/`: Infrastructure scripts, including database initialization SQL/Bash and ELK configuration.
+
+**Engineering Why:** This structure enforces clear boundaries. For example, the `data_pipeline` can be scaled or updated without affecting the availability of the `api`.
+
+### 2.3. Containerization Strategy (Dockerfiles)
+
+Every service includes a dedicated `Dockerfile` optimized for its specific runtime:
+*   **Backend (api):** Uses `python:3.11-slim` to minimize image size. It installs `libpq-dev` and `gcc` for database connectivity. The startup command `uvicorn src.api.main:app` uses absolute imports to ensure module discovery within the container's `/app` workspace.
+*   **Frontend (app):** Requires X11 libraries (`libgl1`, `libxcb-*`) to support the GUI environment. It uses `ENV DISPLAY=:0` to facilitate X11 forwarding from the host.
+*   **Pipeline:** Optimized for batch execution. It sets `PYTHONPATH=/app/src` and uses a shell script (`run_pipeline.sh`) to sequence the ML stages.
+
+### 2.4. Orchestration & API Gateway (Docker Compose & Traefik)
+
+The entire ecosystem is orchestrated via `docker-compose.yml`, which implements **QA6 (Request Rate Limiting)** through **Traefik**.
+
+#### 2.4.1. Traefik Gateway
+Traefik acts as the single point of entry on port `80`. It uses Docker labels for service discovery:
+*   **Routing:** Traffic to `localhost/api` is automatically routed to the `api` container on port `8000`.
+*   **Rate Limiting:** A dedicated middleware (`api-ratelimit`) throttles traffic to 5 requests per second with a burst of 10.
+    *   **QA6 Compliance:** Requests exceeding this threshold are instantly rejected with an HTTP 429 error, protecting the system's CPU and memory from spikes.
+
+#### 2.4.2. Network Isolation
+The architecture defines two distinct networks:
+*   `api_net`: Connects the Gateway (Traefik), the Backend (API), and the Frontend (App).
+*   `db_net`: Connects the Backend, Data Pipeline, and Databases (PostgreSQL, ELK).
+**Engineering Why:** This prevents the Frontend from directly accessing the Databases, ensuring all data requests are authenticated and validated through the Backend service.
+
+
+## 3. Data Pipeline Design
 
 Details on the specific classes and scripts executing the machine learning pipeline.
 
-### 2.1. Ingestion Module
+### 3.1. Ingestion Module
 
 The primary objective of Ingestion Module is to reliably, securely, and reproducibly acquire external raw data and safely land it into the system's storage without altering its original state.
 
 * **Target APIs Data Extraction:** ENTSO-E Transparency Platform (Energy Demand) & Copernicus Climate Data Store ERA5-Land (Meteorological Data).
 * **Orchestration:** Driven by a master `data_retrieval(start_date, end_date, country_code)` function that sequentially triggers energy data fetching, weather data fetching, and finally, cloud backup.
 
-### 2.1.1. Core Logic & Mechanisms:
+### 3.1.1. Core Logic & Mechanisms:
 
   - **Input Validation & Idempotency:** The module strictly validates that `start_date` is not strictly after `end_date`. It features an idempotency check: before querying external APIs, the script checks if the target CSV already exists in the local directories (`/data/raw/weather/` and `/data/raw/energy/`).
     - **Engineering Why:** API quotas are restricted and calls are computationally/network expensive; skipping redundant fetches ensures resource efficiency and faster development cycles.
@@ -102,7 +154,7 @@ The primary objective of Ingestion Module is to reliably, securely, and reproduc
     - **Engineering Why:** Redundancy is critical for research reproducibility. By syncing to Google Drive, the team maintains a shared, persistent source of truth for raw data that survives local environment resets.
 
 
-### 2.2. Cleaning & Temporal Alignment Module (UC2)
+### 3.2. Cleaning & Temporal Alignment Module (UC2)
 
 The primary objective of the Cleaning & Temporal Alignment Module is to transform raw, heterogeneous energy and meteorological data into synchronized, clean, and aggregated datasets. Refactored into a modular `DataCleaner` class, it supports both high-performance batch processing of historical files and real-time ingestion for inference.
 
@@ -153,7 +205,7 @@ The primary objective of the Cleaning & Temporal Alignment Module is to transfor
 | `swvl1` | Volumetric Soil Water Layer 1 | m³/m³ | Mean | Mean |
 
 
-### 2.3. Feature Engineering Module
+### 3.3. Feature Engineering Module
 
 The primary objective of the Feature Engineering Module is to transform synchronized data into a high-dimensional feature set that captures temporal patterns, climate inertia, and physics-based demand drivers. The refactored `FeatureEngineer` class dynamically adjusts its logic based on the data frequency (**Hourly** vs **Daily**).
 
@@ -192,7 +244,7 @@ The primary objective of the Feature Engineering Module is to transform synchron
         - **Engineering Why:** Essential for the **Live Data Scheduler**, ensuring real-time daily or hourly inference uses the exact statistical parameters of the corresponding training set.
 
 
-### 2.4. Training & Evaluation Module
+### 3.4. Training & Evaluation Module
 
 The primary objective of the Training & Evaluation Module is to autonomously select the most robust model and dataset configuration through rigorous statistical validation. It transitions the pipeline from a "one-size-fits-all" approach to an adaptive strategy that handles both **Hourly** (short-term volatility) and **Daily** (long-term trend) demand patterns.
 
@@ -234,7 +286,7 @@ The primary objective of the Training & Evaluation Module is to autonomously sel
 
 
 
-### 3. Core Backend Services Design
+### 4. Core Backend Services Design
 
 The backend is developed using **Python with FastAPI**, following a strict **Model-View-Controller (MVC)** architectural pattern to ensure modularity, testability, and scalability.
 
@@ -244,18 +296,18 @@ The backend is developed using **Python with FastAPI**, following a strict **Mod
 
 **Engineering Why:** Using MVC allows us to swap the database or the web framework with minimal impact on the business logic. It also enables mocking dependencies for high-coverage unit testing.
 
-### 3.1. Authentication/Registration & Security Services
+### 4.1. Authentication/Registration & Security Services
 
 The security layer provides robust protection for user data and system access, fulfilling strict Quality Attributes (QA10-QA14).
 
-#### 3.1.1. Security Mechanisms
+#### 4.1.1. Security Mechanisms
 - **JWT Lifecycle:** Authentication tokens are issued as signed JWTs (HS256) with a configurable expiration period.
 - **Bcrypt Salting:** All user passwords are hashed using `bcrypt` with unique salts before storage.
 - **Role-Based Access Control (RBAC):** Access to endpoints is restricted based on the `sub` (email) and verified against the database roles (`admin`, `client`).
 - **Brute Force Protection (QA13):** Accounts are automatically locked for 5 minutes after the 4th consecutive failed login attempt.
 - **Generic Failure Messages (QA10):** All authentication failures return generic "Invalid credentials" or "Account locked" messages to prevent username enumeration and leakage of system internals.
 
-#### 3.1.2. Exception Handling Strategy
+#### 4.1.2. Exception Handling Strategy
 FastAPI global exception handlers standardize responses:
 - **400 Bad Request:** For Pydantic schema validation failures.
 - **401 Unauthorized:** For invalid credentials or expired tokens.
@@ -263,7 +315,7 @@ FastAPI global exception handlers standardize responses:
 - **404 Not Found:** For non-existent resource requests.
 - **500 Internal Server Error:** For unhandled exceptions, ensuring no stack traces are leaked to the client.
 
-### 3.1.3 API Contracts for Authentication/Registration
+### 4.1.3 API Contracts for Authentication/Registration
 
 * **Registration:** `POST /api/v1/auth/register`
     * **Payload:**
@@ -316,11 +368,11 @@ FastAPI global exception handlers standardize responses:
         }
         ```
 
-### 3.2. Prediction Inference Service
+### 4.2. Prediction Inference Service
 
 The Prediction Inference Service manages the execution of trained ML models. It dynamically loads the production-ready model binaries and performs inference using real-time features provided by the Data Pipeline.
 
-### 3.2.1 API Contracts for Prediction Service
+### 4.2.1 API Contracts for Prediction Service
 
 *   **Prediction using daily model: `GET /api/predict/daily`**
     *   **Headers:** `Authorization: Bearer <token>`
@@ -359,11 +411,11 @@ The Prediction Inference Service manages the execution of trained ML models. It 
         ```
 
 
-### 3.3. Administrator & Management Services
+### 4.3. Administrator & Management Services
 
 These services allow authorized administrators to manage the system's operational state, including model promotion and system health monitoring.
 
-### 3.3.1 API Contracts for Admin/Management Service
+### 4.3.1 API Contracts for Admin/Management Service
 
 *   **List all models: `GET /api/admin/models`**
     *   **Headers:** `Authorization: Bearer <token>` (Admin Only)
@@ -406,16 +458,16 @@ These services allow authorized administrators to manage the system's operationa
         }
         ```
 
-### 3.4. Live Data Scheduler Service
+### 4.4. Live Data Scheduler Service
 [`TODO`] - (Technical implementation: What library runs it? How does it avoid race conditions with the database?)
 
 * **Target:** Runs asynchronously behind the scenes to fetch up-to-date data for the live prediction requests.
 * **Logic:** A dedicated background thread or task scheduler periodically triggers a lightweight version of the Ingestion, Cleaning and Feature Engineering pipeline modules. It fetches only the most recent hours/days of data required (that the systems does not have) to satisfy the rolling windows and lag features needed for real-time inference, ensuring the models always have fresh inputs without requiring manual intervention.
 
 
-## 4. Databases & Data Storage Design
+## 5. Databases & Data Storage Design
 
-### 4.1. Relational Database - PostgreSQL
+### 5.1. Relational Database - PostgreSQL
 
 The system utilizes PostgreSQL as its primary relational database, structured to ensure data normalization, referential integrity, and efficient queries for predictive time-series data. The schema follows a strict Entity-Relationship model.
 
@@ -518,10 +570,10 @@ Machine learning models inherently produce varying resolutions of time-series da
 
 ##### Server-Side Cryptography for Database Seeding
 Standard practices often expose plaintext passwords during initial database migrations, setup scripts, or CI/CD pipelines. To mitigate this security vulnerability, the architecture leverages PostgreSQL's native `pgcrypto` extension. By shifting the cryptographic workload to the database engine itself, passwords can be hashed and salted dynamically during the `INSERT` operation. This ensures that raw credentials are never stored in SQL dump files, migration logs, or application source code, adhering to strict zero-trust security principles from the moment the database is initialized.
-### 4.2. File Storage System
+### 5.2. File Storage System
 [`TODO`] - (Directory structures for raw/processed data, and .pkl/joblib model binary storage rules)
 
-### 4.3. Log Storage ELK
+### 5.3. Log Storage ELK
 
 The system uses the ELK Stack to centralize performance and audit logs. The primary index used is `energy-demand-logs-*`.
 
@@ -529,20 +581,20 @@ The system uses the ELK Stack to centralize performance and audit logs. The prim
 *   **Audit Trail:** Logs include the `user` and `timestamp` for every model update.
 
 
-## 5. Frontend UI & Dashboard Design
+## 6. Frontend UI & Dashboard Design
 
-### 5.1. Application State Management
+### 6.1. Application State Management
 [`TODO`] - (How the app remembers the user's JWT and current active view)
 
-### 5.2. View Layouts & Navigation
+### 6.2. View Layouts & Navigation
 [`TODO`] - (Main Dashboard, Admin Panel, Prediction Views)
 
-### 5.3. Data Visualization
+### 6.3. Data Visualization
 [`TODO`] - (D3.js Integration) (How the Python backend passes JSON data to the D3.js components embedded in PyQt6)
 
-### 6. Telemetry & Observability Design
+### 7. Telemetry & Observability Design
 
-### 6.1. Application Log Formatting
+### 7.1. Application Log Formatting
 
 To enable automated ingestion by Logstash, the pipeline utilizes a standardized structured logging format.
 
@@ -570,13 +622,13 @@ To enable automated ingestion by Logstash, the pipeline utilizes a standardized 
 }
 ```
 
-### 6.2. Logstash Parsing Rules
+### 7.2. Logstash Parsing Rules
 
 Logstash is configured with a `grok` filter that identifies the `ELK_JSON_LOG:` prefix. Once identified, the `json` filter parses the payload directly into Elasticsearch fields, allowing Kibana to build real-time dashboards of model accuracy over time without manual data entry.
 
-## 7. Deployment & Operations
+## 8. Deployment & Operations
 
-### 7.1. Database Management
+### 8.1. Database Management
 
 The PostgreSQL database is managed via Docker Compose. It is configured to run on port `5433` to avoid conflicts with local PostgreSQL instances.
 
@@ -593,14 +645,14 @@ The PostgreSQL database is managed via Docker Compose. It is configured to run o
   - `01-create-tables.sql`: Defines the schema.
   - `02-insert-data.sql`: Seeds the database with initial admin and client users.
 
-### 7.2. Docker Environment
+### 8.2. Docker Environment
 
 The system uses Docker for containerizing the database and potentially other services (ELK stack, Backend).
 
 - **Prerequisites:** Docker Desktop must be installed and running.
 - **Service Isolation:** Currently, the database is isolated in its own compose file to allow for flexible development (running the backend locally or in a container).
 
-### 7.3. API Interaction Guide
+### 8.3. API Interaction Guide
 
 Once the backend is running (`python Code/energy_prediction_system/src/api/main.py`), you can interact with the API.
 
