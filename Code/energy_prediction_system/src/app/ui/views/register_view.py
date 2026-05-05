@@ -1,14 +1,16 @@
-from PyQt6 import QtCore, QtGui, QtWidgets
 import os
+
+from PyQt6 import QtCore, QtGui, QtWidgets
 
 BASE_PATH = os.path.join(os.path.dirname(__file__), "..", "resources")
 
-class Ui_RegisterWindow(object):
+
+class Ui_RegisterWindow:
     def setupUi(self, MainWindow):
         MainWindow.setObjectName("MainWindow")
         MainWindow.resize(600, 450)
         MainWindow.setStyleSheet("background-color: rgb(204, 204, 204);")
-        
+
         self.centralwidget = QtWidgets.QWidget(parent=MainWindow)
         self.centralwidget.setObjectName("centralwidget")
         self.verticalLayout = QtWidgets.QVBoxLayout(self.centralwidget)
@@ -19,9 +21,9 @@ class Ui_RegisterWindow(object):
         self.up_bar.setMinimumSize(QtCore.QSize(0, 30))
         self.up_bar.setStyleSheet("background-color: rgb(0, 1, 128);")
         self.up_bar.setObjectName("up_bar")
-        
+
         self.Register_label = QtWidgets.QLabel(parent=self.up_bar)
-        self.Register_label.setGeometry(QtCore.QRect(110, 0, 81, 31)) 
+        self.Register_label.setGeometry(QtCore.QRect(110, 0, 81, 31))
         font = QtGui.QFont()
         font.setFamily("Tw Cen MT")
         font.setPointSize(18)
@@ -34,9 +36,11 @@ class Ui_RegisterWindow(object):
         self.Register_label.setAlignment(QtCore.Qt.AlignmentFlag.AlignCenter)
         self.Register_label.setObjectName("Register_label")
         self.Register_label.setText("Register")
-        
+
         self.verticalLayout.addWidget(self.up_bar)
-        self.verticalLayout.addItem(QtWidgets.QSpacerItem(20, 20, QtWidgets.QSizePolicy.Policy.Minimum, QtWidgets.QSizePolicy.Policy.Expanding))
+        self.verticalLayout.addItem(
+            QtWidgets.QSpacerItem(20, 20, QtWidgets.QSizePolicy.Policy.Minimum, QtWidgets.QSizePolicy.Policy.Expanding)
+        )
 
         # --- LOGO ---
         self.logo_layout = QtWidgets.QHBoxLayout()
@@ -49,7 +53,9 @@ class Ui_RegisterWindow(object):
         self.logo_layout.addWidget(self.logo_label)
         self.verticalLayout.addLayout(self.logo_layout)
 
-        self.verticalLayout.addItem(QtWidgets.QSpacerItem(20, 20, QtWidgets.QSizePolicy.Policy.Minimum, QtWidgets.QSizePolicy.Policy.Expanding))
+        self.verticalLayout.addItem(
+            QtWidgets.QSpacerItem(20, 20, QtWidgets.QSizePolicy.Policy.Minimum, QtWidgets.QSizePolicy.Policy.Expanding)
+        )
 
         # --- FORMS ---
         self.forms_grid = QtWidgets.QGridLayout()
@@ -57,7 +63,8 @@ class Ui_RegisterWindow(object):
         self.forms_grid.setHorizontalSpacing(30)
         self.forms_grid.setVerticalSpacing(15)
 
-        input_style = "background-color: rgb(234, 234, 239); border: 1px solid black; border-radius: 4px; color: black; padding: 2px;"
+        input_style = "background-color: rgb(234, 234, 239); border: 1px solid black; " \
+        "border-radius: 4px; color: black; padding: 2px;"
         label_font = QtGui.QFont("Tw Cen MT Condensed", 16)
         label_style = "color: black;"
 
@@ -114,13 +121,17 @@ class Ui_RegisterWindow(object):
         self.verticalLayout.addLayout(self.forms_grid)
 
         # Requisitos
-        self.requirements_label = QtWidgets.QLabel("8–20 characters, with at least one uppercase letter, one number, and one special character.")
+        self.requirements_label = QtWidgets.QLabel(
+            "8–20 characters, with at least one uppercase letter, one number, and one special character."
+        )
         self.requirements_label.setFont(QtGui.QFont("Tw Cen MT", 10))
         self.requirements_label.setStyleSheet("color: rgb(0, 1, 128);")
         self.requirements_label.setContentsMargins(40, 0, 0, 0)
         self.verticalLayout.addWidget(self.requirements_label)
 
-        self.verticalLayout.addItem(QtWidgets.QSpacerItem(20, 20, QtWidgets.QSizePolicy.Policy.Minimum, QtWidgets.QSizePolicy.Policy.Fixed))
+        self.verticalLayout.addItem(
+            QtWidgets.QSpacerItem(20, 20, QtWidgets.QSizePolicy.Policy.Minimum, QtWidgets.QSizePolicy.Policy.Fixed)
+        )
 
         # Botão Sign up
         self.btn_layout = QtWidgets.QHBoxLayout()
@@ -156,6 +167,8 @@ class Ui_RegisterWindow(object):
             QPushButton:hover { color: #3498db; }
         """)
         self.verticalLayout.addWidget(self.login_link)
-        self.verticalLayout.addItem(QtWidgets.QSpacerItem(20, 20, QtWidgets.QSizePolicy.Policy.Minimum, QtWidgets.QSizePolicy.Policy.Expanding))
+        self.verticalLayout.addItem(
+            QtWidgets.QSpacerItem(20, 20, QtWidgets.QSizePolicy.Policy.Minimum, QtWidgets.QSizePolicy.Policy.Expanding)
+        )
 
         MainWindow.setCentralWidget(self.centralwidget)
