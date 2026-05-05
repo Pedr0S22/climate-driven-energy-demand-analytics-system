@@ -1,0 +1,165 @@
+services:
+  # --- CAMADA 0: GATEWAY (TRAEFIK) ---
+  traefik:
+    image: traefik:v2.10
+    container_name: energy_gateway
+    restart: always
+    command:
+      - "--api.insecure=true"
+      - "--providers.docker=true"
+      - "--providers.docker.exposedbydefault=false"
+      - "--entrypoints.web.address=:80"
+    ports:
+      - "80:80"       # Entrada principal (API e App)
+      - "8080:8080"   # Dashboard do Traefik
+    volumes:
+      - "/var/run/docker.sock:/var/run/docker.sock:ro"
+    networks:
+      - api_net
+
+  # --- CAMADA 1: DATABASES (Relational & ELK) ---
+  db_server:
+    container_name: energy_db_server
+    image: postgres:15
+    restart: always
+    env_file: .env
+    ports:
+      - "5433:5432"
+    volumes:
+      - ./src/databases/init-scripts:/docker-entrypoint-initdb.d:ro
+      - postgres_data:/var/lib/postgresql/data
+    networks:
+      - db_net
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${DB_USER:-piacd_energy} -d ${DB_NAME:-energy_db}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+
+  elasticsearch:
+    image: docker.elastic.co/elasticsearch/elasticsearch:8.10.2
+    container_name: energy_elastic
+    restart: always
+    environment:
+      - discovery.type=single-node
+      - xpack.security.enabled=false
+      - "ES_JAVA_OPTS=-Xms512m -Xmx512m"
+    networks:
+      - db_net
+    volumes:
+      - elastic_data:/usr/share/elasticsearch/data
+    healthcheck:
+      test: ["CMD-SHELL", "curl -s http://localhost:9200/_cluster/health | grep -q 'status.*green\\|yellow'"]
+      interval: 15s
+      timeout: 10s
+      retries: 5
+
+  logstash:
+    image: docker.elastic.co/logstash/logstash:8.10.2
+    container_name: energy_logstash
+    restart: always
+    volumes:
+      - ./src/databases/elk/logstash.conf:/usr/share/logstash/pipeline/logstash.conf:ro
+    networks:
+      - db_net
+    depends_on:
+      elasticsearch:
+        condition: service_healthy
+
+  kibana:
+    image: docker.elastic.co/kibana/kibana:8.10.2
+    container_name: energy_kibana
+    restart: always
+    ports:
+      - "5601:5601"
+    networks:
+      - api_net
+      - db_net
+    depends_on:
+      elasticsearch:
+        condition: service_healthy
+
+  # --- CAMADA 2: BACKEND (API) ---
+  api:
+    build: 
+      context: .
+      dockerfile: src/api/Dockerfile
+    container_name: energy_api
+    restart: always
+    env_file: .env
+    environment:
+      - DB_HOST=db_server
+      - LOGSTASH_HOST=logstash
+    networks:
+      - db_net
+      - api_net
+    volumes:
+      - ./data:/app/data
+    depends_on:
+      db_server:
+        condition: service_healthy
+      elasticsearch:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.energy-api.rule=Host(`localhost`) && PathPrefix(`/api`)"
+      - "traefik.http.routers.energy-api.entrypoints=web"
+      # QA6: Rate Limiting (Average 5 req/s, Burst 10)
+      - "traefik.http.middlewares.api-ratelimit.ratelimit.average=5"
+      - "traefik.http.middlewares.api-ratelimit.ratelimit.burst=10"
+      - "traefik.http.routers.energy-api.middlewares=api-ratelimit"
+      - "traefik.http.services.energy-api.loadbalancer.server.port=8000"
+
+  # --- CAMADA 3: FRONTEND (APP) ---
+  app:
+    build:
+      context: .
+      dockerfile: src/app/Dockerfile
+    container_name: energy_app
+    restart: on-failure
+    env_file: .env
+    ports:
+      - "3000:3000"
+    networks:
+      - api_net
+    depends_on:
+      api:
+        condition: service_healthy
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.energy-app.rule=Host(`localhost`)"
+      - "traefik.http.routers.energy-app.entrypoints=web"
+      - "traefik.http.routers.energy-app.priority=1"
+      - "traefik.http.services.energy-app.loadbalancer.server.port=3000"
+
+  # --- AUXILIAR: DATA PIPELINE ---
+  pipeline:
+    build:
+      context: .
+      dockerfile: src/data_pipeline/Dockerfile
+    container_name: energy_pipeline
+    profiles: ["tools"]
+    env_file: .env
+    volumes:
+      - ./data:/app/data
+    networks:
+      - db_net
+    depends_on:
+      db_server:
+        condition: service_healthy
+
+networks:
+  api_net:
+    driver: bridge
+  db_net:
+    driver: bridge
+
+volumes:
+  postgres_data:
+  elastic_data:
