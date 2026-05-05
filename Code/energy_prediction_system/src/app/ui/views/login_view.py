@@ -1,4 +1,7 @@
 from PyQt6 import QtCore, QtGui, QtWidgets
+import os
+
+BASE_PATH = os.path.join(os.path.dirname(__file__), "..", "resources")
 
 class Ui_LoginWindow(object):
     def setupUi(self, MainWindow):
@@ -41,7 +44,8 @@ class Ui_LoginWindow(object):
         self.logo_label = QtWidgets.QLabel(parent=self.centralwidget)
         self.logo_label.setMinimumSize(QtCore.QSize(120, 120))
         self.logo_label.setMaximumSize(QtCore.QSize(120, 120))
-        self.logo_label.setPixmap(QtGui.QPixmap("Logo.png"))
+        logo_path = os.path.join(BASE_PATH, "Logo.png")
+        self.logo_label.setPixmap(QtGui.QPixmap(logo_path))
         self.logo_label.setScaledContents(True)
         self.logo_layout.addWidget(self.logo_label)
         self.verticalLayout.addLayout(self.logo_layout)
@@ -136,12 +140,3 @@ class Ui_LoginWindow(object):
         self.verticalLayout.addItem(QtWidgets.QSpacerItem(20, 20, QtWidgets.QSizePolicy.Policy.Minimum, QtWidgets.QSizePolicy.Policy.Expanding))
 
         MainWindow.setCentralWidget(self.centralwidget)
-
-if __name__ == "__main__":
-    import sys
-    app = QtWidgets.QApplication(sys.argv)
-    MainWindow = QtWidgets.QMainWindow()
-    ui = Ui_LoginWindow()
-    ui.setupUi(MainWindow)
-    MainWindow.show()
-    sys.exit(app.exec())
