@@ -19,10 +19,9 @@ def activate_model(
     model_id: int,
     payload: ModelUpdate,
     db: Session = Depends(get_db),
-    current_user=Depends(get_current_user)  # Adicionar auth
+    current_user=Depends(get_current_user),
+    _=Depends(require_role("admin"))  
 ):
-    require_role("admin")
-
     if not payload.is_active:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,

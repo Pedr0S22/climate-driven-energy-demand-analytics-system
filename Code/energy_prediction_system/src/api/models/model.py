@@ -5,11 +5,8 @@ from src.api.database.session import Base
 
 class Model(Base):
     __tablename__ = "model"
-
-    # Usando BigInteger para corresponder ao BIGSERIAL do banco
     model_name_id = Column(BigInteger, primary_key=True, autoincrement=True)
 
-    # Campos obrigatórios do banco
     model_type = Column(String(512), nullable=False)
     model_creation_date = Column(DateTime(timezone=True),
                                  server_default=func.current_timestamp(),

@@ -62,8 +62,6 @@ def login(login_data: UserLogin, db: Session = Depends(get_db)):
 
 @router.post("/logout", response_model=LogoutResponse)
 def logout(current_user: User = Depends(get_current_user)):
-    # In a stateless JWT system, logout is mostly client-side (discard token).
-    # Here we log the event for security auditing.
     logger.info(f"User {current_user.email} logged out")
     return {
         "status": 200,
