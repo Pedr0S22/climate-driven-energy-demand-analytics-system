@@ -24,12 +24,6 @@ class ModelService:
 
     @staticmethod
     def activate_model(db: Session, model_id: int) -> Optional[Model]:
-        """
-        Activate a model with mutex logic:
-        - Deactivates all other models of the same prediction type
-        - Activates the specified model
-        """
-        # Buscar o modelo a ser ativado
         model_to_activate = ModelService.get_model_by_id(db, model_id)
 
         # Verificar se já está ativo
@@ -60,4 +54,4 @@ class ModelService:
             raise HTTPException(
                 status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
                 detail=f"Error activating model: {str(e)}"
-            )
+            ) from e
