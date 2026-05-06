@@ -1,21 +1,23 @@
-import logging
-from datetime import UTC, datetime
-
-from fastapi import APIRouter, Depends, status
-from sqlalchemy.orm import Session
-
-from src.api.core.security import create_access_token, get_current_user, require_role
-from src.api.database.session import get_db
-from src.api.models.user import User
-from src.api.schemas.user import LogoutResponse, Token, UserCreate, UserLogin, UserResponse
 from src.api.services import auth as auth_service
+from src.api.schemas.user import LogoutResponse, Token, UserCreate, UserLogin, UserResponse
+from src.api.models.user import User
+from src.api.database.session import get_db
+from src.api.core.security import create_access_token, get_current_user, require_role
+from sqlalchemy.orm import Session
+from fastapi import APIRouter, Depends, status
+import logging
+from datetime import datetime, timezone
+UTC = timezone.utc
+
 
 router = APIRouter()
 logger = logging.getLogger(__name__)
 
 
 @router.get("/me", response_model=UserResponse)
-def get_me(current_user: User = Depends(get_current_user), db: Session = Depends(get_db)):
+def get_me(
+        current_user: User = Depends(get_current_user),
+        db: Session = Depends(get_db)):
     role = auth_service.get_user_role(db, current_user.id)
     return {
         "id": current_user.id,

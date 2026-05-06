@@ -1,5 +1,7 @@
 import logging
-from datetime import UTC, datetime
+from datetime import datetime, timezone
+UTC = timezone.utc
+import uvicorn
 
 from fastapi import FastAPI, Request, status
 from fastapi.exceptions import RequestValidationError
@@ -13,7 +15,6 @@ logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
 app = FastAPI(title=settings.PROJECT_NAME, openapi_url=f"{settings.API_V1_STR}/openapi.json")
-
 
 # Global Exception Handlers
 @app.exception_handler(RequestValidationError)
@@ -56,6 +57,4 @@ async def general_exception_handler(request: Request, exc: Exception):
 app.include_router(api_router, prefix=settings.API_V1_STR)
 
 if __name__ == "__main__":
-    import uvicorn
-
     uvicorn.run(app, host="0.0.0.0", port=8000)

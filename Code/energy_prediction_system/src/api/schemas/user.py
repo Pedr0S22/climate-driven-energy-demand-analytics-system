@@ -1,6 +1,7 @@
 from datetime import datetime
 
 from pydantic import BaseModel, EmailStr, Field
+from typing import Optional
 
 
 class UserBase(BaseModel):
@@ -36,7 +37,7 @@ class Token(BaseModel):
 
 
 class TokenPayload(BaseModel):
-    sub: str | None = None
+    sub: Optional[str] = None
 
 
 class LogoutResponse(BaseModel):
