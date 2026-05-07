@@ -18,7 +18,10 @@ class Settings(BaseSettings):
     MAX_FAILED_ATTEMPTS: int
     LOCKOUT_DURATION_MINUTES: int
 
-    model_config = SettingsConfigDict(env_file=".env", case_sensitive=True, extra="ignore")
+    model_config = SettingsConfigDict(
+        env_file=".env",
+        case_sensitive=True,
+        extra="ignore")
 
 
 settings = Settings()

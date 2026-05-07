@@ -6,7 +6,8 @@ from src.api.schemas.model import ModelSchema, ModelUpdate
 from src.api.services.model_service import ModelService
 from src.api.core.security import get_current_user, require_role
 
-router = APIRouter(prefix="/api/v1/models", tags=["models"])
+
+router = APIRouter(prefix="", tags=["models"])
 
 
 @router.get("/", response_model=List[ModelSchema])
@@ -20,7 +21,7 @@ def activate_model(
     payload: ModelUpdate,
     db: Session = Depends(get_db),
     current_user=Depends(get_current_user),
-    _=Depends(require_role("admin"))  
+    _=Depends(require_role("admin"))
 ):
     if not payload.is_active:
         raise HTTPException(

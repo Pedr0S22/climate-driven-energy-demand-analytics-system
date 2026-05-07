@@ -19,8 +19,14 @@ from src.api.main import app  # noqa: E402
 # Use SQLite for testing
 SQLALCHEMY_DATABASE_URL = "sqlite:///./test.db"
 
-engine = create_engine(SQLALCHEMY_DATABASE_URL, connect_args={"check_same_thread": False})
-TestingSessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
+engine = create_engine(
+    SQLALCHEMY_DATABASE_URL,
+    connect_args={
+        "check_same_thread": False})
+TestingSessionLocal = sessionmaker(
+    autocommit=False,
+    autoflush=False,
+    bind=engine)
 
 
 @pytest.fixture(scope="function")

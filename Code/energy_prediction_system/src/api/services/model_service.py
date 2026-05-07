@@ -3,6 +3,7 @@ from sqlalchemy.orm import Session
 from sqlalchemy import and_
 from src.api.models.model import Model
 from fastapi import HTTPException, status
+from src.api.services.inference_engine import get_inference_engine
 
 
 class ModelService:
@@ -42,10 +43,12 @@ class ModelService:
                 )
             ).update({"is_active": False})
 
-            # Ativar o modelo solicitado
             model_to_activate.is_active = True
             db.commit()
             db.refresh(model_to_activate)
+
+            engine = get_inference_engine()
+            engine.load_active_model(model_to_activate)
 
             return model_to_activate
 
