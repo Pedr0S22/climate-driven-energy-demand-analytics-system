@@ -33,7 +33,7 @@ def get_template(
     except ValueError as e:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
-            detail=str(e))
+            detail=str(e)) from e
 
 
 @router.post("/run", response_model=SimulationOutput)
@@ -54,4 +54,4 @@ def run_simulation(request: SimulationInput, db: Session = Depends(get_db)):
         )
         return SimulationOutput(**result)
     except ValueError as e:
-        raise HTTPException(status_code=400, detail=str(e))
+        raise HTTPException(status_code=400, detail=str(e)) from e
