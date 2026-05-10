@@ -1,9 +1,8 @@
 import os
-
 from PyQt6 import QtCore, QtGui, QtWidgets
 
-BASE_PATH = os.path.join(os.path.dirname(__file__), "..", "resources")
-
+from app.ui.components.logo_label import LogoLabel
+from app.ui.components.styled_input import StyledInput
 
 class Ui_LoginWindow:
     def setupUi(self, MainWindow):
@@ -17,7 +16,7 @@ class Ui_LoginWindow:
         self.verticalLayout.setContentsMargins(10, 0, 10, 10)
         self.verticalLayout.setObjectName("verticalLayout")
 
-        # barra login
+        # Top Bar
         self.up_bar = QtWidgets.QWidget(parent=self.centralwidget)
         self.up_bar.setMinimumSize(QtCore.QSize(0, 30))
         self.up_bar.setStyleSheet("background-color: rgb(0, 1, 128);")
@@ -25,47 +24,29 @@ class Ui_LoginWindow:
 
         self.Login_label = QtWidgets.QLabel(parent=self.up_bar)
         self.Login_label.setGeometry(QtCore.QRect(110, 0, 51, 31))
-        font = QtGui.QFont()
-        font.setFamily("Tw Cen MT")
-        font.setPointSize(18)
-        font.setBold(True)
-        font.setWeight(75)
+        font = QtGui.QFont("Tw Cen MT", 18, QtGui.QFont.Weight.Bold)
         self.Login_label.setFont(font)
         self.Login_label.setStyleSheet("color: rgb(255, 255, 255);")
-        self.Login_label.setScaledContents(True)
         self.Login_label.setAlignment(QtCore.Qt.AlignmentFlag.AlignCenter)
-        self.Login_label.setObjectName("Login_label")
         self.Login_label.setText("Login")
 
         self.verticalLayout.addWidget(self.up_bar)
 
-        self.verticalLayout.addItem(
-            QtWidgets.QSpacerItem(20, 20, QtWidgets.QSizePolicy.Policy.Minimum, QtWidgets.QSizePolicy.Policy.Expanding)
-        )
+        self.verticalLayout.addStretch()
 
-        # --- LOGO ---
+        # Logo
         self.logo_layout = QtWidgets.QHBoxLayout()
-        self.logo_label = QtWidgets.QLabel(parent=self.centralwidget)
-        self.logo_label.setMinimumSize(QtCore.QSize(120, 120))
-        self.logo_label.setMaximumSize(QtCore.QSize(120, 120))
-        logo_path = os.path.join(BASE_PATH, "Logo.png")
-        self.logo_label.setPixmap(QtGui.QPixmap(logo_path))
-        self.logo_label.setScaledContents(True)
+        self.logo_label = LogoLabel()
         self.logo_layout.addWidget(self.logo_label)
         self.verticalLayout.addLayout(self.logo_layout)
 
-        self.verticalLayout.addItem(
-            QtWidgets.QSpacerItem(20, 20, QtWidgets.QSizePolicy.Policy.Minimum, QtWidgets.QSizePolicy.Policy.Expanding)
-        )
+        self.verticalLayout.addStretch()
 
-        # --- FORMS ---
+        # Forms
         self.forms_container = QtWidgets.QVBoxLayout()
-        self.forms_container.setContentsMargins(60, 0, 60, 0)  # Margens laterais para não esticar muito
+        self.forms_container.setContentsMargins(60, 0, 60, 0)
         self.forms_container.setSpacing(10)
 
-        # Estilo comum aos componentes
-        input_style = "background-color: rgb(234, 234, 239); border: 1px solid black; border-radius: " \
-        "4px; color: black; padding: 2px;"
         label_font = QtGui.QFont("Tw Cen MT Condensed", 18)
         label_style = "color: black;"
 
@@ -73,9 +54,7 @@ class Ui_LoginWindow:
         self.email_label = QtWidgets.QLabel("Email")
         self.email_label.setFont(label_font)
         self.email_label.setStyleSheet(label_style)
-        self.email_input = QtWidgets.QLineEdit()
-        self.email_input.setMinimumHeight(35)
-        self.email_input.setStyleSheet(input_style)
+        self.email_input = StyledInput(placeholder="your@email.com")
         self.forms_container.addWidget(self.email_label)
         self.forms_container.addWidget(self.email_input)
 
@@ -83,14 +62,11 @@ class Ui_LoginWindow:
         self.pass_label = QtWidgets.QLabel("Password")
         self.pass_label.setFont(label_font)
         self.pass_label.setStyleSheet(label_style)
-        self.pass_input = QtWidgets.QLineEdit()
-        self.pass_input.setMinimumHeight(35)
-        self.pass_input.setEchoMode(QtWidgets.QLineEdit.EchoMode.Password)
-        self.pass_input.setStyleSheet(input_style)
+        self.pass_input = StyledInput(placeholder="password", is_password=True)
         self.forms_container.addWidget(self.pass_label)
         self.forms_container.addWidget(self.pass_input)
 
-        # Esqueci a password
+        # Forgot Password
         self.forgot_btn = QtWidgets.QPushButton("I forgot my password")
         self.forgot_btn.setCursor(QtGui.QCursor(QtCore.Qt.CursorShape.PointingHandCursor))
         self.forgot_btn.setStyleSheet("""
@@ -106,12 +82,9 @@ class Ui_LoginWindow:
         self.forms_container.addWidget(self.forgot_btn)
 
         self.verticalLayout.addLayout(self.forms_container)
+        self.verticalLayout.addSpacing(20)
 
-        self.verticalLayout.addItem(
-            QtWidgets.QSpacerItem(20, 20, QtWidgets.QSizePolicy.Policy.Minimum, QtWidgets.QSizePolicy.Policy.Fixed)
-        )
-
-        # --- BOTÃO LOGIN ---
+        # Login Button
         self.btn_layout = QtWidgets.QHBoxLayout()
         self.login_button = QtWidgets.QPushButton("Login")
         self.login_button.setFixedSize(140, 50)
@@ -131,7 +104,7 @@ class Ui_LoginWindow:
         self.btn_layout.addWidget(self.login_button)
         self.verticalLayout.addLayout(self.btn_layout)
 
-        # --- LINK PARA REGISTO ---
+        # Register Link
         self.register_link = QtWidgets.QPushButton("Don't have an account? Register here.")
         self.register_link.setFont(QtGui.QFont("Tw Cen MT", 12))
         self.register_link.setCursor(QtGui.QCursor(QtCore.Qt.CursorShape.PointingHandCursor))
@@ -146,8 +119,6 @@ class Ui_LoginWindow:
         """)
         self.verticalLayout.addWidget(self.register_link)
 
-        self.verticalLayout.addItem(
-            QtWidgets.QSpacerItem(20, 20, QtWidgets.QSizePolicy.Policy.Minimum, QtWidgets.QSizePolicy.Policy.Expanding)
-        )
+        self.verticalLayout.addStretch()
 
         MainWindow.setCentralWidget(self.centralwidget)
