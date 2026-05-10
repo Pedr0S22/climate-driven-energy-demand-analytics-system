@@ -90,6 +90,7 @@ services:
     env_file: .env
     environment:
       - DB_HOST=db_server
+      - DB_PORT=5432
       - LOGSTASH_HOST=logstash
     networks:
       - db_net
@@ -102,17 +103,17 @@ services:
       elasticsearch:
         condition: service_healthy
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
-      interval: 10s
-      timeout: 5s
+      test: ["CMD", "curl", "-f", "http://localhost:8000/api/health"]
+      interval: 60s
+      timeout: 10s
       retries: 3
     labels:
       - "traefik.enable=true"
-      - "traefik.http.routers.energy-api.rule=Host(`localhost`) && PathPrefix(`/api`)"
+      - "traefik.http.routers.energy-api.rule=PathPrefix(`/api`)"
       - "traefik.http.routers.energy-api.entrypoints=web"
-      # QA6: Rate Limiting (Average 5 req/s, Burst 10)
-      - "traefik.http.middlewares.api-ratelimit.ratelimit.average=5"
-      - "traefik.http.middlewares.api-ratelimit.ratelimit.burst=10"
+      # QA6: Rate Limiting (Increased for Swagger: Average 100 req/s, Burst 200)
+      - "traefik.http.middlewares.api-ratelimit.ratelimit.average=100"
+      - "traefik.http.middlewares.api-ratelimit.ratelimit.burst=200"
       - "traefik.http.routers.energy-api.middlewares=api-ratelimit"
       - "traefik.http.services.energy-api.loadbalancer.server.port=8000"
 
@@ -146,6 +147,9 @@ services:
     container_name: energy_pipeline
     profiles: ["tools"]
     env_file: .env
+    environment:
+      - DB_HOST=db_server
+      - DB_PORT=5432
     volumes:
       - ./data:/app/data
     networks:
