@@ -7,6 +7,7 @@ from .views.login_view import Ui_LoginWindow
 from .views.register_view import Ui_RegisterWindow
 from .views.daily_prediction_view import Ui_DailyPredictionAdminWindow
 from .views.hourly_prediction_view import Ui_HourlyPredictionAdminWindow
+from .views.model_management_view import Ui_ModelManagementWindow
 
 
 class MainWindow(QMainWindow):
@@ -25,6 +26,7 @@ class MainWindow(QMainWindow):
         self.admin_page = QMainWindow()
         self.daily_pred_admin_page = QMainWindow()
         self.hourly_pred_admin_page = QMainWindow()
+        self.model_mgmt_page = QMainWindow()
 
         # Configurar as UIs nos seus respetivos widgets
         self.ui_login = Ui_LoginWindow()
@@ -42,14 +44,18 @@ class MainWindow(QMainWindow):
         self.ui_hourly_pred = Ui_HourlyPredictionAdminWindow()
         self.ui_hourly_pred.setupUi(self.hourly_pred_admin_page)
 
+        self.ui_model_mgmt = Ui_ModelManagementWindow()
+        self.ui_model_mgmt.setupUi(self.model_mgmt_page)
+
         # Adicionar à pilha (Stack)
         self.stack.addWidget(self.login_page)             # Índice 0
         self.stack.addWidget(self.register_page)          # Índice 1
         self.stack.addWidget(self.admin_page)             # Índice 2
         self.stack.addWidget(self.daily_pred_admin_page)  # Índice 3
         self.stack.addWidget(self.hourly_pred_admin_page) # Índice 4
+        self.stack.addWidget(self.model_mgmt_page)        # Índice 5
 
-        self.stack.setCurrentIndex(3) # FORÇAR INÍCIO NA NOVA PÁGINA
+        self.stack.setCurrentIndex(2) # Iniciar na Home por agora para testes
 
         # --- LIGAÇÕES ---
 
@@ -66,27 +72,36 @@ class MainWindow(QMainWindow):
         self.ui_admin.home_btn.clicked.connect(lambda: self.stack.setCurrentIndex(2))
         self.ui_admin.daily_btn.clicked.connect(lambda: self.stack.setCurrentIndex(3))
         self.ui_admin.hourly_btn.clicked.connect(lambda: self.stack.setCurrentIndex(4))
-        self.ui_admin.model_mgmt_btn.clicked.connect(lambda: print("Go to Model Management"))
+        self.ui_admin.model_mgmt_btn.clicked.connect(lambda: self.stack.setCurrentIndex(5))
 
         # Na Home: Navegação Dashboard
         self.ui_admin.daily_button.clicked.connect(lambda: self.stack.setCurrentIndex(3))
         self.ui_admin.hourly_button.clicked.connect(lambda: self.stack.setCurrentIndex(4))
+        self.ui_admin.model_mgmt_button.clicked.connect(lambda: self.stack.setCurrentIndex(5))
         
         self.ui_admin.sim_daily_button.clicked.connect(lambda: print("Go to Daily Simulation"))
         self.ui_admin.sim_hourly_button.clicked.connect(lambda: print("Go to Hourly Simulation"))
-        self.ui_admin.model_mgmt_button.clicked.connect(lambda: print("Go to Model Management"))
 
         # Na Daily Pred Admin
         self.ui_daily_pred.logout_btn.clicked.connect(lambda: self.stack.setCurrentIndex(0))
         self.ui_daily_pred.home_btn.clicked.connect(lambda: self.stack.setCurrentIndex(2))
         self.ui_daily_pred.daily_btn.clicked.connect(lambda: self.stack.setCurrentIndex(3))
         self.ui_daily_pred.hourly_btn.clicked.connect(lambda: self.stack.setCurrentIndex(4))
+        self.ui_daily_pred.model_btn.clicked.connect(lambda: self.stack.setCurrentIndex(5))
 
         # Na Hourly Pred Admin
         self.ui_hourly_pred.logout_btn.clicked.connect(lambda: self.stack.setCurrentIndex(0))
         self.ui_hourly_pred.home_btn.clicked.connect(lambda: self.stack.setCurrentIndex(2))
         self.ui_hourly_pred.daily_btn.clicked.connect(lambda: self.stack.setCurrentIndex(3))
         self.ui_hourly_pred.hourly_btn.clicked.connect(lambda: self.stack.setCurrentIndex(4))
+        self.ui_hourly_pred.model_btn.clicked.connect(lambda: self.stack.setCurrentIndex(5))
+
+        # Na Model Management
+        self.ui_model_mgmt.logout_btn.clicked.connect(lambda: self.stack.setCurrentIndex(0))
+        self.ui_model_mgmt.home_btn.clicked.connect(lambda: self.stack.setCurrentIndex(2))
+        self.ui_model_mgmt.daily_btn.clicked.connect(lambda: self.stack.setCurrentIndex(3))
+        self.ui_model_mgmt.hourly_btn.clicked.connect(lambda: self.stack.setCurrentIndex(4))
+        self.ui_model_mgmt.model_btn.clicked.connect(lambda: self.stack.setCurrentIndex(5))
 
         # Botões com Validação
         self.ui_login.login_button.clicked.connect(self.handle_login)

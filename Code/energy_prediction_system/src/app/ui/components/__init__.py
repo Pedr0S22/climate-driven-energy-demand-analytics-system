@@ -7,3 +7,4 @@ from .styled_input import StyledInput
 from .prediction_params import PredictionParams
 from .plot_widget import PlotWidget
 from .error_card import ErrorCard
+from .toggle_switch import ToggleSwitch

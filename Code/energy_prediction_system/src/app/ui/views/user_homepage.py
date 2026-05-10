@@ -3,9 +3,9 @@ from PyQt6 import QtCore, QtGui, QtWidgets
 
 from app.ui.components import TopBar, Sidebar
 
-class Ui_MainWindow:
+class Ui_UserMainWindow:
     def setupUi(self, MainWindow):
-        MainWindow.setObjectName("MainWindow")
+        MainWindow.setObjectName("UserMainWindow")
         MainWindow.resize(1446, 1029)
         MainWindow.setStyleSheet("background-color: rgb(243, 243, 243);")
 
@@ -28,8 +28,8 @@ class Ui_MainWindow:
         self.container_layout.addWidget(self.top_bar)
         
         # Connections
-        self.pushButton = self.top_bar.logout_btn
-        self.toolButton = self.top_bar.menu_btn
+        self.logout_btn = self.top_bar.logout_btn
+        self.menu_btn = self.top_bar.menu_btn
 
         # --- HORIZONTAL LAYOUT FOR SIDEBAR + CONTENT ---
         self.horizontal_container = QtWidgets.QHBoxLayout()
@@ -49,7 +49,6 @@ class Ui_MainWindow:
         self.sim_daily_btn = self.sidebar.add_menu_item("daily", active=False, indent=True, header_parent="Scenario Simulation:")
         self.sim_hourly_btn = self.sidebar.add_menu_item("hourly", active=False, indent=True, header_parent="Scenario Simulation:")
         
-        self.model_mgmt_btn = self.sidebar.add_menu_item("Model Management", active=False)
         
         self.sidebar.layout.addStretch()
         self.sidebar.setVisible(False)
@@ -113,17 +112,6 @@ class Ui_MainWindow:
         self.sim_layout.addStretch()
         self.content_layout.addLayout(self.sim_layout)
 
-        # 3. MANAGEMENT SECTION
-        self.add_section_header("System Management")
-        self.mgmt_layout = QtWidgets.QHBoxLayout()
-        
-        self.model_mgmt_button = self.create_big_button("Model Management", None, dashboard_btn_style)
-        self.model_mgmt_button.setFixedWidth(400)
-        
-        self.mgmt_layout.addWidget(self.model_mgmt_button)
-        self.mgmt_layout.addStretch()
-        self.content_layout.addLayout(self.mgmt_layout)
-
         self.content_layout.addStretch()
         self.scroll_area.setWidget(self.scroll_content)
         self.horizontal_container.addWidget(self.scroll_area, stretch=1)
@@ -133,7 +121,7 @@ class Ui_MainWindow:
         MainWindow.setCentralWidget(self.centralwidget)
 
         # Connections
-        self.toolButton.clicked.connect(self.toggle_sidebar)
+        self.menu_btn.clicked.connect(self.toggle_sidebar)
 
     def toggle_sidebar(self):
         self.sidebar.setVisible(not self.sidebar.isVisible())

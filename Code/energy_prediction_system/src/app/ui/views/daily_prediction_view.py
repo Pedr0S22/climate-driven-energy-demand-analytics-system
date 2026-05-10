@@ -50,6 +50,7 @@ class Ui_DailyPredictionAdminWindow:
         self.sim_hourly_btn = self.sidebar.add_menu_item("hourly", active=False, indent=True, header_parent="Scenario Simulation:")
         
         self.model_btn = self.sidebar.add_menu_item("Model Management", active=False)
+        # To hide for normal users, you can call self.model_btn.parent().setVisible(False)
         
         self.sidebar.layout.addStretch()
         self.sidebar.setVisible(False)
