@@ -1,14 +1,18 @@
 import logging
+from contextlib import asynccontextmanager
 from datetime import UTC, datetime
 
 import uvicorn
 from fastapi import FastAPI, Request, status
+from fastapi.encoders import jsonable_encoder
 from fastapi.exceptions import RequestValidationError
 from fastapi.responses import JSONResponse
 from starlette.exceptions import HTTPException as StarletteHTTPException
 
 from src.api.core.config import settings
+from src.api.database.session import SessionLocal
 from src.api.routers.router import api_router
+from src.api.services.inference_engine import get_inference_engine
 
 UTC = UTC
 
@@ -16,11 +20,30 @@ UTC = UTC
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    # Startup: Load active models
+    logger.info("API Starting: Loading active models into memory...")
+    db = SessionLocal()
+    try:
+        engine = get_inference_engine()
+        engine.load_all_active_models(db)
+    except Exception as e:
+        logger.error(f"Error loading models on startup: {e}")
+    finally:
+        db.close()
+    yield
+    # Shutdown (if needed)
+    logger.info("API Shutting down...")
+
+
 app = FastAPI(
     title=settings.PROJECT_NAME,
     openapi_url=f"{settings.API_V1_STR}/openapi.json",
     docs_url=f"{settings.API_V1_STR}/docs",
     redoc_url=f"{settings.API_V1_STR}/redoc",
+    lifespan=lifespan,
 )
 
 # Global Exception Handlers
@@ -30,12 +53,14 @@ app = FastAPI(
 async def validation_exception_handler(request: Request, exc: RequestValidationError):
     return JSONResponse(
         status_code=status.HTTP_400_BAD_REQUEST,
-        content={
-            "status": 400,
-            "message": "Validation Error",
-            "errors": exc.errors(),
-            "timestamp": datetime.now(UTC).isoformat(),
-        },
+        content=jsonable_encoder(
+            {
+                "status": 400,
+                "message": "Validation Error",
+                "errors": exc.errors(),
+                "timestamp": datetime.now(UTC).isoformat(),
+            }
+        ),
     )
 
 
@@ -63,7 +88,7 @@ async def general_exception_handler(request: Request, exc: Exception):
     )
 
 
-@app.get("/api/health", tags=["health"])
+@app.get("/api/health", tags=["Health"])
 async def health_check():
     return {"status": "healthy", "timestamp": datetime.now(UTC).isoformat(), "version": "1.0.1"}
 

@@ -97,6 +97,7 @@ services:
       - api_net
     volumes:
       - ./data:/app/data
+      - ./models:/app/models
     depends_on:
       db_server:
         condition: service_healthy
@@ -109,13 +110,15 @@ services:
       retries: 3
     labels:
       - "traefik.enable=true"
-      - "traefik.http.routers.energy-api.rule=PathPrefix(`/api`)"
+      - "traefik.http.routers.energy-api.rule=Host(`localhost`) && PathPrefix(`/api`)"
       - "traefik.http.routers.energy-api.entrypoints=web"
+      - "traefik.http.routers.energy-api.priority=10"
       # QA6: Rate Limiting (Increased for Swagger: Average 100 req/s, Burst 200)
       - "traefik.http.middlewares.api-ratelimit.ratelimit.average=100"
       - "traefik.http.middlewares.api-ratelimit.ratelimit.burst=200"
       - "traefik.http.routers.energy-api.middlewares=api-ratelimit"
       - "traefik.http.services.energy-api.loadbalancer.server.port=8000"
+
 
   # --- CAMADA 3: FRONTEND (APP) ---
   app:
@@ -152,6 +155,7 @@ services:
       - DB_PORT=5432
     volumes:
       - ./data:/app/data
+      - ./models:/app/models
     networks:
       - db_net
     depends_on:

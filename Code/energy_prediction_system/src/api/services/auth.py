@@ -19,18 +19,13 @@ def get_user_by_email(db: Session, email: str):
 def create_user(db: Session, user_in: UserCreate, is_admin: bool = False):
     # Check for duplicate email
     if get_user_by_email(db, user_in.email):
-        raise HTTPException(
-            status_code=status.HTTP_409_CONFLICT,
-            detail="Email already registered")
+        raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail="Email already registered")
 
     # Hash password
     hashed_password = get_password_hash(user_in.password)
 
     # Create User
-    db_user = User(
-        email=user_in.email,
-        username=user_in.username,
-        password=hashed_password)
+    db_user = User(email=user_in.email, username=user_in.username, password=hashed_password)
     db.add(db_user)
     db.commit()
     db.refresh(db_user)
@@ -62,7 +57,13 @@ def authenticate_user(db: Session, login_data: UserLogin):
 
     # Brute Force Protection (QA13)
     now = datetime.now(UTC)
-    if user.acc_locked_until and user.acc_locked_until > now:
+
+    # Ensure user.acc_locked_until is timezone-aware before comparison
+    locked_until = user.acc_locked_until
+    if locked_until and locked_until.tzinfo is None:
+        locked_until = locked_until.replace(tzinfo=UTC)
+
+    if locked_until and locked_until > now:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="Account locked due to multiple failed attempts. Please try again later.",
@@ -74,8 +75,7 @@ def authenticate_user(db: Session, login_data: UserLogin):
         user.last_failed_att = now
 
         if user.failed_login_att > settings.MAX_FAILED_ATTEMPTS:
-            user.acc_locked_until = now + \
-                timedelta(minutes=settings.LOCKOUT_DURATION_MINUTES)
+            user.acc_locked_until = now + timedelta(minutes=settings.LOCKOUT_DURATION_MINUTES)
             db.commit()
             raise HTTPException(
                 status_code=status.HTTP_403_FORBIDDEN,

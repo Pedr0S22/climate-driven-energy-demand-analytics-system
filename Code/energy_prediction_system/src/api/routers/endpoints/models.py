@@ -1,17 +1,16 @@
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
-from typing import List
+
+from src.api.core.security import get_current_user, require_role
 from src.api.database.session import get_db
 from src.api.schemas.model import ModelSchema, ModelUpdate
 from src.api.services.model_service import ModelService
-from src.api.core.security import get_current_user, require_role
+
+router = APIRouter()
 
 
-router = APIRouter(prefix="", tags=["models"])
-
-
-@router.get("/", response_model=List[ModelSchema])
-def list_models(db: Session = Depends(get_db)):
+@router.get("/", response_model=list[ModelSchema])
+def list_models(db: Session = Depends(get_db), current_user=Depends(get_current_user)):
     return ModelService.get_all_models(db)
 
 
@@ -21,12 +20,11 @@ def activate_model(
     payload: ModelUpdate,
     db: Session = Depends(get_db),
     current_user=Depends(get_current_user),
-    _=Depends(require_role("admin"))
+    _=Depends(require_role("admin")),
 ):
     if not payload.is_active:
         raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="is_active must be true to activate a model"
+            status_code=status.HTTP_400_BAD_REQUEST, detail="is_active must be true to activate a model"
         )
 
     updated = ModelService.activate_model(db, model_id)
