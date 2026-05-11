@@ -370,93 +370,91 @@ FastAPI global exception handlers standardize responses:
 
 ### 4.2. Prediction Inference Service
 
-The Prediction Inference Service manages the execution of trained ML models. It dynamically loads the production-ready model binaries and performs inference using real-time features provided by the Data Pipeline.
+The Prediction Inference Service manages the execution of trained ML models. It dynamically loads the production-ready model binaries and performs inference using real-time features or user-defined simulation templates.
 
-### 4.2.1 API Contracts for Prediction Service
+#### 4.2.1. Inference Workflow (Sequence Diagram)
+The following diagram illustrates the interaction between the User, the API, the Simulation Service, and the Singleton Inference Engine.
 
-*   **Prediction using daily model: `GET /api/predict/daily`**
-    *   **Headers:** `Authorization: Bearer <token>`
-    *   **Query Params:** `?date=2026-05-01`
-    *   **Successful Response (`200 OK`):**
+```mermaid
+sequenceDiagram
+    participant U as User/Admin
+    participant API as FastAPI Router
+    participant SS as SimulationService
+    participant IE as InferenceEngine (Singleton)
+    participant M as ML Model (.joblib)
+
+    U->>API: POST /api/v1/simulations/run
+    API->>SS: run_simulation(params)
+    SS->>SS: Get Template & Apply Overrides
+    SS->>IE: predict(frequency, features_dict)
+    IE->>IE: Robust Feature Alignment (feature_names_in_)
+    IE->>IE: Apply Scaler (if exists)
+    IE->>IE: Apply PCA (if dataset_selected == 'pca')
+    IE->>M: model.predict(X)
+    M-->>IE: prediction_val
+    IE-->>SS: prediction_val
+    SS-->>API: {predicted_mw, top_drivers}
+    API-->>U: JSON Response
+```
+
+#### 4.2.2. Singleton Inference Engine
+The `InferenceEngine` is implemented as a Singleton to prevent redundant loading of heavy model binaries (Random Forest) into memory. It maintains a cache of:
+- **Models:** Frequency-specific binaries (`.joblib`).
+- **Scalers:** Fitted `StandardScaler` objects for each frequency, loaded from `/models/feat-engineering/` or the model's directory.
+- **PCA:** Fitted `PCA` objects, loaded only if the active model uses the 'pca' dataset strategy.
+
+#### 4.2.3. Robust Feature Alignment
+To prevent mismatch errors (e.g., 117 features sent to a 41-feature model), the Engine uses the model's or scaler's `feature_names_in_` attribute to automatically filter and order input dictionaries. This ensures that:
+1.  Templates with extra features are safely pruned to the expected subset.
+2.  The column order always matches the exact state during training.
+3.  Missing features are identified and logged before inference.
+
+#### 4.2.4. Scenario Simulation Engine
+The simulation engine allows users to perform "What-if" analysis using 16 pre-defined templates:
+- **Templates:** (Average Weather, Rainy, Storm, Heatwave) x (Daily, Hourly).
+- **Overrides:** Restricted set of variables (`t2m`, `sp`, `tp`, `u10`, `v10`) can be manually tuned.
+- **Validation:** Overrides are strictly validated against `PHYSICAL_LIMITS` (e.g., temperature between -40°C and 55°C).
+
+#### 4.2.5 API Contracts for Simulations
+
+*   **Get Available Template: `POST /api/v1/simulations/templates`**
+    *   **Description:** Returns the default feature vector for a condition, aligned with the currently active model's requirements.
+    *   **Payload:** `{ "frequency": "daily", "template_name": "heatwave" }`
+    *   **Response:** `{ "frequency": "daily", "template_name": "heatwave", "dataset_type": "selected", "features": {...} }`
+
+*   **Run Simulation: `POST /api/v1/simulations/run`**
+    *   **Description:** Executes a prediction using a template with optional overrides.
+    *   **Payload:**
         ```json
         {
-          "date": "2026-05-01",
-          "predicted_mwh": 58420.5,
-          "model_version": "RF_v1",
-          "features_used": {
-            "t2m_mean": 18.5,
-            "is_weekend": false,
-            "season": 2
-          },
-          "timestamp": "2026-04-28T10:15:00Z"
+          "frequency": "daily",
+          "template_name": "heatwave",
+          "month": 5,
+          "day_of_week": 0,
+          "overrides": { "t2m": 42.5 }
         }
         ```
-
-*   **Prediction using hourly model: `GET /api/predict/hourly`**
-    *   **Headers:** `Authorization: Bearer <token>`
-    *   **Query Params:** `?datetime=2026-05-01T14:00`
-    *   **Successful Response (`200 OK`):**
-        ```json
-        {
-          "datetime": "2026-05-01T14:00:00Z",
-          "predicted_mw": 2450.1,
-          "model_version": "LR_v1",
-          "features_used": {
-            "t2m": 22.1,
-            "hour": 14,
-            "ssrd": 650.4
-          },
-          "timestamp": "2026-04-28T10:16:00Z"
-        }
-        ```
-
+    *   **Response:** `{ "predicted_mw": 32500.5, "top_drivers": ["t2m", "day_of_week"] }`
 
 ### 4.3. Administrator & Management Services
 
-These services allow authorized administrators to manage the system's operational state, including model promotion and system health monitoring.
+These services allow authorized administrators to manage the system's operational state and promote models to production.
 
-### 4.3.1 API Contracts for Admin/Management Service
+#### 4.3.1. Model Activation Mutex
+When an administrator activates a model, the system enforces a mutex logic:
+- All other models of the same `model_pred_type` (e.g., 'daily') are automatically deactivated to prevent ambiguity.
+- The `InferenceEngine` is immediately notified to hot-reload the new model into memory, ensuring zero-downtime updates.
 
-*   **List all models: `GET /api/admin/models`**
-    *   **Headers:** `Authorization: Bearer <token>` (Admin Only)
-    *   **Successful Response (`200 OK`):**
-        ```json
-        {
-          "models": [
-            {
-              "id": "model_001",
-              "type": "RandomForest",
-              "resolution": "daily",
-              "metrics": {"mae": 150.2, "rmse": 200.5, "r2": 0.92},
-              "is_active": true
-            },
-            {
-              "id": "model_002",
-              "type": "LinearRegression",
-              "resolution": "daily",
-              "metrics": {"mae": 180.1, "rmse": 230.4, "r2": 0.88},
-              "is_active": false
-            }
-          ]
-        }
-        ```
+#### 4.3.2 API Contracts for Model Management
 
-*   **Promote model to production: `POST /api/admin/models/activate`**
-    *   **Headers:** `Authorization: Bearer <token>` (Admin Only)
-    *   **Request Payload:**
-        ```json
-        {
-          "model_id": "model_002"
-        }
-        ```
-    *   **Successful Response (`200 OK`):**
-        ```json
-        {
-          "status": 200,
-          "message": "Model model_002 successfully activated",
-          "timestamp": "2026-04-28T10:20:00Z"
-        }
-        ```
+*   **List all models: `GET /api/v1/models/`**
+    *   **Description:** Returns a list of all models registered in the system with their performance metrics.
+    *   **Response:** List of objects containing `model_name_id`, `model_type`, `rmse`, `r2`, `mae`, `is_active`, etc.
+
+*   **Activate model: `PATCH /api/v1/models/{model_id}/activate`**
+    *   **Description:** Promotes a model to production. (Admin Only)
+    *   **Payload:** `{ "is_active": true }`
+    *   **Response:** The updated model metadata.
 
 ### 4.4. Live Data Scheduler Service
 [`TODO`] - (Technical implementation: What library runs it? How does it avoid race conditions with the database?)
@@ -571,7 +569,36 @@ Machine learning models inherently produce varying resolutions of time-series da
 ##### Server-Side Cryptography for Database Seeding
 Standard practices often expose plaintext passwords during initial database migrations, setup scripts, or CI/CD pipelines. To mitigate this security vulnerability, the architecture leverages PostgreSQL's native `pgcrypto` extension. By shifting the cryptographic workload to the database engine itself, passwords can be hashed and salted dynamically during the `INSERT` operation. This ensures that raw credentials are never stored in SQL dump files, migration logs, or application source code, adhering to strict zero-trust security principles from the moment the database is initialized.
 ### 5.2. File Storage System
-[`TODO`] - (Directory structures for raw/processed data, and .pkl/joblib model binary storage rules)
+
+The system implements a structured, hierarchical file storage strategy to manage large datasets and binary artifacts. It follows the "Medallion Architecture" principles (Raw -> Processed -> Feature Engineered) to ensure data lineage and reproducibility.
+
+#### 5.2.1. Data Directory Hierarchy
+All data is stored relative to the application root in the `data/` directory.
+
+- **`/data/raw/` (Immutable Layer):**
+    - `energy/`: Contains original ENTSO-E CSV files named by date range.
+    - `weather/`: Contains original Copernicus ERA5-Land CSV/NetCDF files.
+    - **Rule:** Files in this directory are strictly **read-only**. No cleaning or transformation is performed in-place.
+- **`/data/processed/` (Silver Layer):**
+    - Stores synchronized and aggregated datasets (`complete_train_data_hourly.csv`, `complete_train_data_daily.csv`).
+    - `feat-engineering/`: Stores high-dimensional feature sets (`features_daily_selected.csv`, etc.).
+- **`/data/real-time/` (Ephemeral Layer):**
+    - Stores transient payloads from the Live Data Scheduler used for immediate inference.
+
+#### 5.2.2. Model & Transformer Binaries (`/models/`)
+Machine learning artifacts are persisted using the `joblib` format for efficient serialization of large NumPy arrays (Random Forest).
+
+- **Model Naming Convention:** `[ModelType]_v[Version].joblib` (e.g., `RF_v1.joblib`).
+- **Transformer Naming Convention:** `[Type]_[Frequency].joblib` (e.g., `scaler_daily.joblib`).
+- **Storage Sub-directories:**
+    - `models/daily/`: Linear Regression and Random Forest binaries for daily resolution.
+    - `models/hourly/`: Binaries for hourly resolution.
+    - `models/feat-engineering/`: Central repository for `scaler` and `pca` objects.
+
+#### 5.2.3. Persistence & Path Resolution
+- **Format:** All tabular data must be stored as **CSV** with UTF-8 encoding. All ML artifacts must be stored as **Joblib** (preferred over Pickle for security and performance).
+- **Resolution:** The system uses `pathlib.Path` for all internal resolutions. Relative paths stored in the database (e.g., `models/daily/LR_v1.joblib`) are resolved against the `APP_ROOT` at runtime by the `InferenceEngine`.
+- **Integrity:** Every model binary must have a corresponding entry in the `model` table, ensuring that the file system and the relational metadata remain synchronized.
 
 ### 5.3. Log Storage ELK
 
@@ -668,5 +695,5 @@ Once the backend is running (`python Code/energy_prediction_system/src/api/main.
 
 #### Documentation
 FastAPI provides interactive Swagger documentation at:
-- **Swagger UI:** `http://localhost:8000/docs`
-- **ReDoc:** `http://localhost:8000/redoc`
+- **Swagger UI:** `http://localhost:8000/api/docs` (or without port for local development)
+- **ReDoc:** `http://localhost:8000/api/redoc`(or without port for local development)

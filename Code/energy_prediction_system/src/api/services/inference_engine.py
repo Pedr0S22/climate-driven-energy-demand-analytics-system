@@ -43,40 +43,51 @@ class InferenceEngine:
 
         try:
             model_path = Path(model_record.model_server_relative_path)
+            app_root = Path(__file__).resolve().parent.parent.parent.parent
 
             # Ajuste de caminho se estiver a correr fora do container ou num root diferente
-            # No docker, o WORKDIR é /app, e os caminhos relativos na DB são 'models/...'
             if not model_path.is_absolute():
-                # Tentar encontrar no diretório de trabalho atual
-                potential_path = Path.cwd() / model_path
-                if not potential_path.exists():
-                    # Tentar encontrar relativo ao root da app
-                    potential_path = Path(__file__).resolve().parent.parent.parent.parent / model_path
-
-                if potential_path.exists():
-                    model_path = potential_path
+                potential_paths = [
+                    Path.cwd() / model_path,
+                    app_root / model_path,
+                ]
+                for p in potential_paths:
+                    if p.exists():
+                        model_path = p
+                        break
 
             if not model_path.exists():
                 logger.error(f"Modelo não encontrado no caminho: {model_path}")
                 return False
 
             logger.info(f"Carregando modelo {freq} de {model_path}")
-
-            # Carregar modelo real
             self._models[freq] = joblib.load(model_path)
 
+            # Localização de Transformers (Scaler/PCA)
+            # Prioridade 1: Mesma pasta do modelo
+            # Prioridade 2: Pasta central models/feat-engineering/
+            feat_eng_dir = app_root / "models" / "feat-engineering"
+
             # Carregar scaler real
-            scaler_path = model_path.parent / f"scaler_{freq}.joblib"
+            scaler_name = f"scaler_{freq}.joblib"
+            scaler_path = model_path.parent / scaler_name
+            if not scaler_path.exists():
+                scaler_path = feat_eng_dir / scaler_name
+
             if scaler_path.exists():
                 self._scalers[freq] = joblib.load(scaler_path)
-                logger.info(f"Scaler carregado para {freq}")
+                logger.info(f"Scaler carregado para {freq} de {scaler_path}")
 
             # Carregar PCA real se necessário
             if model_record.dataset_selected == "pca":
-                pca_path = model_path.parent / f"pca_{freq}.joblib"
+                pca_name = f"pca_{freq}.joblib"
+                pca_path = model_path.parent / pca_name
+                if not pca_path.exists():
+                    pca_path = feat_eng_dir / pca_name
+
                 if pca_path.exists():
                     self._pca[freq] = joblib.load(pca_path)
-                    logger.info(f"PCA carregado para {freq}")
+                    logger.info(f"PCA carregado para {freq} de {pca_path}")
 
             return True
 
@@ -109,28 +120,48 @@ class InferenceEngine:
         """Retorna o PCA para a frequência"""
         return self._pca.get(frequency)
 
-    def predict(self, frequency: str, features: np.ndarray) -> float:
+    def predict(self, frequency: str, features: Any) -> float:
         model = self.get_model(frequency)
         if model is None:
             logger.error(f"Predição falhou: Nenhum modelo em memória para '{frequency}'")
-            logger.info(f"Modelos disponíveis em memória: {list(self._models.keys())}")
             raise ValueError(f"Nenhum modelo ativo carregado em memória para '{frequency}'")
 
-        # Converter dict para array se necessário
+        # Converter dict para array respeitando a ordem das colunas do modelo/scaler
         if isinstance(features, dict):
-            features = np.array(list(features.values())).reshape(1, -1)
+            # Tentar obter a ordem das colunas do modelo ou do scaler
+            feature_names = None
+            if hasattr(model, "feature_names_in_"):
+                feature_names = model.feature_names_in_
+            elif self.get_scaler(frequency) and hasattr(self.get_scaler(frequency), "feature_names_in_"):
+                feature_names = self.get_scaler(frequency).feature_names_in_
+
+            if feature_names is not None:
+                try:
+                    features_array = np.array([features[name] for name in feature_names]).reshape(1, -1)
+                except KeyError as e:
+                    logger.error(f"Dicionário de features incompleto. Falta: {e}")
+                    # Fallback para o comportamento anterior se falhar, mas logar aviso
+                    features_array = np.array(list(features.values())).reshape(1, -1)
+            else:
+                # Se não houver informação de nomes, usamos a ordem atual das chaves (frágil)
+                features_array = np.array(list(features.values())).reshape(1, -1)
+        else:
+            features_array = np.array(features)
 
         # Garantir 2D
-        if features.ndim == 1:
-            features = features.reshape(1, -1)
+        if features_array.ndim == 1:
+            features_array = features_array.reshape(1, -1)
 
         # Pipeline
-        transformed = features
+        transformed = features_array
 
         # 1. Scaler
         scaler = self.get_scaler(frequency)
         if scaler:
-            transformed = scaler.transform(transformed)
+            try:
+                transformed = scaler.transform(transformed)
+            except ValueError as e:
+                logger.warning(f"Aviso de Scaling para {frequency}: {e}. Continuando sem scaling.")
 
         # 2. PCA
         pca = self.get_pca(frequency)
