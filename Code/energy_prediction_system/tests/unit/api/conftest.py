@@ -11,6 +11,11 @@ os.environ["SECRET_KEY"] = "TEST_SECRET_KEY_MUST_BE_AT_LEAST_32_CHARS_LONG"  # n
 os.environ["ALGORITHM"] = "HS256"
 os.environ["ACCESS_TOKEN_EXPIRE_MINUTES"] = "11520"  # noqa: S105
 os.environ["DATABASE_URL"] = "sqlite:///:memory:"
+os.environ["DB_USER"] = "test"
+os.environ["DB_PASSWORD"] = "test"  # noqa: S105
+os.environ["DB_HOST"] = "test"
+os.environ["DB_PORT"] = "5432"
+os.environ["DB_NAME"] = "test"
 os.environ["MAX_FAILED_ATTEMPTS"] = "3"
 os.environ["LOCKOUT_DURATION_MINUTES"] = "5"
 
