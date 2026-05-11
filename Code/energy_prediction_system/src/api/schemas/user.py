@@ -1,7 +1,6 @@
 from datetime import datetime
 
-from pydantic import BaseModel, EmailStr, Field
-from typing import Optional
+from pydantic import BaseModel, ConfigDict, EmailStr, Field
 
 
 class UserBase(BaseModel):
@@ -23,8 +22,7 @@ class UserResponse(UserBase):
     account_regist_date: datetime
     role: str
 
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 
 
 class Token(BaseModel):
@@ -37,7 +35,7 @@ class Token(BaseModel):
 
 
 class TokenPayload(BaseModel):
-    sub: Optional[str] = None
+    sub: str | None = None
 
 
 class LogoutResponse(BaseModel):

@@ -23,13 +23,10 @@ class Settings(BaseSettings):
     @model_validator(mode="after")
     def assemble_db_url(self) -> "Settings":
         """
-        Assembles DATABASE_URL from components if not already provided.
-        This allows overriding the URL (e.g. for SQLite in tests) while
-        still ensuring correct routing in Docker environments by default.
+        Assembles DATABASE_URL from components.
+        This ensures that environment overrides (like DB_HOST and DB_PORT in Docker)
+        always take precedence over a pre-defined DATABASE_URL string in .env.
         """
-        if self.DATABASE_URL:
-            return self
-
         self.DATABASE_URL = (
             f"postgresql://{self.DB_USER}:{self.DB_PASSWORD}@" f"{self.DB_HOST}:{self.DB_PORT}/{self.DB_NAME}"
         )
