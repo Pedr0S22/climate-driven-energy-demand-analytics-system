@@ -24,11 +24,11 @@ def get_template(request: TemplateInput, db: Session = Depends(get_db), current_
         if dataset_type == "pca":
             dataset_type = "full"
 
-        features = SimulationService.get_template(request.frequency, request.condition, dataset_type)
+        features = SimulationService.get_template(request.frequency, request.template_name, dataset_type)
 
         return {
             "frequency": request.frequency,
-            "condition": request.condition,
+            "template_name": request.template_name,
             "dataset_type": dataset_type,
             "features": features,
         }
