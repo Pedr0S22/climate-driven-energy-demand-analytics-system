@@ -232,7 +232,7 @@ Code/energy_prediction_system/data/processed/feat-engineering/real-time/*.csv
 Code/energy_prediction_system/data/processed/*.csv
 
 
-Code/energy_prediction_system/src/**/*.json
+Code/energy_prediction_system/**/*.json
 
 
 # Management Data

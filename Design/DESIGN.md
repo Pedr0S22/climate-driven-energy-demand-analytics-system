@@ -26,6 +26,7 @@ This document captures the low-level system design decisions, technical stack, d
 * #### 4.2. Prediction Inference Service
 * #### 4.3. Administrator & Management Services
 * #### 4.4. Live Data Scheduler Service
+* #### 4.5. Autoregressive Prediction Engine
 
 ### 5. Databases & Data Storage Design
 * #### 5.1. Relational Database - PostgreSQL
@@ -482,10 +483,60 @@ When an administrator activates a model, the system enforces a mutex logic:
     *   **Response:** The updated model metadata.
 
 ### 4.4. Live Data Scheduler Service
-[`TODO`] - (Technical implementation: What library runs it? How does it avoid race conditions with the database?)
 
-* **Target:** Runs asynchronously behind the scenes to fetch up-to-date data for the live prediction requests.
-* **Logic:** A dedicated background thread or task scheduler periodically triggers a lightweight version of the Ingestion, Cleaning and Feature Engineering pipeline modules. It fetches only the most recent hours/days of data required (that the systems does not have) to satisfy the rolling windows and lag features needed for real-time inference, ensuring the models always have fresh inputs without requiring manual intervention.
+The Live Data Scheduler Service ensures that the system provides predictions based on the most recent data available. It operates as a continuous background process, decoupled from the main API requests.
+
+*   **Continuous Scheduler (`real_time_pipeline.py`):**
+    *   **Logic:** Implements a loop that wakes up at `XX:01` and `XX:31` every hour.
+    *   **Cycle:** Executes the sequence: **Fetch Real-Time Ingestion (31 days)** -> **Clean & Align** -> **Feature Engineering (Hourly & Daily)**.
+    *   **Engineering Why:** This frequency minimizes the delay between real-world updates (which occur hourly) and the availability of prediction inputs. Running at `:01` and `:31` ensures we catch data as soon as remote APIs update their hourly samples.
+
+*   **API Lifespan Integration:**
+    *   During the FastAPI startup sequence (`lifespan`), the API executes a synchronous run of the pipeline.
+    *   **Engineering Why:** This ensures that the application never starts in a "stale" state. It guarantees that the `/data/processed/feat-engineering/real-time/` files are present and updated before the first prediction request is ever accepted.
+
+### 4.5. Autoregressive Prediction Engine
+
+The Prediction Engine implements a recursive forecasting strategy to provide multi-step predictions (e.g., 24 hours or 14 days into the future).
+
+*   **Historical Context Injection:**
+    *   For every request, the engine retrieves the last `historical_points` rows from the engineered real-time dataset.
+    *   These points are returned to the user as `historical_load`, providing immediate visual context for the trend.
+
+*   **The Autoregressive Loop (Feedforward):**
+    1.  **Start:** The engine takes the features of the current known state ($T$).
+    2.  **Predict:** The model predicts the demand for $T+1$.
+    3.  **Feedback:** The prediction $\hat{y}_{T+1}$ is injected back into the feature vector as the new `L1_Load` (Lag 1).
+    4.  **Temporal Update:** Calendrical features (`hour`, `day_of_week`, etc.) are incremented for the next timestamp.
+    5.  **Climate Persistence (Naive):** Meteorological variables are kept constant (persisted) across the forecast horizon.
+    6.  **Repeat:** The process repeats for the duration of the requested `predicted_points`.
+
+*   **Data Integrity:**
+    *   **Sync Logic:** Since Open-Meteo provides data in target units (Celsius, mm, hPa), the pipeline explicitly skips the Kelvin-to-Celsius and Pa-to-hPa conversions used for historical ERA5 data.
+    *   **Unit Mapping:** Precipitation from Open-Meteo (mm) is automatically converted to meters (m) to match the ERA5 training scale (1000x difference).
+
+### 4.6. Prediction API Contract
+
+*   **Get Prediction: `GET /api/v1/predictions/[hourly|daily]`**
+    *   **Query Params:** `historical_points` (context size), `predicted_points` (horizon size).
+    *   **Response:**
+        ```json
+        {
+          "status": 200,
+          "timestamps": "2026-05-12T13:00:00Z",
+          "historical_load": [25000.5, 26100.2, 25800.8],
+          "load_predicted": [26000.0, 26500.5, 27000.2],
+          "timestamps": [
+              "2026-05-12T10:00:00Z",
+              "2026-05-12T11:00:00Z",
+              "2026-05-12T12:00:00Z",
+              "2026-05-12T13:00:00Z",
+              "2026-05-12T14:00:00Z",
+              "2026-05-12T15:00:00Z"
+          ],
+          "top2_drivers": ["t2m", "L1_Load"]
+        }
+        ```
 
 
 ## 5. Databases & Data Storage Design

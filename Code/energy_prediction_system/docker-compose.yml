@@ -162,6 +162,33 @@ services:
       db_server:
         condition: service_healthy
 
+  real_time_pipeline:
+    build:
+      context: .
+      dockerfile: src/data_pipeline/Dockerfile
+    container_name: energy_realtime_pipeline
+    restart: always
+    command: ["python", "src/data_pipeline/real_time_pipeline.py"]
+    env_file: .env
+    environment:
+      - DB_HOST=db_server
+      - DB_PORT=5432
+    volumes:
+      - ./data:/app/data
+      - ./models:/app/models
+    networks:
+      - db_net
+    depends_on:
+      db_server:
+        condition: service_healthy
+    healthcheck:
+      # Verifies if the realtime hourly file was updated in the last hour
+      # This confirms the scheduler is firing and the APIs are responding
+      test: ["CMD-SHELL", "find /app/data/processed/realtime_hourly.csv -mmin -65"]
+      interval: 5m
+      timeout: 10s
+      retries: 3
+
 networks:
   api_net:
     driver: bridge

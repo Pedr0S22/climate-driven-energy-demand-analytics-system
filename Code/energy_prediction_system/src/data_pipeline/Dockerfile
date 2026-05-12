@@ -17,6 +17,9 @@ RUN pip install --no-cache-dir -r requirements.txt
 # Copia a pasta src para /app/src
 COPY src/ /app/src/
 
+# Corrige finais de linha (CRLF -> LF) para compatibilidade com Linux
+RUN apt-get update && apt-get install -y sed && sed -i 's/\r$//' /app/src/data_pipeline/run_pipeline.sh
+
 # Define o PYTHONPATH para a nova localização
 ENV PYTHONPATH=/app/src
 

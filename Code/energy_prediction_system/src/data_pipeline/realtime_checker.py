@@ -24,7 +24,8 @@ def fetch_and_print_realtime():
     # 1. Setup Environment and Dates
     script_dir = os.path.dirname(os.path.abspath(__file__))
     # Look for .env in the parent directory (src/)
-    env_path = os.path.join(script_dir, "..", ".env")
+    env_path = os.path.join(script_dir, "..", "..", ".env")
+    logger.info(f"ENV PATH: {env_path}")
     load_dotenv(env_path)
 
     # We fetch the last 7 days to ensure we hit the 'real-time' window of both APIs

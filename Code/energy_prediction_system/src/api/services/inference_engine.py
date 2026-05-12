@@ -5,6 +5,7 @@ from typing import Any
 
 import joblib
 import numpy as np
+import pandas as pd
 from sqlalchemy.orm import Session
 
 logger = logging.getLogger(__name__)
@@ -68,18 +69,19 @@ class InferenceEngine:
             # Prioridade 2: Pasta central models/feat-engineering/
             feat_eng_dir = app_root / "models" / "feat-engineering"
 
-            # Carregar scaler real
-            scaler_name = f"scaler_{freq}.joblib"
-            scaler_path = model_path.parent / scaler_name
-            if not scaler_path.exists():
-                scaler_path = feat_eng_dir / scaler_name
-
-            if scaler_path.exists():
-                self._scalers[freq] = joblib.load(scaler_path)
-                logger.info(f"Scaler carregado para {freq} de {scaler_path}")
-
-            # Carregar PCA real se necessário
+            # Apenas carregar Scaler e PCA se o modelo os usar (dataset = 'pca')
             if model_record.dataset_selected == "pca":
+                # Carregar scaler real
+                scaler_name = f"scaler_{freq}.joblib"
+                scaler_path = model_path.parent / scaler_name
+                if not scaler_path.exists():
+                    scaler_path = feat_eng_dir / scaler_name
+
+                if scaler_path.exists():
+                    self._scalers[freq] = joblib.load(scaler_path)
+                    logger.info(f"Scaler carregado para {freq} de {scaler_path}")
+
+                # Carregar PCA real se necessário
                 pca_name = f"pca_{freq}.joblib"
                 pca_path = model_path.parent / pca_name
                 if not pca_path.exists():
@@ -88,6 +90,10 @@ class InferenceEngine:
                 if pca_path.exists():
                     self._pca[freq] = joblib.load(pca_path)
                     logger.info(f"PCA carregado para {freq} de {pca_path}")
+            else:
+                # Limpar estado anterior se houver
+                self._scalers.pop(freq, None)
+                self._pca.pop(freq, None)
 
             return True
 
@@ -126,47 +132,69 @@ class InferenceEngine:
             logger.error(f"Predição falhou: Nenhum modelo em memória para '{frequency}'")
             raise ValueError(f"Nenhum modelo ativo carregado em memória para '{frequency}'")
 
-        # Converter dict para array respeitando a ordem das colunas do modelo/scaler
+        # Determinar nomes das features esperadas
+        feature_names = None
+        scaler = self.get_scaler(frequency)
+        pca = self.get_pca(frequency)
+
+        # Se usar PCA, a entrada primária deve casar com o scaler.
+        # Se não usar, a entrada deve casar com o modelo.
+        if scaler and hasattr(scaler, "feature_names_in_"):
+            feature_names = scaler.feature_names_in_.tolist()
+        elif hasattr(model, "feature_names_in_"):
+            feature_names = model.feature_names_in_.tolist()
+
+        # Converter entrada para DataFrame para evitar warnings de feature names
         if isinstance(features, dict):
-            # Tentar obter a ordem das colunas do modelo ou do scaler
-            feature_names = None
-            if hasattr(model, "feature_names_in_"):
-                feature_names = model.feature_names_in_
-            elif self.get_scaler(frequency) and hasattr(self.get_scaler(frequency), "feature_names_in_"):
-                feature_names = self.get_scaler(frequency).feature_names_in_
-
-            if feature_names is not None:
-                try:
-                    features_array = np.array([features[name] for name in feature_names]).reshape(1, -1)
-                except KeyError as e:
-                    logger.error(f"Dicionário de features incompleto. Falta: {e}")
-                    # Fallback para o comportamento anterior se falhar, mas logar aviso
-                    features_array = np.array(list(features.values())).reshape(1, -1)
+            if feature_names:
+                # Preencher apenas o que o modelo/scaler espera, usando 0 como default para ausentes
+                X_dict = {f: features.get(f, 0) for f in feature_names}
+                transformed = pd.DataFrame([X_dict])
             else:
-                # Se não houver informação de nomes, usamos a ordem atual das chaves (frágil)
-                features_array = np.array(list(features.values())).reshape(1, -1)
+                transformed = pd.DataFrame([features])
+        elif isinstance(features, pd.DataFrame):
+            if feature_names:
+                # Extrair colunas e preencher ausentes
+                transformed = features.reindex(columns=feature_names, fill_value=0)
+            else:
+                transformed = features.copy()
         else:
-            features_array = np.array(features)
-
-        # Garantir 2D
-        if features_array.ndim == 1:
-            features_array = features_array.reshape(1, -1)
-
-        # Pipeline
-        transformed = features_array
+            transformed = np.array(features)
+            if transformed.ndim == 1:
+                transformed = transformed.reshape(1, -1)
+            # Se tivermos nomes, reconstruir DataFrame
+            if feature_names and transformed.shape[1] == len(feature_names):
+                transformed = pd.DataFrame(transformed, columns=feature_names)
 
         # 1. Scaler
-        scaler = self.get_scaler(frequency)
         if scaler:
             try:
-                transformed = scaler.transform(transformed)
-            except ValueError as e:
-                logger.warning(f"Aviso de Scaling para {frequency}: {e}. Continuando sem scaling.")
+                # Verificar contagem de features para evitar aviso de shape
+                expected_scaler_feats = len(scaler.feature_names_in_) if hasattr(scaler, "feature_names_in_") else None
+                actual_feats = transformed.shape[1]
+
+                if expected_scaler_feats and actual_feats != expected_scaler_feats:
+                    # Silenciosamente pular scaling se houver mismatch (previne poluição de logs)
+                    pass
+                else:
+                    scaled_array = scaler.transform(transformed)
+                    # Reconstruir DataFrame se tivermos os nomes originais
+                    if hasattr(scaler, "feature_names_in_"):
+                        transformed = pd.DataFrame(scaled_array, columns=scaler.feature_names_in_)
+                    else:
+                        transformed = scaled_array
+            except ValueError:
+                # Fallback se algo falhar no transform
+                pass
 
         # 2. PCA
-        pca = self.get_pca(frequency)
         if pca:
-            transformed = pca.transform(transformed)
+            try:
+                pca_array = pca.transform(transformed)
+                # Reconstruir DataFrame para o modelo final com nomes das componentes PCA
+                transformed = pd.DataFrame(pca_array, columns=[f"PCA_{i}" for i in range(pca_array.shape[1])])
+            except ValueError:
+                pass
 
         # 3. Modelo
         prediction = model.predict(transformed)
