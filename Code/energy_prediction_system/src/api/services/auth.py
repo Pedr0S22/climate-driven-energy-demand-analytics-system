@@ -57,7 +57,13 @@ def authenticate_user(db: Session, login_data: UserLogin):
 
     # Brute Force Protection (QA13)
     now = datetime.now(UTC)
-    if user.acc_locked_until and user.acc_locked_until > now:
+
+    # Ensure user.acc_locked_until is timezone-aware before comparison
+    locked_until = user.acc_locked_until
+    if locked_until and locked_until.tzinfo is None:
+        locked_until = locked_until.replace(tzinfo=UTC)
+
+    if locked_until and locked_until > now:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="Account locked due to multiple failed attempts. Please try again later.",
