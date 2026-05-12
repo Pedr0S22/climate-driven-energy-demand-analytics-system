@@ -4,12 +4,18 @@ import pytest
 from fastapi.testclient import TestClient
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
+from sqlalchemy.pool import StaticPool
 
 # Set environment variables for testing before importing src modules
-os.environ["SECRET_KEY"] = "TEST_SECRET_KEY_REPLACE_ME"  # noqa: S105
+os.environ["SECRET_KEY"] = "TEST_SECRET_KEY_MUST_BE_AT_LEAST_32_CHARS_LONG"  # noqa: S105
 os.environ["ALGORITHM"] = "HS256"
 os.environ["ACCESS_TOKEN_EXPIRE_MINUTES"] = "11520"  # noqa: S105
-os.environ["DATABASE_URL"] = "sqlite:///./test.db"
+os.environ["DATABASE_URL"] = "sqlite:///:memory:"
+os.environ["DB_USER"] = "test"
+os.environ["DB_PASSWORD"] = "test"  # noqa: S105
+os.environ["DB_HOST"] = "test"
+os.environ["DB_PORT"] = "5432"
+os.environ["DB_NAME"] = "test"
 os.environ["MAX_FAILED_ATTEMPTS"] = "3"
 os.environ["LOCKOUT_DURATION_MINUTES"] = "5"
 
@@ -17,9 +23,13 @@ from src.api.database.session import Base, get_db  # noqa: E402
 from src.api.main import app  # noqa: E402
 
 # Use SQLite for testing
-SQLALCHEMY_DATABASE_URL = "sqlite:///./test.db"
+SQLALCHEMY_DATABASE_URL = "sqlite:///:memory:"
 
-engine = create_engine(SQLALCHEMY_DATABASE_URL, connect_args={"check_same_thread": False})
+engine = create_engine(
+    SQLALCHEMY_DATABASE_URL,
+    connect_args={"check_same_thread": False},
+    poolclass=StaticPool,
+)
 TestingSessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 
 

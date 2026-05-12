@@ -527,12 +527,13 @@ if __name__ == "__main__":
     app_root = Path(__file__).resolve().parent.parent.parent
     load_dotenv(dotenv_path=app_root / ".env")
 
+    # Alinhado com docker-compose.yml e Settings (config.py)
     DB_CONFIG = {
-        "dbname": os.getenv("DB_NAME"),
-        "user": os.getenv("DB_USER"),
-        "password": os.getenv("DB_PASSWORD"),
-        "host": os.getenv("DB_HOST", "localhost"),
-        "port": os.getenv("DB_PORT", "5433"),
+        "dbname": os.getenv("DB_NAME") or os.getenv("POSTGRES_DB"),
+        "user": os.getenv("DB_USER") or os.getenv("POSTGRES_USER"),
+        "password": os.getenv("DB_PASSWORD") or os.getenv("POSTGRES_PASSWORD"),
+        "host": os.getenv("DB_HOST") or os.getenv("POSTGRES_HOST"),
+        "port": os.getenv("DB_PORT") or os.getenv("POSTGRES_PORT") or "5432",
     }
 
     orchestrator = PipelineOrchestrator(db_config=DB_CONFIG)

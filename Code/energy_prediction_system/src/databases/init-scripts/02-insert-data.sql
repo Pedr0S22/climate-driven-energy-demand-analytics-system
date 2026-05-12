@@ -1,4 +1,6 @@
 -- 02-insert-data.sql
+\getenv pwd_admin PWD_ADMIN
+\getenv pwd_nuno PWD_NUNO
 
 CREATE EXTENSION IF NOT EXISTS pgcrypto;
 
