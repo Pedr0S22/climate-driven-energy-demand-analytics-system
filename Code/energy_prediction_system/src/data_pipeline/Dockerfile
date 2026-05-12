@@ -26,5 +26,5 @@ ENV PYTHONPATH=/app/src
 # Dá permissões de execução ao script
 RUN chmod +x /app/src/data_pipeline/run_pipeline.sh
 
-# Comando para arrancar
-CMD ["/app/src/data_pipeline/run_pipeline.sh"]
+# Trigger real-time pipeline directly
+CMD ["python", "/app/src/data_pipeline/real_time_pipeline.py"]

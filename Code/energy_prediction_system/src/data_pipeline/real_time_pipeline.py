@@ -7,19 +7,18 @@ from pathlib import Path
 
 from dotenv import load_dotenv
 
+# PYTHONPATH includes the folder containing 'src' (usually /app)
 try:
-    # 1. Try absolute import with src prefix (for API context)
     from src.data_pipeline.cleaning import cleaning
     from src.data_pipeline.feature_engineering import run_realtime_engineering
     from src.data_pipeline.ingestion import realtime_data_retrieval
 except ImportError:
     try:
-        # 2. Try absolute import without src (for standalone container with PYTHONPATH=/app/src)
         from data_pipeline.cleaning import cleaning
         from data_pipeline.feature_engineering import run_realtime_engineering
         from data_pipeline.ingestion import realtime_data_retrieval
     except ImportError:
-        # 3. Try local import (for direct script execution from folder)
+        # Fallback to absolute imports without src. for standalone folder execution
         from cleaning import cleaning
         from feature_engineering import run_realtime_engineering
         from ingestion import realtime_data_retrieval
@@ -109,7 +108,7 @@ def scheduler():
 
         wait_seconds = (next_run - now).total_seconds()
         logger.info(
-            f"Next scheduled run at {next_run.strftime('%H:%M:%S')}. Sleeping for {wait_seconds/60:.2f} minutes."
+            f"Next scheduled run at {next_run.strftime('%H:%M:%S')}." + f"Sleeping for {wait_seconds/60:.2f} minutes."
         )
 
         time.sleep(wait_seconds)

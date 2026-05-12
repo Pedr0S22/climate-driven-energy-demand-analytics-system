@@ -23,15 +23,6 @@ logger = logging.getLogger(__name__)
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    # Startup: Run real-time data pipeline first to ensure data freshness
-    logger.info("API Starting: Triggering initial Real-Time Data Pipeline...")
-    try:
-        from src.data_pipeline.real_time_pipeline import run_pipeline
-
-        run_pipeline()
-    except Exception as e:
-        logger.error(f"Error running real-time pipeline on startup: {e}")
-
     # Then load active models
     logger.info("API Starting: Loading active models into memory...")
     db = SessionLocal()
