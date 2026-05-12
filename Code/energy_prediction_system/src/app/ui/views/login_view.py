@@ -1,8 +1,8 @@
-import os
 from PyQt6 import QtCore, QtGui, QtWidgets
 
 from app.ui.components.logo_label import LogoLabel
 from app.ui.components.styled_input import StyledInput
+
 
 class Ui_LoginWindow:
     def setupUi(self, MainWindow):

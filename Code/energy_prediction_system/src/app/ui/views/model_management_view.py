@@ -1,8 +1,8 @@
-import os
 from PyQt6 import QtCore, QtGui, QtWidgets
 from PyQt6.QtWidgets import QGraphicsDropShadowEffect
 
-from app.ui.components import TopBar, Sidebar, ToggleSwitch
+from app.ui.components import Sidebar, ToggleSwitch, TopBar
+
 
 class ModelRow(QtWidgets.QWidget):
     def __init__(self, model_type, date, dataset, rmse, mae, r2, is_active=False, parent=None):

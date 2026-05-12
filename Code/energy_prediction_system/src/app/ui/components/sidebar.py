@@ -1,5 +1,6 @@
 from PyQt6 import QtCore, QtGui, QtWidgets
 
+
 class Sidebar(QtWidgets.QFrame):
     def __init__(self, parent=None):
         super().__init__(parent)

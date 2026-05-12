@@ -1,7 +1,9 @@
 import os
+
 from PyQt6 import QtCore, QtGui, QtWidgets
 
-from app.ui.components import TopBar, Sidebar
+from app.ui.components import Sidebar, TopBar
+
 
 class Ui_UserMainWindow:
     def setupUi(self, MainWindow):

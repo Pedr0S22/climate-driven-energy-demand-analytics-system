@@ -1,7 +1,7 @@
-import os
 from PyQt6 import QtCore, QtGui, QtWidgets
 
-from app.ui.components import TopBar, Sidebar, DriverCard, PredictionParams, PlotWidget
+from app.ui.components import DriverCard, PlotWidget, PredictionParams, Sidebar, TopBar
+
 
 class Ui_DailyPredictionAdminWindow:
     def setupUi(self, MainWindow):

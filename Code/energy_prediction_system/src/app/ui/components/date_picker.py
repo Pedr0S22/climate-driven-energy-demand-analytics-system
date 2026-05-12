@@ -1,4 +1,5 @@
 import os
+
 from PyQt6 import QtCore, QtGui, QtWidgets
 
 BASE_PATH = os.path.join(os.path.dirname(__file__), "..", "resources")

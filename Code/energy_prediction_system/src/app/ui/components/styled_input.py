@@ -1,4 +1,5 @@
-from PyQt6 import QtCore, QtGui, QtWidgets
+from PyQt6 import QtWidgets
+
 
 class StyledInput(QtWidgets.QLineEdit):
     def __init__(self, parent=None, placeholder="", is_password=False):

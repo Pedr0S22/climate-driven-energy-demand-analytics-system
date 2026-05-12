@@ -1,5 +1,6 @@
 from PyQt6 import QtCore, QtGui, QtWidgets
 
+
 class ErrorCard(QtWidgets.QFrame):
     def __init__(self, parent=None, message="Error fetching data from API"):
         super().__init__(parent)

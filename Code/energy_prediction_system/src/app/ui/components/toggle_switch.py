@@ -1,5 +1,6 @@
 from PyQt6 import QtCore, QtGui, QtWidgets
 
+
 class ToggleSwitch(QtWidgets.QWidget):
     clicked = QtCore.pyqtSignal(bool)
 

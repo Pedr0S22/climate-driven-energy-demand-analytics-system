@@ -1,5 +1,5 @@
-import sys
 import os
+import sys
 
 current_dir = os.path.dirname(os.path.abspath(__file__)) # src/app
 src_dir = os.path.dirname(current_dir) # src
@@ -8,11 +8,13 @@ if src_dir not in sys.path:
     sys.path.insert(0, src_dir)
 
 from PyQt6.QtWidgets import QApplication, QMainWindow, QStackedWidget
-from app.ui.views.user_homepage import Ui_UserMainWindow
+
 from app.ui.views.daily_prediction_view import Ui_DailyPredictionAdminWindow
 from app.ui.views.hourly_prediction_view import Ui_HourlyPredictionAdminWindow
 from app.ui.views.login_view import Ui_LoginWindow
 from app.ui.views.register_view import Ui_RegisterWindow
+from app.ui.views.user_homepage import Ui_UserMainWindow
+
 
 class TestUserMainWindow(QMainWindow):
     def __init__(self):

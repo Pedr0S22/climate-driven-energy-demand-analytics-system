@@ -1,13 +1,13 @@
-from PyQt6.QtWidgets import QMainWindow, QStackedWidget, QMessageBox
+from PyQt6.QtWidgets import QMainWindow, QMessageBox, QStackedWidget
+
 from app.utils.validators import validate_login_input, validate_registration_input
 
-
 from .views.admin_homepage import Ui_MainWindow as Ui_AdminHome
-from .views.login_view import Ui_LoginWindow
-from .views.register_view import Ui_RegisterWindow
 from .views.daily_prediction_view import Ui_DailyPredictionAdminWindow
 from .views.hourly_prediction_view import Ui_HourlyPredictionAdminWindow
+from .views.login_view import Ui_LoginWindow
 from .views.model_management_view import Ui_ModelManagementWindow
+from .views.register_view import Ui_RegisterWindow
 
 
 class MainWindow(QMainWindow):

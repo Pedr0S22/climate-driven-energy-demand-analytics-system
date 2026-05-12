@@ -1,5 +1,6 @@
 from PyQt6 import QtCore, QtGui, QtWidgets
 
+
 class PredictionParams(QtWidgets.QFrame):
     def __init__(self, parent=None, mode="daily"):
         super().__init__(parent)

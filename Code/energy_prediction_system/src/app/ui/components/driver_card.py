@@ -1,5 +1,6 @@
 from PyQt6 import QtCore, QtGui, QtWidgets
 
+
 class DriverCard(QtWidgets.QFrame):
     def __init__(self, parent=None, text=""):
         super().__init__(parent)

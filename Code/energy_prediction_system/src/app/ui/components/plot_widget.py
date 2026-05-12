@@ -1,8 +1,10 @@
-from PyQt6 import QtWidgets, QtCore
+import numpy as np
 from matplotlib.backends.backend_qtagg import FigureCanvasQTAgg as FigureCanvas
 from matplotlib.figure import Figure
-import numpy as np
+from PyQt6 import QtWidgets
+
 from .error_card import ErrorCard
+
 
 class PlotWidget(QtWidgets.QStackedWidget):
     def __init__(self, parent=None):
