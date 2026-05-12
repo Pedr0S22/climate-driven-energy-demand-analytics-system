@@ -11,7 +11,10 @@ class User(Base):
     email = Column(String, unique=True, nullable=False, index=True)
     username = Column(String, unique=True, nullable=False, index=True)
     password = Column(String, nullable=False)
-    account_regist_date = Column(DateTime(timezone=True), server_default=func.now())
+    account_regist_date = Column(
+        DateTime(
+            timezone=True),
+        server_default=func.now())
 
     # Brute Force Protection (QA13)
     failed_login_att = Column(Integer, default=0)
@@ -22,10 +25,20 @@ class User(Base):
 class Admin(Base):
     __tablename__ = "admin"
 
-    users_id = Column(Integer, ForeignKey("users.id", ondelete="CASCADE"), primary_key=True)
+    users_id = Column(
+        Integer,
+        ForeignKey(
+            "users.id",
+            ondelete="CASCADE"),
+        primary_key=True)
 
 
 class Client(Base):
     __tablename__ = "client"
 
-    users_id = Column(Integer, ForeignKey("users.id", ondelete="CASCADE"), primary_key=True)
+    users_id = Column(
+        Integer,
+        ForeignKey(
+            "users.id",
+            ondelete="CASCADE"),
+        primary_key=True)
