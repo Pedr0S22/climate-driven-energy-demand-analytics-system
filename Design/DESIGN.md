@@ -55,7 +55,7 @@ The technology stack used in the project is described below. Also FILE X and FIL
 ### 1.1. Backend & Machine Learning Stack
 
 * **Backend Framework:** Python with FastAPI
-* **Database Engine:** PostgreSQL; [`TODO`] Files for ML models; ELK stack for logging.
+* **Database Engine:** PostgreSQL; .`joblib` Files for ML models; ELK stack for logging.
 * **Authentication/Security:** JWT for sessions, bcrypt for password hashing.
 * **Data Manipulation & ML:** Pandas, NumPy, SciPy, Scikit-Learn, Optuna
 * **Testing Framework:** pytest.
@@ -63,11 +63,11 @@ The technology stack used in the project is described below. Also FILE X and FIL
 ### 1.2. Frontend & Visualization Stack
 
 * **Frontend/UI:**  Python PyQt6.
-* **Dashboards:** D3.js integrated with PyQt6.
+* **Dashboards:** matplotlib, plotly and seaborn with PyQt6.
 
 ### 1.3. Infrastructure & Telemetry Stack
 
-* **Monitoring:** [`TODO`] ELK
+* **Monitoring:** ELK + Docker
 
 
 ## 2. Microservices & Containerization
@@ -115,6 +115,19 @@ The architecture defines two distinct networks:
 *   `db_net`: Connects the Backend, Data Pipeline, and Databases (PostgreSQL, ELK).
 **Engineering Why:** This prevents the Frontend from directly accessing the Databases, ensuring all data requests are authenticated and validated through the Backend service.
 
+### 2.5 How to Run the APP
+
+* To run **full application**, run:
+  ```bash
+    docker compose up --build -d # If subsitutions
+    # OR
+    docker compose up -d # running app without modifications
+   ```
+
+* To run normal training data pipeline with models:
+    ```bash
+    docker compose --profile tools run pipeline #-d
+    ```
 
 ## 3. Data Pipeline Design
 
@@ -343,7 +356,8 @@ FastAPI global exception handlers standardize responses:
 
 ### 4.1.3 API Contracts for Authentication/Registration
 
-* **Registration:** `POST /api/v1/auth/register`
+* **Registration:** `POST /api/auth/register`
+    * **Request Type:** `application/json`
     * **Payload:**
         ```json
         {
@@ -362,13 +376,11 @@ FastAPI global exception handlers standardize responses:
         }
         ```
 
-* **Authentication:** `POST /api/v1/auth/login`
+* **Authentication:** `POST /api/auth/login`
+    * **Request Type:** `application/x-www-form-urlencoded` (OAuth2 Compatible)
     * **Payload:**
-        ```json
-        {
-          "email": "john.doe@example.com",
-          "password": "securePassword123"
-        }
+        ```
+        username=john.doe@example.com&password=securePassword123
         ```
     * **Response:** `200 OK` with 
         ```json
@@ -382,7 +394,7 @@ FastAPI global exception handlers standardize responses:
         }
         ```
 
-* **Logout:** `POST /api/v1/auth/logout`
+* **Logout:** `POST /api/auth/logout`
     * **Headers:** `Authorization: Bearer <token>`
     * **Response:** `200 OK` with
         ```json
@@ -409,7 +421,7 @@ sequenceDiagram
     participant IE as InferenceEngine (Singleton)
     participant M as ML Model (.joblib)
 
-    U->>API: POST /api/v1/simulations/run
+    U->>API: POST /api/simulations/[daily|hourly]
     API->>SS: run_simulation(params)
     SS->>SS: Get Template & Apply Overrides
     SS->>IE: predict(frequency, features_dict)
@@ -443,20 +455,38 @@ The simulation engine allows users to perform "What-if" analysis using 16 pre-de
 
 #### 4.2.5 API Contracts for Simulations
 
-*   **Get Available Template: `POST /api/v1/simulations/templates`**
+*   **Get Available Template: `POST /api/simulations/templates`**
     *   **Description:** Returns the default feature vector for a condition, aligned with the currently active model's requirements.
+    *   **Request Type:** `application/json`
     *   **Payload:** `{ "frequency": "daily", "template_name": "heatwave" }`
     *   **Response:** `{ "frequency": "daily", "template_name": "heatwave", "dataset_type": "selected", "features": {...} }`
 
-*   **Run Simulation: `POST /api/v1/simulations/run`**
-    *   **Description:** Executes a prediction using a template with optional overrides.
+*   **Run Daily Simulation: `POST /api/simulations/daily`**
+    *   **Description:** Executes a daily prediction using a template with optional overrides.
+    *   **Request Type:** `application/json`
     *   **Payload:**
         ```json
         {
-          "frequency": "daily",
           "template_name": "heatwave",
+          "year": 2024,
           "month": 5,
           "day_of_week": 0,
+          "overrides": { "t2m": 42.5 }
+        }
+        ```
+    *   **Response:** `{ "predicted_mw": 32500.5, "top_drivers": ["t2m", "day_of_week"] }`
+
+*   **Run Hourly Simulation: `POST /api/simulations/hourly`**
+    *   **Description:** Executes an hourly prediction using a template with optional overrides.
+    *   **Request Type:** `application/json`
+    *   **Payload:**
+        ```json
+        {
+          "template_name": "heatwave",
+          "year": 2024,
+          "month": 5,
+          "day_of_week": 0,
+          "hour": 14,
           "overrides": { "t2m": 42.5 }
         }
         ```
@@ -473,11 +503,11 @@ When an administrator activates a model, the system enforces a mutex logic:
 
 #### 4.3.2 API Contracts for Model Management
 
-*   **List all models: `GET /api/v1/models/`**
+*   **List all models: `GET /api/models/`**
     *   **Description:** Returns a list of all models registered in the system with their performance metrics.
     *   **Response:** List of objects containing `model_name_id`, `model_type`, `rmse`, `r2`, `mae`, `is_active`, etc.
 
-*   **Activate model: `PATCH /api/v1/models/{model_id}/activate`**
+*   **Activate model: `PATCH /api/models/{model_id}/activate`**
     *   **Description:** Promotes a model to production. (Admin Only)
     *   **Payload:** `{ "is_active": true }`
     *   **Response:** The updated model metadata.
@@ -517,7 +547,7 @@ The Prediction Engine implements a recursive forecasting strategy to provide mul
 
 ### 4.6. Prediction API Contract
 
-*   **Get Prediction: `GET /api/v1/predictions/[hourly|daily]`**
+*   **Get Prediction: `GET /api/predictions/[hourly|daily]`**
     *   **Query Params:** `historical_points` (context size), `predicted_points` (horizon size).
     *   **Response:**
         ```json
@@ -760,14 +790,14 @@ The system uses Docker for containerizing the database and potentially other ser
 Once the backend is running (`python Code/energy_prediction_system/src/api/main.py`), you can interact with the API.
 
 #### Authentication Flow
-1. **Register:** `POST /api/v1/auth/register` with username, email, and password.
-2. **Login:** `POST /api/v1/auth/login` with email and password. This returns an `access_token`.
+1. **Register:** `POST /api/auth/register` with username, email, and password.
+2. **Login:** `POST /api/auth/login` with email and password. This returns an `access_token`.
 3. **Authorized Requests:** Include the token in the header: `Authorization: Bearer <your_token>`.
 
 #### Key Endpoints
-- **User Info:** `GET /api/v1/auth/me` (Requires Token)
-- **Admin Check:** `GET /api/v1/auth/admin-only` (Requires Admin Role)
-- **Predictions (Planned):** `GET /api/predict/daily` and `GET /api/predict/hourly`.
+- **User Info:** `GET /api/auth/me` (Requires Token)
+- **Admin Check:** `GET /api/auth/admin-only` (Requires Admin Role)
+- **Predictions:** `GET /api/predictions/daily` and `GET /api/predictions/hourly`.
 
 #### Documentation
 FastAPI provides interactive Swagger documentation at:
