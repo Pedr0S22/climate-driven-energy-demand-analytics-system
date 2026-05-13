@@ -1,3 +1,4 @@
+from app.manager.session_manager import SessionManager
 from PyQt6.QtWidgets import QMainWindow, QMessageBox, QStackedWidget
 
 from app.utils.validators import validate_login_input, validate_registration_input
@@ -9,6 +10,7 @@ from .views.hourly_prediction_view import Ui_HourlyPredictionAdminWindow
 from .views.login_view import Ui_LoginWindow
 from .views.model_management_view import Ui_ModelManagementWindow
 from .views.register_view import Ui_RegisterWindow
+from .views.user_homepage import Ui_UserMainWindow
 
 
 class MainWindow(QMainWindow):
@@ -28,6 +30,7 @@ class MainWindow(QMainWindow):
         self.daily_pred_admin_page = QMainWindow()
         self.hourly_pred_admin_page = QMainWindow()
         self.model_mgmt_page = QMainWindow()
+        self.user_homepage = QMainWindow()
 
         # Configurar as UIs nos seus respetivos widgets
         self.ui_login = Ui_LoginWindow()
@@ -48,6 +51,9 @@ class MainWindow(QMainWindow):
         self.ui_model_mgmt = Ui_ModelManagementWindow()
         self.ui_model_mgmt.setupUi(self.model_mgmt_page)
 
+        self.ui_user_homepage = Ui_UserMainWindow()
+        self.ui_user_homepage.setupUi(self.user_homepage) # Criar um QMainWindow
+
         # Adicionar à pilha (Stack)
         self.stack.addWidget(self.login_page)             # Índice 0
         self.stack.addWidget(self.register_page)          # Índice 1
@@ -55,8 +61,9 @@ class MainWindow(QMainWindow):
         self.stack.addWidget(self.daily_pred_admin_page)  # Índice 3
         self.stack.addWidget(self.hourly_pred_admin_page) # Índice 4
         self.stack.addWidget(self.model_mgmt_page)        # Índice 5
+        self.stack.addWidget(self.user_homepage)         # Índice 6
 
-        self.stack.setCurrentIndex(2) # Iniciar na Home por agora para testes
+        self.stack.setCurrentIndex(0) # Iniciar na Home por agora para testes
 
         # --- LIGAÇÕES ---
 
@@ -67,7 +74,7 @@ class MainWindow(QMainWindow):
         self.ui_register.login_link.clicked.connect(lambda: self.stack.setCurrentIndex(0))
 
         # Na Home: Botão Logout
-        self.ui_admin.pushButton.clicked.connect(lambda: self.stack.setCurrentIndex(0))
+        self.ui_admin.pushButton.clicked.connect(self.handle_logout)
 
         # Na Home: Navegação Sidebar
         self.ui_admin.home_btn.clicked.connect(lambda: self.stack.setCurrentIndex(2))
@@ -84,41 +91,63 @@ class MainWindow(QMainWindow):
         self.ui_admin.sim_hourly_button.clicked.connect(lambda: print("Go to Hourly Simulation"))
 
         # Na Daily Pred Admin
-        self.ui_daily_pred.logout_btn.clicked.connect(lambda: self.stack.setCurrentIndex(0))
+        self.ui_daily_pred.logout_btn.clicked.connect(self.handle_logout)
         self.ui_daily_pred.home_btn.clicked.connect(lambda: self.stack.setCurrentIndex(2))
         self.ui_daily_pred.daily_btn.clicked.connect(lambda: self.stack.setCurrentIndex(3))
         self.ui_daily_pred.hourly_btn.clicked.connect(lambda: self.stack.setCurrentIndex(4))
         self.ui_daily_pred.model_btn.clicked.connect(lambda: self.stack.setCurrentIndex(5))
 
         # Na Hourly Pred Admin
-        self.ui_hourly_pred.logout_btn.clicked.connect(lambda: self.stack.setCurrentIndex(0))
+        self.ui_hourly_pred.logout_btn.clicked.connect(self.handle_logout)
         self.ui_hourly_pred.home_btn.clicked.connect(lambda: self.stack.setCurrentIndex(2))
         self.ui_hourly_pred.daily_btn.clicked.connect(lambda: self.stack.setCurrentIndex(3))
         self.ui_hourly_pred.hourly_btn.clicked.connect(lambda: self.stack.setCurrentIndex(4))
         self.ui_hourly_pred.model_btn.clicked.connect(lambda: self.stack.setCurrentIndex(5))
 
         # Na Model Management
-        self.ui_model_mgmt.logout_btn.clicked.connect(lambda: self.stack.setCurrentIndex(0))
+        self.ui_model_mgmt.logout_btn.clicked.connect(self.handle_logout)
         self.ui_model_mgmt.home_btn.clicked.connect(lambda: self.stack.setCurrentIndex(2))
         self.ui_model_mgmt.daily_btn.clicked.connect(lambda: self.stack.setCurrentIndex(3))
         self.ui_model_mgmt.hourly_btn.clicked.connect(lambda: self.stack.setCurrentIndex(4))
         self.ui_model_mgmt.model_btn.clicked.connect(lambda: self.stack.setCurrentIndex(5))
+
+        #User Homepage
+        self.ui_user_homepage.logout_btn.clicked.connect(self.handle_logout)
+        self.ui_user_homepage.home_btn.clicked.connect(lambda: self.stack.setCurrentIndex(2))
+        self.ui_user_homepage.daily_btn.clicked.connect(lambda: self.stack.setCurrentIndex(3))
+        self.ui_user_homepage.hourly_btn.clicked.connect(lambda: self.stack.setCurrentIndex(4))
 
         # Botões com Validação
         self.ui_login.login_button.clicked.connect(self.handle_login)
         self.ui_register.signup_button.clicked.connect(self.handle_register)
 
     def handle_login(self):
-        email = self.ui_login.email_input.text()
-        password = self.ui_login.pass_input.text()
+        email = self.ui_login.email_input.text().strip()
+        password = self.ui_login.pass_input.text().strip()
 
         is_valid, message = validate_login_input(email, password)
+        if not is_valid:
+            QMessageBox.warning(self, "Validation Error", message)
+            return
 
-        if is_valid:
-            print(f"Success: {email}")
-            self.stack.setCurrentIndex(2) # Vai para Home
+        auth_service = AuthService()
+        response_data, status_code = auth_service.login_user(email, password)
+
+        if status_code == 200:
+            role = response_data.get("role")
+            
+            self.ui_login.email_input.clear()
+            self.ui_login.pass_input.clear()
+
+            if role == "admin":
+                self.stack.setCurrentIndex(2) 
+            else:
+                self.stack.setCurrentIndex(6) 
+        elif status_code == 401:
+            QMessageBox.warning(self, "Login Failed", "Incorrect credentials.")
         else:
-            QMessageBox.warning(self, "Login Error", message)
+            error_msg = response_data.get("detail", "Error occurred while starting session.")
+            QMessageBox.critical(self, "Login Failed", error_msg)
 
     def handle_register(self):
         user = self.ui_register.user_input.text().strip()
@@ -129,7 +158,7 @@ class MainWindow(QMainWindow):
         is_valid, message = validate_registration_input(user, email, password, confirm)
 
         if not is_valid:
-            QMessageBox.warning(self, "Registration error", message)
+            QMessageBox.warning(self, "Registration Error", message)
             return
 
         auth_service = AuthService()
@@ -158,6 +187,13 @@ class MainWindow(QMainWindow):
                 error_message = error_message[0].get("msg", str(error_message))
                 
             QMessageBox.warning(self, "Registration Error", str(error_message))
+
+    def handle_logout(self):        
+        #clear keyring data
+        SessionManager.clear_session()
+
+        print("os dados da sessão tao limpos? ", SessionManager.get_token(), SessionManager.get_role())
+        self.stack.setCurrentIndex(0)
 
     def ir_para_home(self):
         self.stack.setCurrentIndex(2)

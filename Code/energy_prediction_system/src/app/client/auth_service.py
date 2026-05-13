@@ -1,9 +1,11 @@
-# Code\energy_prediction_system\src\app\client\auth_service.py
 from .api_client import APIClient
+import requests
+from app.manager.session_manager import SessionManager
 
 class AuthService:
     def __init__(self):
         self.client = APIClient()
+        self.base_url = self.client.base_url
 
     def register_user(self, username, email, password):
         endpoint = "/register"
@@ -20,4 +22,37 @@ class AuthService:
             
         except Exception as e:
             print(f"ERRO NO REQUESTS: {repr(e)}")
-            return {"detail": f"Erro de conexão com requests: {str(e)}"}, 500
+            return {"detail": f"Connection error: {str(e)}"}, 500
+        
+    def login_user(self, email, password):
+        url = f"{self.base_url}/login"
+        
+        payload = {
+            "username": email, 
+            "password": password
+        }
+
+        try:
+            response = requests.post(url, data=payload, timeout=10)
+            
+            print(f"--- DEBUG LOGIN ---")
+            print(f"A enviar para: {url}")
+            print(f"Status Code: {response.status_code}")
+            print(f"Resposta API: {response.text}")
+            
+            response_data = response.json()
+            
+            if response.status_code == 200:
+                token = response_data.get("access_token")
+                role = response_data.get("role")
+                
+                if token and role:
+                    SessionManager.set_session(token, role)
+                
+                return response_data, 200
+            
+            return response_data, response.status_code
+
+        except Exception as e:
+            print(f"Não ligou ao backend :( {e}")
+            return {"detail": f"Connection error: {str(e)}"}, 500
