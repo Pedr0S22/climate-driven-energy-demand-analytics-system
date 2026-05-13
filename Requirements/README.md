@@ -26,7 +26,7 @@ Below there is a short presentation on what are the UCs, their numeration and ho
         - UC11 - Hourly prediction dashboard
 
     - UC13 - Scenario simulation
-        - UC15 - Scenario Simulation Dashboard
+        - UC15 - Scenario Simulation Presentation
 
         ### Admin Only Options
         - UC9 - Admin model management
