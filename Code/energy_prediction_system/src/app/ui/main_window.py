@@ -8,6 +8,8 @@ from .views.hourly_prediction_view import Ui_HourlyPredictionAdminWindow
 from .views.login_view import Ui_LoginWindow
 from .views.model_management_view import Ui_ModelManagementWindow
 from .views.register_view import Ui_RegisterWindow
+from .views.daily_simulator_view import Ui_DailySimulatorWindow
+from .views.hourly_simulator_view import Ui_HourlySimulatorWindow
 
 
 class MainWindow(QMainWindow):
@@ -27,6 +29,8 @@ class MainWindow(QMainWindow):
         self.daily_pred_admin_page = QMainWindow()
         self.hourly_pred_admin_page = QMainWindow()
         self.model_mgmt_page = QMainWindow()
+        self.daily_simulator_page = QMainWindow()
+        self.hourly_simulator_page = QMainWindow()
 
         # Configurar as UIs nos seus respetivos widgets
         self.ui_login = Ui_LoginWindow()
@@ -47,6 +51,12 @@ class MainWindow(QMainWindow):
         self.ui_model_mgmt = Ui_ModelManagementWindow()
         self.ui_model_mgmt.setupUi(self.model_mgmt_page)
 
+        self.ui_daily_sim = Ui_DailySimulatorWindow()
+        self.ui_daily_sim.setupUi(self.daily_simulator_page)
+
+        self.ui_hourly_sim = Ui_HourlySimulatorWindow()
+        self.ui_hourly_sim.setupUi(self.hourly_simulator_page)
+
         # Adicionar à pilha (Stack)
         self.stack.addWidget(self.login_page)             # Índice 0
         self.stack.addWidget(self.register_page)          # Índice 1
@@ -54,6 +64,8 @@ class MainWindow(QMainWindow):
         self.stack.addWidget(self.daily_pred_admin_page)  # Índice 3
         self.stack.addWidget(self.hourly_pred_admin_page) # Índice 4
         self.stack.addWidget(self.model_mgmt_page)        # Índice 5
+        self.stack.addWidget(self.daily_simulator_page)   # Índice 6
+        self.stack.addWidget(self.hourly_simulator_page)  # Índice 7
 
         self.stack.setCurrentIndex(2) # Iniciar na Home por agora para testes
 
@@ -73,14 +85,16 @@ class MainWindow(QMainWindow):
         self.ui_admin.daily_btn.clicked.connect(lambda: self.stack.setCurrentIndex(3))
         self.ui_admin.hourly_btn.clicked.connect(lambda: self.stack.setCurrentIndex(4))
         self.ui_admin.model_mgmt_btn.clicked.connect(lambda: self.stack.setCurrentIndex(5))
+        self.ui_admin.sim_daily_btn.clicked.connect(lambda: self.stack.setCurrentIndex(6))
+        self.ui_admin.sim_hourly_btn.clicked.connect(lambda: self.stack.setCurrentIndex(7))
 
         # Na Home: Navegação Dashboard
         self.ui_admin.daily_button.clicked.connect(lambda: self.stack.setCurrentIndex(3))
         self.ui_admin.hourly_button.clicked.connect(lambda: self.stack.setCurrentIndex(4))
         self.ui_admin.model_mgmt_button.clicked.connect(lambda: self.stack.setCurrentIndex(5))
         
-        self.ui_admin.sim_daily_button.clicked.connect(lambda: print("Go to Daily Simulation"))
-        self.ui_admin.sim_hourly_button.clicked.connect(lambda: print("Go to Hourly Simulation"))
+        self.ui_admin.sim_daily_button.clicked.connect(lambda: self.stack.setCurrentIndex(6))
+        self.ui_admin.sim_hourly_button.clicked.connect(lambda: self.stack.setCurrentIndex(7))
 
         # Na Daily Pred Admin
         self.ui_daily_pred.logout_btn.clicked.connect(lambda: self.stack.setCurrentIndex(0))
@@ -88,6 +102,8 @@ class MainWindow(QMainWindow):
         self.ui_daily_pred.daily_btn.clicked.connect(lambda: self.stack.setCurrentIndex(3))
         self.ui_daily_pred.hourly_btn.clicked.connect(lambda: self.stack.setCurrentIndex(4))
         self.ui_daily_pred.model_btn.clicked.connect(lambda: self.stack.setCurrentIndex(5))
+        self.ui_daily_pred.sim_daily_btn.clicked.connect(lambda: self.stack.setCurrentIndex(6))
+        self.ui_daily_pred.sim_hourly_btn.clicked.connect(lambda: self.stack.setCurrentIndex(7))
 
         # Na Hourly Pred Admin
         self.ui_hourly_pred.logout_btn.clicked.connect(lambda: self.stack.setCurrentIndex(0))
@@ -95,6 +111,8 @@ class MainWindow(QMainWindow):
         self.ui_hourly_pred.daily_btn.clicked.connect(lambda: self.stack.setCurrentIndex(3))
         self.ui_hourly_pred.hourly_btn.clicked.connect(lambda: self.stack.setCurrentIndex(4))
         self.ui_hourly_pred.model_btn.clicked.connect(lambda: self.stack.setCurrentIndex(5))
+        self.ui_hourly_pred.sim_daily_btn.clicked.connect(lambda: self.stack.setCurrentIndex(6))
+        self.ui_hourly_pred.sim_hourly_btn.clicked.connect(lambda: self.stack.setCurrentIndex(7))
 
         # Na Model Management
         self.ui_model_mgmt.logout_btn.clicked.connect(lambda: self.stack.setCurrentIndex(0))
@@ -102,6 +120,26 @@ class MainWindow(QMainWindow):
         self.ui_model_mgmt.daily_btn.clicked.connect(lambda: self.stack.setCurrentIndex(3))
         self.ui_model_mgmt.hourly_btn.clicked.connect(lambda: self.stack.setCurrentIndex(4))
         self.ui_model_mgmt.model_btn.clicked.connect(lambda: self.stack.setCurrentIndex(5))
+        self.ui_model_mgmt.sim_daily_btn.clicked.connect(lambda: self.stack.setCurrentIndex(6))
+        self.ui_model_mgmt.sim_hourly_btn.clicked.connect(lambda: self.stack.setCurrentIndex(7))
+
+        # Na Daily Simulator
+        self.ui_daily_sim.logout_btn.clicked.connect(lambda: self.stack.setCurrentIndex(0))
+        self.ui_daily_sim.home_btn.clicked.connect(lambda: self.stack.setCurrentIndex(2))
+        self.ui_daily_sim.daily_btn.clicked.connect(lambda: self.stack.setCurrentIndex(3))
+        self.ui_daily_sim.hourly_btn.clicked.connect(lambda: self.stack.setCurrentIndex(4))
+        self.ui_daily_sim.model_btn.clicked.connect(lambda: self.stack.setCurrentIndex(5))
+        self.ui_daily_sim.sim_daily_btn.clicked.connect(lambda: self.stack.setCurrentIndex(6))
+        self.ui_daily_sim.sim_hourly_btn.clicked.connect(lambda: self.stack.setCurrentIndex(7))
+
+        # Na Hourly Simulator
+        self.ui_hourly_sim.logout_btn.clicked.connect(lambda: self.stack.setCurrentIndex(0))
+        self.ui_hourly_sim.home_btn.clicked.connect(lambda: self.stack.setCurrentIndex(2))
+        self.ui_hourly_sim.daily_btn.clicked.connect(lambda: self.stack.setCurrentIndex(3))
+        self.ui_hourly_sim.hourly_btn.clicked.connect(lambda: self.stack.setCurrentIndex(4))
+        self.ui_hourly_sim.model_btn.clicked.connect(lambda: self.stack.setCurrentIndex(5))
+        self.ui_hourly_sim.sim_daily_btn.clicked.connect(lambda: self.stack.setCurrentIndex(6))
+        self.ui_hourly_sim.sim_hourly_btn.clicked.connect(lambda: self.stack.setCurrentIndex(7))
 
         # Botões com Validação
         self.ui_login.login_button.clicked.connect(self.handle_login)
