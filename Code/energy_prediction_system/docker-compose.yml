@@ -166,6 +166,7 @@ services:
       dockerfile: src/data_pipeline/Dockerfile
     container_name: energy_pipeline
     profiles: ["tools"]
+    command: ["sh", "/app/src/data_pipeline/run_pipeline.sh"]
     env_file: .env
     environment:
       - DB_HOST=db_server
