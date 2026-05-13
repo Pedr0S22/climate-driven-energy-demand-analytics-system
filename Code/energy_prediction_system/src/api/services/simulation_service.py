@@ -941,13 +941,15 @@ class SimulationService:
         db: Session,
         frequency: str,
         template_name: str,
+        year: int,
         month: int,
         day_of_week: int,
+        hour: int | None = None,
         overrides: dict[str, float] | None = None,
     ) -> dict[str, Any]:
         active_model = SimulationService.get_active_model(db, frequency)
         if not active_model:
-            raise ValueError("Nenhum modelo ativo encontrado. Ative um modelo primeiro.")
+            raise ValueError(f"Nenhum modelo ativo encontrado para {frequency}. Ative um modelo primeiro.")
 
         frequency = active_model.model_pred_type
         dataset_type = active_model.dataset_selected
@@ -956,18 +958,21 @@ class SimulationService:
         template_dataset = "full" if dataset_type == "pca" else dataset_type
         features = SimulationService.get_template(frequency, template_name, template_dataset)
 
-        # 2. Validar e aplicar overrides
+        # 2. Validar e aplicar overrides (clima)
         if overrides:
             errors = SimulationService.validate_overrides(overrides)
             if errors:
                 raise ValueError(f"Erro de validação: {'; '.join(errors)}")
             features = SimulationService.apply_overrides(features, overrides)
 
-        # 3. Sincronizar temporal metadata se fornecido (embora o template já venha com valores reais)
+        # 3. Sincronizar temporal metadata (substitui valores do template)
+        features["year"] = year
         features["month"] = month
         features["day_of_week"] = day_of_week
+        if hour is not None:
+            features["hour"] = hour
 
-        # Season derived from month
+        # Season derived from month (UC13)
         features["season"] = (month % 12 // 3) + 1
 
         # 4. Predict via InferenceEngine
