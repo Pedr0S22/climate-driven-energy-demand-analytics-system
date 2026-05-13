@@ -132,76 +132,81 @@ class InferenceEngine:
             logger.error(f"Predição falhou: Nenhum modelo em memória para '{frequency}'")
             raise ValueError(f"Nenhum modelo ativo carregado em memória para '{frequency}'")
 
-        # Determinar nomes das features esperadas
-        feature_names = None
         scaler = self.get_scaler(frequency)
         pca = self.get_pca(frequency)
 
-        # Se usar PCA, a entrada primária deve casar com o scaler.
-        # Se não usar, a entrada deve casar com o modelo.
-        if scaler and hasattr(scaler, "feature_names_in_"):
-            feature_names = scaler.feature_names_in_.tolist()
-        elif hasattr(model, "feature_names_in_"):
-            feature_names = model.feature_names_in_.tolist()
+        # 1. Determinar nomes das features e preparar entrada
+        feature_names = self._determine_feature_names(model, scaler)
+        transformed = self._prepare_features(features, feature_names)
 
-        # Converter entrada para DataFrame para evitar warnings de feature names
-        if isinstance(features, dict):
-            if feature_names:
-                # Preencher apenas o que o modelo/scaler espera, usando 0 como default para ausentes
-                X_dict = {f: features.get(f, 0) for f in feature_names}
-                transformed = pd.DataFrame([X_dict])
-            else:
-                transformed = pd.DataFrame([features])
-        elif isinstance(features, pd.DataFrame):
-            if feature_names:
-                # Extrair colunas e preencher ausentes
-                transformed = features.reindex(columns=feature_names, fill_value=0)
-            else:
-                transformed = features.copy()
-        else:
-            transformed = np.array(features)
-            if transformed.ndim == 1:
-                transformed = transformed.reshape(1, -1)
-            # Se tivermos nomes, reconstruir DataFrame
-            if feature_names and transformed.shape[1] == len(feature_names):
-                transformed = pd.DataFrame(transformed, columns=feature_names)
+        # 2. Aplicar transformações (Scaler e PCA)
+        transformed = self._apply_scaling(transformed, scaler)
+        transformed = self._apply_pca(transformed, pca)
 
-        # 1. Scaler
-        if scaler:
-            try:
-                # Verificar contagem de features para evitar aviso de shape
-                expected_scaler_feats = len(scaler.feature_names_in_) if hasattr(scaler, "feature_names_in_") else None
-                actual_feats = transformed.shape[1]
-
-                if expected_scaler_feats and actual_feats != expected_scaler_feats:
-                    # Silenciosamente pular scaling se houver mismatch (previne poluição de logs)
-                    pass
-                else:
-                    scaled_array = scaler.transform(transformed)
-                    # Reconstruir DataFrame se tivermos os nomes originais
-                    if hasattr(scaler, "feature_names_in_"):
-                        transformed = pd.DataFrame(scaled_array, columns=scaler.feature_names_in_)
-                    else:
-                        transformed = scaled_array
-            except ValueError:
-                # Fallback se algo falhar no transform
-                pass
-
-        # 2. PCA
-        if pca:
-            try:
-                pca_array = pca.transform(transformed)
-                # Reconstruir DataFrame para o modelo final com nomes das componentes PCA
-                transformed = pd.DataFrame(pca_array, columns=[f"PCA_{i}" for i in range(pca_array.shape[1])])
-            except ValueError:
-                pass
-
-        # 3. Modelo
+        # 3. Executar predição
         prediction = model.predict(transformed)
 
         if isinstance(prediction, np.ndarray):
             return float(prediction[0])
         return float(prediction)
+
+    def _determine_feature_names(self, model: Any, scaler: Any) -> list[str] | None:
+        """Determina nomes das features esperadas (lógica original)."""
+        if scaler and hasattr(scaler, "feature_names_in_"):
+            return scaler.feature_names_in_.tolist()
+        elif hasattr(model, "feature_names_in_"):
+            return model.feature_names_in_.tolist()
+        return None
+
+    def _prepare_features(self, features: Any, feature_names: list[str] | None) -> Any:
+        """Converte e alinha a entrada (lógica original)."""
+        if isinstance(features, dict):
+            if feature_names:
+                X_dict = {f: features.get(f, 0) for f in feature_names}
+                return pd.DataFrame([X_dict])
+            return pd.DataFrame([features])
+        elif isinstance(features, pd.DataFrame):
+            if feature_names:
+                return features.reindex(columns=feature_names, fill_value=0)
+            return features.copy()
+        else:
+            transformed = np.array(features)
+            if transformed.ndim == 1:
+                transformed = transformed.reshape(1, -1)
+            if feature_names and transformed.shape[1] == len(feature_names):
+                transformed = pd.DataFrame(transformed, columns=feature_names)
+            return transformed
+
+    def _apply_scaling(self, transformed: Any, scaler: Any) -> Any:
+        """Aplica scaling se disponível (lógica original)."""
+        if not scaler:
+            return transformed
+        try:
+            expected_scaler_feats = len(scaler.feature_names_in_) if hasattr(scaler, "feature_names_in_") else None
+            actual_feats = transformed.shape[1]
+
+            if expected_scaler_feats and actual_feats != expected_scaler_feats:
+                pass
+            else:
+                scaled_array = scaler.transform(transformed)
+                if hasattr(scaler, "feature_names_in_"):
+                    transformed = pd.DataFrame(scaled_array, columns=scaler.feature_names_in_)
+                else:
+                    transformed = scaled_array
+        except ValueError:
+            pass
+        return transformed
+
+    def _apply_pca(self, transformed: Any, pca: Any) -> Any:
+        """Aplica PCA se disponível (lógica original)."""
+        if not pca:
+            return transformed
+        try:
+            pca_array = pca.transform(transformed)
+            transformed = pd.DataFrame(pca_array, columns=[f"PCA_{i}" for i in range(pca_array.shape[1])])
+        except ValueError:
+            pass
+        return transformed
 
 
 def get_inference_engine() -> InferenceEngine:

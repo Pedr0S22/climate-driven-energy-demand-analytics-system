@@ -1,6 +1,6 @@
 from datetime import datetime
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, ConfigDict, Field
 
 
 class PredictionResponse(BaseModel):
@@ -14,8 +14,8 @@ class PredictionResponse(BaseModel):
     )
     top2_drivers: list[str] = Field(..., description="Top 2 variables driving the prediction")
 
-    class Config:
-        json_schema_extra = {
+    model_config = ConfigDict(
+        json_schema_extra={
             "example": {
                 "status": 200,
                 "historical_load": [25000.5, 26100.2, 25800.8],
@@ -31,3 +31,4 @@ class PredictionResponse(BaseModel):
                 "top2_drivers": ["t2m", "L1_Load"],
             }
         }
+    )
