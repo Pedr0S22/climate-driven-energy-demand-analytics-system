@@ -3,6 +3,7 @@ import logging
 from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.orm import Session
 
+from src.api.core.security import get_current_user
 from src.api.database.session import get_db
 from src.api.schemas.prediction import PredictionResponse
 from src.api.services.prediction_service import PredictionService
@@ -16,6 +17,7 @@ def get_hourly_prediction(
     historical_points: int = Query(3, ge=3, le=5, description="Number of historical hours to include"),
     predicted_points: int = Query(12, ge=1, le=24, description="Number of hours to forecast"),
     db: Session = Depends(get_db),
+    current_user=Depends(get_current_user),
 ):
     """
     Get hourly electricity demand predictions.
@@ -39,6 +41,7 @@ def get_daily_prediction(
     historical_points: int = Query(3, ge=1, le=5, description="Number of historical days to include"),
     predicted_points: int = Query(7, ge=1, le=14, description="Number of days to forecast"),
     db: Session = Depends(get_db),
+    current_user=Depends(get_current_user),
 ):
     """
     Get daily electricity demand predictions.
