@@ -234,6 +234,12 @@ Code/energy_prediction_system/data/processed/*.csv
 
 Code/energy_prediction_system/**/*.json
 
+# Keeping real time checkers
+Code/energy_prediction_system/src/data_pipeline/realtime_checker.py
+Code/energy_prediction_system/src/data_pipeline/test_realtime_prediction.py
+Code\energy_prediction_system\src\data_pipeline\realtime_checker.py
+Code\energy_prediction_system\src\data_pipeline\test_realtime_prediction.py
+
 
 # Management Data
 Management/milestone-progress/data-gitlab/**/*.csv
