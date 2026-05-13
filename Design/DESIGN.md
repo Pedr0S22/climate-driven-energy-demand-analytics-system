@@ -55,7 +55,7 @@ The technology stack used in the project is described below. Also FILE X and FIL
 ### 1.1. Backend & Machine Learning Stack
 
 * **Backend Framework:** Python with FastAPI
-* **Database Engine:** PostgreSQL; .`joblib` Files for ML models; ELK stack for logging.
+* **Database Engine:** PostgreSQL; .joblib Files for ML models; ELK stack for logging.
 * **Authentication/Security:** JWT for sessions, bcrypt for password hashing.
 * **Data Manipulation & ML:** Pandas, NumPy, SciPy, Scikit-Learn, Optuna
 * **Testing Framework:** pytest.
@@ -723,7 +723,7 @@ The system uses the ELK Stack to centralize performance and audit logs. The prim
 [`TODO`] - (Main Dashboard, Admin Panel, Prediction Views)
 
 ### 6.3. Data Visualization
-[`TODO`] - (D3.js Integration) (How the Python backend passes JSON data to the D3.js components embedded in PyQt6)
+[`TODO`] - (chart Integration) (How the Python backend passes JSON data to the chart components embedded in PyQt6)
 
 ### 7. Telemetry & Observability Design
 
