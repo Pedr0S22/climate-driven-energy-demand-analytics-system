@@ -11,7 +11,8 @@ services:
       - "--providers.docker.network=api_net"
       - "--entrypoints.web.address=:80"
       - "--entrypoints.traefik.address=:8080"
-      - "--log.level=DEBUG"
+      - "--ping=true"
+      - "--log.level=INFO"
       - "--entrypoints.web.transport.respondingtimeouts.readtimeout=15s"
       - "--entrypoints.web.transport.respondingtimeouts.writetimeout=15s"
       - "--entrypoints.web.transport.respondingtimeouts.idletimeout=15s"
@@ -27,6 +28,7 @@ services:
       interval: 10s
       timeout: 5s
       retries: 3
+      start_period: 5s
 
   # --- CAMADA 1: DATABASES (Relational & ELK) ---
   db_server:
