@@ -164,9 +164,11 @@ services:
 
 networks:
   api_net:
-    driver: bridge
+    driver: bridge 
+    name: api_net
   db_net:
     driver: bridge
+    name: db_net
 
 volumes:
   postgres_data:

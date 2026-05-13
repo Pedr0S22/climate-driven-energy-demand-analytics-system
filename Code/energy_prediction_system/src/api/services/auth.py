@@ -36,11 +36,10 @@ def create_user(db: Session, user_in: UserCreate, is_admin: bool = False):
     else:
         role_record = Client(users_id=db_user.id)
 
-    db.add(role_record)
+    db.add(role_record )
     db.commit()
 
     return db_user
-
 
 def authenticate_user(db: Session, login_data: UserLogin):
     user = get_user_by_email(db, login_data.email)

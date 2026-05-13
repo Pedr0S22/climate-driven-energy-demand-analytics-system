@@ -1,6 +1,7 @@
 from PyQt6.QtWidgets import QMainWindow, QMessageBox, QStackedWidget
 
 from app.utils.validators import validate_login_input, validate_registration_input
+from app.client.auth_service import AuthService    
 
 from .views.admin_homepage import Ui_MainWindow as Ui_AdminHome
 from .views.daily_prediction_view import Ui_DailyPredictionAdminWindow
@@ -114,28 +115,49 @@ class MainWindow(QMainWindow):
         is_valid, message = validate_login_input(email, password)
 
         if is_valid:
-            # Extrair nome do email para a mensagem de boas-vindas
-            username = email.split('@')[0].capitalize()
-            self.ui_admin.top_bar.title_label.setText(f"Welcome back, {username}!")
-            
             print(f"Success: {email}")
             self.stack.setCurrentIndex(2) # Vai para Home
         else:
             QMessageBox.warning(self, "Login Error", message)
 
     def handle_register(self):
-        user = self.ui_register.user_input.text()
-        email = self.ui_register.email_input.text()
-        password = self.ui_register.pass_input.text()
-        confirm = self.ui_register.conf_pass_input.text()
+        user = self.ui_register.user_input.text().strip()
+        email = self.ui_register.email_input.text().strip()
+        password = self.ui_register.pass_input.text().strip()
+        confirm = self.ui_register.conf_pass_input.text().strip()
 
         is_valid, message = validate_registration_input(user, email, password, confirm)
 
-        if is_valid:
+        if not is_valid:
+            QMessageBox.warning(self, "Registration error", message)
+            return
+
+        auth_service = AuthService()
+        # pedido a API
+        response_data, status_code = auth_service.register_user(user, email, password)
+
+        if status_code == 201:
             QMessageBox.information(self, "Success", "Account created successfully!")
-            self.stack.setCurrentIndex(0) # Volta para o Login
+            
+            self.ui_register.user_input.clear()
+            self.ui_register.email_input.clear()
+            self.ui_register.pass_input.clear()
+            self.ui_register.conf_pass_input.clear()
+            
+            self.stack.setCurrentIndex(0)
+            
+        elif status_code == 409:
+            self.ui_register.email_input.clear()
+            error_message = response_data.get("detail", "Error: Email already registered.")
+            QMessageBox.warning(self, "Invalid Registration", error_message)
+        
         else:
-            QMessageBox.warning(self, "Registration Error", message)
+            error_message = response_data.get("detail", "An unknown error occurred during registration.")
+            
+            if isinstance(error_message, list):
+                error_message = error_message[0].get("msg", str(error_message))
+                
+            QMessageBox.warning(self, "Registration Error", str(error_message))
 
     def ir_para_home(self):
         self.stack.setCurrentIndex(2)
