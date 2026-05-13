@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/bin/sh
 set -e
 
 # Garante que o PYTHONPATH inclui a raiz do código

@@ -54,6 +54,9 @@ A machine learning-based system to predict electricity demand in Spain (ES) usin
 | 2026-04-10 | Optimized Rolling Feats | Vectorized Pandas operations to prevent timeout on 52k rows. |
 | 2026-04-10 | Corrected Celsius Logic | Updated domain limits and HDD/CDD base temp for Celsius data. |
 | 2026-04-10 | Centralized Config | Moved `pyproject.toml` and `requirements.txt` to the app root for Docker. |
+| 2026-05-13 | Fixed Pipeline Imports | Aligned `PYTHONPATH` and Docker commands to resolve `ModuleNotFoundError`. |
+| 2026-05-13 | Secured Predictions | Implemented JWT authentication for real-time prediction endpoints. |
+| 2026-05-13 | Removed API Redundancy | Stopped redundant background pipeline execution in API startup. |
 
 ---
 *Note: This file is a foundational mandate. Update it when significant architectural or procedural decisions are made.*

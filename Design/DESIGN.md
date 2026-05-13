@@ -26,6 +26,7 @@ This document captures the low-level system design decisions, technical stack, d
 * #### 4.2. Prediction Inference Service
 * #### 4.3. Administrator & Management Services
 * #### 4.4. Live Data Scheduler Service
+* #### 4.5. Autoregressive Prediction Engine
 
 ### 5. Databases & Data Storage Design
 * #### 5.1. Relational Database - PostgreSQL
@@ -54,7 +55,7 @@ The technology stack used in the project is described below. Also FILE X and FIL
 ### 1.1. Backend & Machine Learning Stack
 
 * **Backend Framework:** Python with FastAPI
-* **Database Engine:** PostgreSQL; [`TODO`] Files for ML models; ELK stack for logging.
+* **Database Engine:** PostgreSQL; .joblib Files for ML models; ELK stack for logging.
 * **Authentication/Security:** JWT for sessions, bcrypt for password hashing.
 * **Data Manipulation & ML:** Pandas, NumPy, SciPy, Scikit-Learn, Optuna
 * **Testing Framework:** pytest.
@@ -62,11 +63,11 @@ The technology stack used in the project is described below. Also FILE X and FIL
 ### 1.2. Frontend & Visualization Stack
 
 * **Frontend/UI:**  Python PyQt6.
-* **Dashboards:** D3.js integrated with PyQt6.
+* **Dashboards:** matplotlib, plotly and seaborn with PyQt6.
 
 ### 1.3. Infrastructure & Telemetry Stack
 
-* **Monitoring:** [`TODO`] ELK 
+* **Monitoring:** ELK + Docker
 
 
 ## 2. Microservices & Containerization
@@ -114,6 +115,19 @@ The architecture defines two distinct networks:
 *   `db_net`: Connects the Backend, Data Pipeline, and Databases (PostgreSQL, ELK).
 **Engineering Why:** This prevents the Frontend from directly accessing the Databases, ensuring all data requests are authenticated and validated through the Backend service.
 
+### 2.5 How to Run the APP
+
+* To run **full application**, run:
+  ```bash
+    docker compose up --build -d # If subsitutions
+    # OR
+    docker compose up -d # running app without modifications
+   ```
+
+* To run normal training data pipeline with models:
+    ```bash
+    docker compose --profile tools run pipeline #-d
+    ```
 
 ## 3. Data Pipeline Design
 
@@ -154,7 +168,7 @@ The primary objective of Ingestion Module is to reliably, securely, and reproduc
     - **Engineering Why:** Redundancy is critical for research reproducibility. By syncing to Google Drive, the team maintains a shared, persistent source of truth for raw data that survives local environment resets.
 
 
-### 3.2. Cleaning & Temporal Alignment Module (UC2)
+### 3.2. Cleaning & Temporal Alignment Module
 
 The primary objective of the Cleaning & Temporal Alignment Module is to transform raw, heterogeneous energy and meteorological data into synchronized, clean, and aggregated datasets. Refactored into a modular `DataCleaner` class, it supports both high-performance batch processing of historical files and real-time ingestion for inference.
 
@@ -284,6 +298,31 @@ The primary objective of the Training & Evaluation Module is to autonomously sel
         - Implements Rule 8: Models are saved as `[LR|RF]_vx.joblib`.
         - Database entries link the file path with the exact `rmse`, `mae`, and `r2` metrics from the winning fold, enabling rollback to previous versions if performance degrades in production.
 
+### 2.5. Real-Time Data Pipeline Design
+
+The Real-Time Data Pipeline is a high-availability version of the main pipeline, optimized for low-latency inference while maintaining strict mathematical parity with the training environment.
+
+*   **Orchestration:** Driven by `real_time_pipeline.py`, which coordinates the retrieval, cleaning, and multi-resolution feature engineering of live data.
+*   **Target:** Reads from live APIs, outputs to `/data/processed/feat-engineering/real-time/`.
+
+#### 2.5.1. Real-Time Ingestion Strategy (31-Day Window)
+To satisfy the requirements of high-dimensional feature engineering, the real-time ingestion fetch window is set to **31 days** (configurable via `REAL_TIME_DAYS`).
+*   **Engineering Why:**
+    *   **Rolling Windows:** The `rolling_30` feature requires 30 days of prior history to calculate a valid mean/std for the current day.
+    *   **Lagged Features:** The `L28_Load` feature requires data from exactly 28 days ago.
+    *   **PCA Stability:** Without a 31-day buffer, these features would be filled with zeros (`NaN` fill), causing the PCA projection to "tilt" and produce values inconsistent with the training set, leading to inaccurate predictions.
+
+#### 2.5.2. Technical Mechanisms:
+*   **Resolution Alignment:** ENTSO-E queries use the `Europe/Madrid` timezone and normalized day boundaries. This ensures the API returns standard hourly data for Spain, matching the training data resolution without requiring manual resampling.
+*   **Multi-Dataset Generation:** For every frequency (Hourly/Daily), the real-time pipeline generates three distinct files:
+    1.  `realtime_[freq]_full.csv`: All engineered features.
+    2.  `realtime_[freq]_selected.csv`: Features filtered by the 0.6 association threshold.
+    3.  `realtime_[freq]_pca.csv`: Data projected into the pre-fitted PCA space.
+*   **Robust File Persistence (Windows-Safe):** 
+    *   Implements an **Atomic Write** pattern using `.tmp` files.
+    *   Explicitly handles Windows file-locking issues by catching `PermissionError` and logging descriptive diagnostics.
+    *   Uses `os.replace` with string-path conversion to ensure cross-platform compatibility and prevent file corruption during high-frequency updates.
+*   **Security:** Cloud synchronization (`gdrive_sync.py`) is explicitly disabled for real-time retrieval to protect API throughput and prevent uncleaned live data from polluting the research backup.
 
 
 ### 4. Core Backend Services Design
@@ -317,7 +356,8 @@ FastAPI global exception handlers standardize responses:
 
 ### 4.1.3 API Contracts for Authentication/Registration
 
-* **Registration:** `POST /api/v1/auth/register`
+* **Registration:** `POST /api/auth/register`
+    * **Request Type:** `application/json`
     * **Payload:**
         ```json
         {
@@ -336,13 +376,11 @@ FastAPI global exception handlers standardize responses:
         }
         ```
 
-* **Authentication:** `POST /api/v1/auth/login`
+* **Authentication:** `POST /api/auth/login`
+    * **Request Type:** `application/x-www-form-urlencoded` (OAuth2 Compatible)
     * **Payload:**
-        ```json
-        {
-          "email": "john.doe@example.com",
-          "password": "securePassword123"
-        }
+        ```
+        username=john.doe@example.com&password=securePassword123
         ```
     * **Response:** `200 OK` with 
         ```json
@@ -356,7 +394,7 @@ FastAPI global exception handlers standardize responses:
         }
         ```
 
-* **Logout:** `POST /api/v1/auth/logout`
+* **Logout:** `POST /api/auth/logout`
     * **Headers:** `Authorization: Bearer <token>`
     * **Response:** `200 OK` with
         ```json
@@ -383,7 +421,7 @@ sequenceDiagram
     participant IE as InferenceEngine (Singleton)
     participant M as ML Model (.joblib)
 
-    U->>API: POST /api/v1/simulations/run
+    U->>API: POST /api/simulations/[daily|hourly]
     API->>SS: run_simulation(params)
     SS->>SS: Get Template & Apply Overrides
     SS->>IE: predict(frequency, features_dict)
@@ -417,20 +455,38 @@ The simulation engine allows users to perform "What-if" analysis using 16 pre-de
 
 #### 4.2.5 API Contracts for Simulations
 
-*   **Get Available Template: `POST /api/v1/simulations/templates`**
+*   **Get Available Template: `POST /api/simulations/templates`**
     *   **Description:** Returns the default feature vector for a condition, aligned with the currently active model's requirements.
+    *   **Request Type:** `application/json`
     *   **Payload:** `{ "frequency": "daily", "template_name": "heatwave" }`
     *   **Response:** `{ "frequency": "daily", "template_name": "heatwave", "dataset_type": "selected", "features": {...} }`
 
-*   **Run Simulation: `POST /api/v1/simulations/run`**
-    *   **Description:** Executes a prediction using a template with optional overrides.
+*   **Run Daily Simulation: `POST /api/simulations/daily`**
+    *   **Description:** Executes a daily prediction using a template with optional overrides.
+    *   **Request Type:** `application/json`
     *   **Payload:**
         ```json
         {
-          "frequency": "daily",
           "template_name": "heatwave",
+          "year": 2024,
           "month": 5,
           "day_of_week": 0,
+          "overrides": { "t2m": 42.5 }
+        }
+        ```
+    *   **Response:** `{ "predicted_mw": 32500.5, "top_drivers": ["t2m", "day_of_week"] }`
+
+*   **Run Hourly Simulation: `POST /api/simulations/hourly`**
+    *   **Description:** Executes an hourly prediction using a template with optional overrides.
+    *   **Request Type:** `application/json`
+    *   **Payload:**
+        ```json
+        {
+          "template_name": "heatwave",
+          "year": 2024,
+          "month": 5,
+          "day_of_week": 0,
+          "hour": 14,
           "overrides": { "t2m": 42.5 }
         }
         ```
@@ -447,20 +503,70 @@ When an administrator activates a model, the system enforces a mutex logic:
 
 #### 4.3.2 API Contracts for Model Management
 
-*   **List all models: `GET /api/v1/models/`**
+*   **List all models: `GET /api/models/`**
     *   **Description:** Returns a list of all models registered in the system with their performance metrics.
     *   **Response:** List of objects containing `model_name_id`, `model_type`, `rmse`, `r2`, `mae`, `is_active`, etc.
 
-*   **Activate model: `PATCH /api/v1/models/{model_id}/activate`**
+*   **Activate model: `PATCH /api/models/{model_id}/activate`**
     *   **Description:** Promotes a model to production. (Admin Only)
     *   **Payload:** `{ "is_active": true }`
     *   **Response:** The updated model metadata.
 
 ### 4.4. Live Data Scheduler Service
-[`TODO`] - (Technical implementation: What library runs it? How does it avoid race conditions with the database?)
 
-* **Target:** Runs asynchronously behind the scenes to fetch up-to-date data for the live prediction requests.
-* **Logic:** A dedicated background thread or task scheduler periodically triggers a lightweight version of the Ingestion, Cleaning and Feature Engineering pipeline modules. It fetches only the most recent hours/days of data required (that the systems does not have) to satisfy the rolling windows and lag features needed for real-time inference, ensuring the models always have fresh inputs without requiring manual intervention.
+The Live Data Scheduler Service ensures that the system provides predictions based on the most recent data available. It operates as a continuous background process, decoupled from the main API requests.
+
+*   **Continuous Scheduler (`real_time_pipeline.py`):**
+    *   **Logic:** Implements a loop that wakes up at `XX:01` and `XX:31` every hour.
+    *   **Cycle:** Executes the sequence: **Fetch Real-Time Ingestion (31 days)** -> **Clean & Align** -> **Feature Engineering (Hourly & Daily)**.
+    *   **Engineering Why:** This frequency minimizes the delay between real-world updates (which occur hourly) and the availability of prediction inputs. Running at `:01` and `:31` ensures we catch data as soon as remote APIs update their hourly samples.
+
+*   **API Lifespan Integration:**
+    *   During the FastAPI startup sequence (`lifespan`), the API executes a synchronous run of the pipeline.
+    *   **Engineering Why:** This ensures that the application never starts in a "stale" state. It guarantees that the `/data/processed/feat-engineering/real-time/` files are present and updated before the first prediction request is ever accepted.
+
+### 4.5. Autoregressive Prediction Engine
+
+The Prediction Engine implements a recursive forecasting strategy to provide multi-step predictions (e.g., 24 hours or 14 days into the future).
+
+*   **Historical Context Injection:**
+    *   For every request, the engine retrieves the last `historical_points` rows from the engineered real-time dataset.
+    *   These points are returned to the user as `historical_load`, providing immediate visual context for the trend.
+
+*   **The Autoregressive Loop (Feedforward):**
+    1.  **Start:** The engine takes the features of the current known state ($T$).
+    2.  **Predict:** The model predicts the demand for $T+1$.
+    3.  **Feedback:** The prediction $\hat{y}_{T+1}$ is injected back into the feature vector as the new `L1_Load` (Lag 1).
+    4.  **Temporal Update:** Calendrical features (`hour`, `day_of_week`, etc.) are incremented for the next timestamp.
+    5.  **Climate Persistence (Naive):** Meteorological variables are kept constant (persisted) across the forecast horizon.
+    6.  **Repeat:** The process repeats for the duration of the requested `predicted_points`.
+
+*   **Data Integrity:**
+    *   **Sync Logic:** Since Open-Meteo provides data in target units (Celsius, mm, hPa), the pipeline explicitly skips the Kelvin-to-Celsius and Pa-to-hPa conversions used for historical ERA5 data.
+    *   **Unit Mapping:** Precipitation from Open-Meteo (mm) is automatically converted to meters (m) to match the ERA5 training scale (1000x difference).
+
+### 4.6. Prediction API Contract
+
+*   **Get Prediction: `GET /api/predictions/[hourly|daily]`**
+    *   **Query Params:** `historical_points` (context size), `predicted_points` (horizon size).
+    *   **Response:**
+        ```json
+        {
+          "status": 200,
+          "timestamps": "2026-05-12T13:00:00Z",
+          "historical_load": [25000.5, 26100.2, 25800.8],
+          "load_predicted": [26000.0, 26500.5, 27000.2],
+          "timestamps": [
+              "2026-05-12T10:00:00Z",
+              "2026-05-12T11:00:00Z",
+              "2026-05-12T12:00:00Z",
+              "2026-05-12T13:00:00Z",
+              "2026-05-12T14:00:00Z",
+              "2026-05-12T15:00:00Z"
+          ],
+          "top2_drivers": ["t2m", "L1_Load"]
+        }
+        ```
 
 
 ## 5. Databases & Data Storage Design
@@ -617,7 +723,7 @@ The system uses the ELK Stack to centralize performance and audit logs. The prim
 [`TODO`] - (Main Dashboard, Admin Panel, Prediction Views)
 
 ### 6.3. Data Visualization
-[`TODO`] - (D3.js Integration) (How the Python backend passes JSON data to the D3.js components embedded in PyQt6)
+[`TODO`] - (chart Integration) (How the Python backend passes JSON data to the chart components embedded in PyQt6)
 
 ### 7. Telemetry & Observability Design
 
@@ -684,14 +790,14 @@ The system uses Docker for containerizing the database and potentially other ser
 Once the backend is running (`python Code/energy_prediction_system/src/api/main.py`), you can interact with the API.
 
 #### Authentication Flow
-1. **Register:** `POST /api/v1/auth/register` with username, email, and password.
-2. **Login:** `POST /api/v1/auth/login` with email and password. This returns an `access_token`.
+1. **Register:** `POST /api/auth/register` with username, email, and password.
+2. **Login:** `POST /api/auth/login` with email and password. This returns an `access_token`.
 3. **Authorized Requests:** Include the token in the header: `Authorization: Bearer <your_token>`.
 
 #### Key Endpoints
-- **User Info:** `GET /api/v1/auth/me` (Requires Token)
-- **Admin Check:** `GET /api/v1/auth/admin-only` (Requires Admin Role)
-- **Predictions (Planned):** `GET /api/predict/daily` and `GET /api/predict/hourly`.
+- **User Info:** `GET /api/auth/me` (Requires Token)
+- **Admin Check:** `GET /api/auth/admin-only` (Requires Admin Role)
+- **Predictions:** `GET /api/predictions/daily` and `GET /api/predictions/hourly`.
 
 #### Documentation
 FastAPI provides interactive Swagger documentation at:

@@ -1,8 +1,12 @@
 # Climate-Driven Energy Demand Analytics System
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
-[![Python 3.11+](https://img.shields.io/badge/python-3.11+-blue.svg)](https://www.python.org/downloads/)
-[![FastAPI](https://img.shields.io/badge/FastAPI-0.100+-green.svg)](https://fastapi.tiangolo.com/)
+[![Python 3.11](https://img.shields.io/badge/python-3.11-blue.svg)](https://www.python.org/downloads/)
+[![FastAPI](https://img.shields.io/badge/FastAPI-0.95-green.svg)](https://fastapi.tiangolo.com/)
+[![PyQt6](https://img.shields.io/badge/PyQt6-6.4.0-blue.svg)](https://www.riverbankcomputing.com/software/pyqt/)
+[![scikit-learn](https://img.shields.io/badge/scikit--learn-1.8.0-orange.svg)](https://scikit-learn.org/)
+[![PostgreSQL](https://img.shields.io/badge/PostgreSQL-15-blue.svg)](https://www.postgresql.org/)
+[![ELK Stack](https://img.shields.io/badge/ELK--Stack-8.x-red.svg)](https://www.elastic.co/elastic-stack)
 
 ## Description & Value Proposition
 
@@ -15,13 +19,28 @@ By integrating high-resolution climate data from **Copernicus ERA5-Land** and hi
 - **Automated Data Lifecycle:** A fully reproducible data pipeline that handles everything from ingestion and cleaning to feature engineering and model training.
 
 ## Table of Contents
+- [Project Status: MVP DEMO](#project-status-mvp-demo)
+- [Legal Disclaimer & Objectives](#legal-disclaimer--objectives)
 - [Architecture Overview](#architecture-overview)
 - [Key Features](#key-features)
+- [Data & Methodology](#data--methodology)
 - [Project Structure](#project-structure)
 - [Installation (Docker)](#installation-using-docker)
-- [Usage](#usage)
+- [User Guide & Workflow](#user-guide--workflow)
 - [Authors](#authors)
 - [License](#license)
+
+## Project Status: MVP DEMO
+
+This project is currently in its **MVP (Minimum Viable Product) DEMO** phase. While the current implementation focuses on national-level demand for Spain, the architecture is designed for high scalability. Future expansions include:
+- **Granular Analysis:** Transitioning from national to regional and city-specific demand models within Spain.
+- **International Scaling:** Extending the analytical framework to other European countries by leveraging the standardized ENTSO-E, Copernicus and Open-Meteo data structures.
+
+## Legal Disclaimer & Objectives
+
+This is strictly an **Analytical System**.
+- **Disclaimer:** For legal and safety reasons, this system **does not predict catastrophes or force majeure events** (e.g., extreme natural disasters, war, or grid-wide structural failures). It is designed to model standard and seasonal fluctuations driven by climate variables.
+- **Objectives:** The primary goal is to provide data-driven insights for grid management, allowing stakeholders to anticipate demand shifts based on temperature, radiation, wind, etc., patterns under normal operational conditions.
 
 ## Architecture Overview
 
@@ -33,12 +52,23 @@ The system utilizes a hybrid architectural approach to ensure both scientific re
 
 ## Key Features
 
-- **Automated Data Pipeline:** Reproducible ingestion of 6 years of historical data (2020-2025) with integrated Google Drive backups.
-- **Advanced Feature Engineering:** Calculates rolling climate averages, temporal lags, and physics-based indicators like Heating/Cooling Degree Days (HDD/CDD).
-- **Interactive Dashboards:** Visualizes demand trends using D3.js integrated within a PyQt6 desktop environment, supporting real-time hover tooltips and driver identification.
-- **Scenario Simulator:** Allows users to manually define weather parameters to simulate grid impact without relying on live API data.
-- **Admin Model Management:** A dedicated interface for administrators to evaluate model metrics (MAE, RMSE, R²) and promote new models to production on-the-fly.
-- **Observability (ELK Stack):** Centralized logging and monitoring via Elasticsearch, Logstash, and Kibana for total system transparency.
+- **Automated Data Pipeline:** Fully automated and reproducible ingestion of over 5 years of historical data with integrated Google Drive cloud synchronization for research continuity.
+- **Advanced Feature Engineering:** Goes beyond raw data by calculating temporal lags (L1, L24, L168), rolling climate statistics (mean, std, RMS), and physics-based indicators like Heating/Cooling Degree Days (HDD/CDD) to capture climate inertia.
+- **Scenario Simulator:** A sandbox environment where analysts can manually override weather parameters (e.g., "What if we have a 45°C heatwave tomorrow?") to see the predicted impact on the grid instantly.
+- **Interactive Visualization Dashboards:** A custom PyQt6 desktop environment with integrated D3.js and Plotly charts, featuring real-time hover tooltips and automated driver identification.
+- **Admin Model Management:** A robust governance interface allowing administrators to evaluate new model iterations (RMSE, MAE, R²) and promote them to production with zero downtime.
+- **System Observability (ELK):** Integrated ELK Stack (Elasticsearch, Logstash, Kibana) for real-time monitoring of pipeline health, model performance, and user audit trails.
+
+## Data & Methodology
+
+### Data Sources
+- **Energy Demand:** Historical grid load data acquired from the **ENTSO-E Transparency Platform**.
+- **Meteorological Data:** High-resolution climate variables (Temperature, Solar Radiation, Precipitation, Wind Speed, etc.) from **Copernicus ERA5-Land**.
+
+### Methodology
+1.  **Cleaning & Alignment:** Raw data is synchronized to a common UTC grid. Missing values are imputed using rule-based strategies (linear interpolation for isolated gaps, mean of previous observations for larger windows).
+2.  **Feature Engineering:** We transform raw signals into predictive features, including temporal decomposition (hour, day, season) and climate inertia indicators (rolling averages and derivatives).
+3.  **Modeling:** The system utilizes optimized **Random Forest** and **Linear Regression** models, selected through nested temporal cross-validation with a mandatory 1-year safety gap to prevent data leakage.
 
 ## Project Structure
 ```text
@@ -57,44 +87,46 @@ The system utilizes a hybrid architectural approach to ensure both scientific re
 └── Testing/               # Automated test reports and test case definitions
 ```
 
-## Installation using Docker [TODO]
-
-> **`IMPORTANT:`**
->This section is under development. Ensure you have Docker and Docker Compose installed.
+## Installation using Docker
 
 ### Prerequisites
-- Docker Desktop
-- `.env`, `credentials.json` and `token.json` files with ENTSO-E and Copernicus API keys (see `Design/DESIGN.md` for template).
+- Docker & Docker Compose installed.
+- `.env`, `credentials.json` and `token.json` files with ENTSO-E and Copernicus API keys (placed in `Code/energy_prediction_system/`).
 
-### Setup (TODO) - [TODO] (usage of docker hub)
+### Setup
 1.  **Clone the repository:**
     ```bash
     git clone https://gitlab.com/dei-uc/piacd2026/pl1g1.git
     cd pl1g1
     ```
-2.  **Configure environment variables:**
-    - Create a `.env` file in `Code/energy_prediction_system/`.
-3.  **Build and run the containers:**
+2.  **How to Run the APP:**
+    Navigate to the application root `Code/energy_prediction_system/`:
     ```bash
-    # TODO: Define final docker-compose structure
-    docker-compose up --build
+    cd Code/energy_prediction_system
+    ```
+    - **Run full application with modifications:**
+      ```bash
+      docker compose up --build -d
+      ```
+    - **Run app without modifications:**
+      ```bash
+      docker compose up -d
+      ```
+3.  **Run Training Data Pipeline:**
+    To run the normal training pipeline with models:
+    ```bash
+    docker compose --profile tools run pipeline
     ```
 
-## Usage [TODO]
+## User Guide & Workflow
 
-### 1. Data Pipeline (CLI)
-To run the automated pipeline, use the provided scripts in the `src/data_pipeline/` directory.
-```bash
-# Example: Ingest data
-python Code/energy_prediction_system/src/data_pipeline/ingestion.py
-```
+The application follows a structured workflow designed for both security and efficiency:
+1.  **Authentication:** Users must register and log in to access the system.
+2.  **Landing Page:** After login, users are presented with a central navigation hub.
+3.  **Predictions & Dashboards:** Access real-time hourly or daily demand forecasts with interactive climate insights.
+4.  **Simulations:** Perform "What-if" analysis via the Scenario Simulator.
 
-### 2. Application (GUI)
-Launch the PyQt6 interface to access predictions and simulations.
-```bash
-# TODO: Define main entry point for the desktop app
-python Code/energy_prediction_system/src/main_app.py
-```
+For a detailed walkthrough of all features, please refer to the [Product Documentation (User Guide)](./Design/PRODUCT.md). The full system workflow and use cases are detailed in the [Requirements README](./Requirements/README.md).
 
 ## Authors
 Meet the team behind this product:

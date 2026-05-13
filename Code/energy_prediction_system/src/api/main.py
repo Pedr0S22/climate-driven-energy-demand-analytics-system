@@ -23,7 +23,7 @@ logger = logging.getLogger(__name__)
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    # Startup: Load active models
+    # Then load active models
     logger.info("API Starting: Loading active models into memory...")
     db = SessionLocal()
     try:
