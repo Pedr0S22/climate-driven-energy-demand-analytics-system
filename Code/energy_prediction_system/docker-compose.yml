@@ -8,7 +8,14 @@ services:
       - "--api.insecure=true"
       - "--providers.docker=true"
       - "--providers.docker.exposedbydefault=false"
+      - "--providers.docker.network=api_net"
       - "--entrypoints.web.address=:80"
+      - "--entrypoints.traefik.address=:8080"
+      - "--ping=true"
+      - "--log.level=INFO"
+      - "--entrypoints.web.transport.respondingtimeouts.readtimeout=25s"
+      - "--entrypoints.web.transport.respondingtimeouts.writetimeout=25s"
+      - "--entrypoints.web.transport.respondingtimeouts.idletimeout=25s"
     ports:
       - "80:80"       # Entrada principal (API e App)
       - "8080:8080"   # Dashboard do Traefik
@@ -16,6 +23,12 @@ services:
       - "/var/run/docker.sock:/var/run/docker.sock:ro"
     networks:
       - api_net
+    healthcheck:
+      test: ["CMD", "traefik", "healthcheck", "--ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+      start_period: 5s
 
   # --- CAMADA 1: DATABASES (Relational & ELK) ---
   db_server:
@@ -31,7 +44,7 @@ services:
     networks:
       - db_net
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U ${DB_USER:-piacd_energy} -d ${DB_NAME:-energy_db}"]
+      test: ["CMD-SHELL", "pg_isready -U piacd_energy -d energy_db"]
       interval: 10s
       timeout: 5s
       retries: 5
@@ -92,6 +105,7 @@ services:
       - DB_HOST=db_server
       - DB_PORT=5432
       - LOGSTASH_HOST=logstash
+      - PYTHONPATH=/app
     networks:
       - db_net
       - api_net
@@ -105,15 +119,17 @@ services:
         condition: service_healthy
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:8000/api/health"]
-      interval: 60s
+      interval: 30s
       timeout: 10s
       retries: 3
+      start_period: 60s
     labels:
       - "traefik.enable=true"
-      - "traefik.http.routers.energy-api.rule=Host(`localhost`) && PathPrefix(`/api`)"
+      - "traefik.docker.network=api_net"
+      - "traefik.http.routers.energy-api.rule=(Host(`localhost`) || Host(`127.0.0.1`)) && PathPrefix(`/api`)"
       - "traefik.http.routers.energy-api.entrypoints=web"
       - "traefik.http.routers.energy-api.priority=10"
-      # QA6: Rate Limiting (Increased for Swagger: Average 100 req/s, Burst 200)
+      # QA6: Rate Limiting
       - "traefik.http.middlewares.api-ratelimit.ratelimit.average=100"
       - "traefik.http.middlewares.api-ratelimit.ratelimit.burst=200"
       - "traefik.http.routers.energy-api.middlewares=api-ratelimit"
@@ -137,7 +153,8 @@ services:
         condition: service_healthy
     labels:
       - "traefik.enable=true"
-      - "traefik.http.routers.energy-app.rule=Host(`localhost`)"
+      - "traefik.docker.network=api_net"
+      - "traefik.http.routers.energy-app.rule=(Host(`localhost`) || Host(`127.0.0.1`))"
       - "traefik.http.routers.energy-app.entrypoints=web"
       - "traefik.http.routers.energy-app.priority=1"
       - "traefik.http.services.energy-app.loadbalancer.server.port=3000"
@@ -149,10 +166,12 @@ services:
       dockerfile: src/data_pipeline/Dockerfile
     container_name: energy_pipeline
     profiles: ["tools"]
+    command: ["sh", "/app/src/data_pipeline/run_pipeline.sh"]
     env_file: .env
     environment:
       - DB_HOST=db_server
       - DB_PORT=5432
+      - PYTHONPATH=/app/src
     volumes:
       - ./data:/app/data
       - ./models:/app/models
@@ -162,11 +181,39 @@ services:
       db_server:
         condition: service_healthy
 
+  real_time_pipeline:
+    build:
+      context: .
+      dockerfile: src/data_pipeline/Dockerfile
+    container_name: energy_realtime_pipeline
+    restart: always
+    command: ["python", "-m", "data_pipeline.real_time_pipeline"]
+    env_file: .env
+    environment:
+      - DB_HOST=db_server
+      - DB_PORT=5432
+      - PYTHONPATH=/app/src
+    volumes:
+      - ./data:/app/data
+      - ./models:/app/models
+    networks:
+      - db_net
+    depends_on:
+      db_server:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "find /app/data/processed/realtime_hourly.csv -mmin -65"]
+      interval: 5m
+      timeout: 10s
+      retries: 3
+
 networks:
   api_net:
     driver: bridge
+    name: api_net
   db_net:
     driver: bridge
+    name: db_net
 
 volumes:
   postgres_data:
