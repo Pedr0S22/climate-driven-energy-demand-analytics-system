@@ -34,12 +34,6 @@ class AuthService:
 
         try:
             response = requests.post(url, data=payload, timeout=10)
-            
-            print(f"--- DEBUG LOGIN ---")
-            print(f"A enviar para: {url}")
-            print(f"Status Code: {response.status_code}")
-            print(f"Resposta API: {response.text}")
-            
             response_data = response.json()
             
             if response.status_code == 200:
