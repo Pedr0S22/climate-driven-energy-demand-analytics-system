@@ -42,7 +42,7 @@ dependencies = [
     # UI 
     "PyQt6>=6.4.0",
     "matplotlib>=3.7.0",
-    "requests>=2.31.0
+    "requests>=2.31.0"
 ]
 
 [project.optional-dependencies]
