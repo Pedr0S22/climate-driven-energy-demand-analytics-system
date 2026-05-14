@@ -55,6 +55,18 @@ dev = [
     "httpx>=0.24.1",
 ]
 
+[tool.pytest_env]
+SECRET_KEY = "dummy-test-key"
+ALGORITHM = "HS256"
+ACCESS_TOKEN_EXPIRE_MINUTES = "30"
+DB_USER = "test_user"
+DB_PASSWORD = "test_password"
+DB_HOST = "localhost"
+DB_PORT = "5432"
+DB_NAME = "test_db"
+MAX_FAILED_ATTEMPTS = "5"
+LOCKOUT_DURATION_MINUTES = "15"
+
 [tool.pytest.ini_options]
 testpaths = ["tests"]
 pythonpath = [".", "src"]

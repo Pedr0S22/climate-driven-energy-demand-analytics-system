@@ -206,6 +206,9 @@ pytest-cov==7.1.0
     # via energy-prediction-system (pyproject.toml)
 pytest-qt==4.5.0
     # via energy-prediction-system (pyproject.toml)
+pytest-env==1.6.0
+    # via pytest
+pytz==2026.2
 python-dateutil==2.9.0.post0
     # via
     #   matplotlib
