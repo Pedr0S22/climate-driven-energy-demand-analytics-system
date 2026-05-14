@@ -611,10 +611,15 @@ The system uses the ELK Stack to centralize performance and audit logs. The prim
 ## 6. Frontend UI & Dashboard Design
 
 ### 6.1. Application State Management
-[`TODO`] - (How the app remembers the user's JWT and current active view)
+The application utilizes a QStackedWidget inside the MainWindow for managing views and navigation without spawning multiple OS windows.
+
+To prevent the desktop GUI from freezing during requests, the system adopts an *Asynchronous Threading Model*:
+- *QThread and Signals:* HTTP requests (FastAPI interactions) and DataFrame slicing are offloaded to background QThread instances.
 
 ### 6.2. View Layouts & Navigation
-[`TODO`] - (Main Dashboard, Admin Panel, Prediction Views)
+To fulfill strict quality attributes regarding client-side credential management (*QA11*), the frontend eliminates risks associated with plain-text variables or local .env storage for authenticated session tokens.
+
+The frontend utilizes the SessionManager class implemented via the Python *keyring* subsystem. This approach interfaces directly with the host Operating System's native secure credential vaults. When a user successfully authenticates, their JWT access_token and role are securely committed to the vault, meaning session data remains strictly encrypted at rest and invisible to other processes or application memory dumps.
 
 ### 6.3. Data Visualization
 [`TODO`] - (D3.js Integration) (How the Python backend passes JSON data to the D3.js components embedded in PyQt6)
