@@ -1,6 +1,6 @@
 from .api_client import APIClient
 import requests
-from app.manager.session_manager import SessionManager
+from src.app.manager.session_manager import SessionManager
 
 class AuthService:
     def __init__(self):

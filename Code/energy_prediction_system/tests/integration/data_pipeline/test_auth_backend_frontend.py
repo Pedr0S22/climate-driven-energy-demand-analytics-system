@@ -1,5 +1,11 @@
+import os
 import pytest
 from unittest.mock import patch
+
+os.environ["KEYRING_SERVICE_NAME"] = "energy_pred_test_service"
+os.environ["KEYRING_TOKEN_KEY"] = "test_token"
+os.environ["KEYRING_ROLE_KEY"] = "test_role"
+
 from src.app.client.auth_service import AuthService
 from src.app.manager.session_manager import SessionManager
 
