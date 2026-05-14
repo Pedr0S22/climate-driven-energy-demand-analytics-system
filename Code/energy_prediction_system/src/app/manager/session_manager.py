@@ -2,7 +2,7 @@ import os
 
 import keyring
 from dotenv import load_dotenv
-from flask import logging
+import logging
 
 load_dotenv()
 
