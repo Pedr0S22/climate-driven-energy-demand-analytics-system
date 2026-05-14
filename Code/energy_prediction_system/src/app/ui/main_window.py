@@ -1,5 +1,6 @@
 from app.manager.session_manager import SessionManager
 from PyQt6.QtWidgets import QMainWindow, QMessageBox, QStackedWidget
+from PyQt6.QtCore import QThread, pyqtSignal
 
 from app.utils.validators import validate_login_input, validate_registration_input
 from app.client.auth_service import AuthService    
@@ -12,6 +13,51 @@ from .views.model_management_view import Ui_ModelManagementWindow
 from .views.register_view import Ui_RegisterWindow
 from .views.user_homepage import Ui_UserMainWindow
 
+
+class LoginWorker(QThread):
+    finished = pyqtSignal(object, int)
+    
+    def __init__(self, email, password):
+        super().__init__()
+        self.email = email
+        self.password = password
+        
+    def run(self):
+        auth_service = AuthService()
+        try:
+            data, status = auth_service.login_user(self.email, self.password)
+            self.finished.emit(data, status)
+        except Exception as e:
+            self.finished.emit({"detail": str(e)}, 500)
+
+class RegisterWorker(QThread):
+    finished = pyqtSignal(object, int)
+    
+    def __init__(self, user, email, password):
+        super().__init__()
+        self.user = user
+        self.email = email
+        self.password = password
+        
+    def run(self):
+        auth_service = AuthService()
+        try:
+            data, status = auth_service.register_user(self.user, self.email, self.password)
+            self.finished.emit(data, status)
+        except Exception as e:
+            self.finished.emit({"detail": str(e)}, 500)
+
+class LogoutWorker(QThread):
+    finished = pyqtSignal()
+
+    def run(self):
+        try:
+            auth_service = AuthService()
+            if hasattr(auth_service, 'logout_user'):
+                auth_service.logout_user()
+        except:
+            pass
+        self.finished.emit()
 
 class MainWindow(QMainWindow):
     def __init__(self):
@@ -130,8 +176,16 @@ class MainWindow(QMainWindow):
             QMessageBox.warning(self, "Validation Error", message)
             return
 
-        auth_service = AuthService()
-        response_data, status_code = auth_service.login_user(email, password)
+        self.ui_login.login_button.setEnabled(False)
+        self.ui_login.login_button.setText("Logging in...")
+
+        self.login_worker = LoginWorker(email, password)
+        self.login_worker.finished.connect(self._on_login_finished)
+        self.login_worker.start()
+
+    def _on_login_finished(self, response_data, status_code):
+        self.ui_login.login_button.setEnabled(True)
+        self.ui_login.login_button.setText("Login")
 
         if status_code == 200:
             role = response_data.get("role")
@@ -145,9 +199,16 @@ class MainWindow(QMainWindow):
                 self.stack.setCurrentIndex(6) 
         elif status_code == 401:
             QMessageBox.warning(self, "Login Failed", "Incorrect credentials.")
+        elif status_code == 403:
+            QMessageBox.warning(self, "Login Failed", "Account locked or access denied.")
+        elif status_code == 400:
+            error_msg = response_data.get("detail", "Invalid request format.")
+            if isinstance(error_msg, list):
+                error_msg = error_msg[0].get("msg", str(error_msg))
+            QMessageBox.warning(self, "Login Failed", str(error_msg))
         else:
             error_msg = response_data.get("detail", "Error occurred while starting session.")
-            QMessageBox.critical(self, "Login Failed", error_msg)
+            QMessageBox.critical(self, "Login Error", str(error_msg))
 
     def handle_register(self):
         user = self.ui_register.user_input.text().strip()
@@ -161,9 +222,17 @@ class MainWindow(QMainWindow):
             QMessageBox.warning(self, "Registration Error", message)
             return
 
-        auth_service = AuthService()
-        # pedido a API
-        response_data, status_code = auth_service.register_user(user, email, password)
+        self.ui_register.signup_button.setEnabled(False)
+        self.ui_register.signup_button.setText("Registering...")
+
+        self.register_worker = RegisterWorker(user, email, password)
+        self.register_worker.finished.connect(self._on_register_finished)
+        self.register_worker.start()
+
+    def _on_register_finished(self, response_data, status_code):
+        # QA16:feedback visual
+        self.ui_register.signup_button.setEnabled(True)
+        self.ui_register.signup_button.setText("Sign Up")
 
         if status_code == 201:
             QMessageBox.information(self, "Success", "Account created successfully!")
@@ -178,22 +247,25 @@ class MainWindow(QMainWindow):
         elif status_code == 409:
             self.ui_register.email_input.clear()
             error_message = response_data.get("detail", "Error: Email already registered.")
-            QMessageBox.warning(self, "Invalid Registration", error_message)
-        
-        else:
-            error_message = response_data.get("detail", "An unknown error occurred during registration.")
-            
+            QMessageBox.warning(self, "Invalid Registration", str(error_message))
+        elif status_code == 400:
+            error_message = response_data.get("detail", "Invalid input format.")
             if isinstance(error_message, list):
                 error_message = error_message[0].get("msg", str(error_message))
-                
-            QMessageBox.warning(self, "Registration Error", str(error_message))
+            QMessageBox.warning(self, "Registration Failed", str(error_message))
+        else:
+            error_message = response_data.get("detail", "An unknown error occurred during registration.")
+            if isinstance(error_message, list):
+                error_message = error_message[0].get("msg", str(error_message))
+            QMessageBox.critical(self, "Registration Error", str(error_message))
 
-    def handle_logout(self):        
-        #clear keyring data
+    def handle_logout(self):
         SessionManager.clear_session()
-
-        print("os dados da sessão tao limpos? ", SessionManager.get_token(), SessionManager.get_role())
         self.stack.setCurrentIndex(0)
 
-    def ir_para_home(self):
-        self.stack.setCurrentIndex(2)
+        # QA5: Enviar notificação ao backend via QThread 
+        self.logout_worker = LogoutWorker()
+        # O deleteLater garante que a thread é destruída da memória após terminar a execução
+        self.logout_worker.finished.connect(self.logout_worker.deleteLater)
+        self.logout_worker.start()
+
