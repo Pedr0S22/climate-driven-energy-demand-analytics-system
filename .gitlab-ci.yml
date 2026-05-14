@@ -23,8 +23,10 @@ stages:
 
 unit-tests:
   stage: unit-tests
+
   before_script:
-    - apt-get update -y && apt-get install -y libgl1 libglib2.0-0 libxcb-cursor0
+  - apt-get update -y && apt-get install -y libgl1 libegl1 libglib2.0-0 libxcb-cursor0 libxcb-icccm4 libxcb-keysyms1 libxcb-shape0 libxcb-xinerama0 libxcb-xkb1 libxkbcommon-x11-0
+   
   script:
     - echo "Assessing unit test coverage... "
     - cd $APP_DIR
@@ -42,7 +44,7 @@ unit-tests:
 integration-tests:
   stage: integration-tests
   before_script:
-    - apt-get update -y && apt-get install -y libgl1 libglib2.0-0 libxcb-cursor0
+  - apt-get update -y && apt-get install -y libgl1 libegl1 libglib2.0-0 libxcb-cursor0 libxcb-icccm4 libxcb-keysyms1 libxcb-shape0 libxcb-xinerama0 libxcb-xkb1 libxkbcommon-x11-0
   script:
     - echo "Assessing test coverage... "
     - cd $APP_DIR
