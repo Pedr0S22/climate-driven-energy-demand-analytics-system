@@ -1,16 +1,15 @@
 import os
 import sys
 
-current_dir = os.path.dirname(os.path.abspath(__file__)) # src/app
-src_dir = os.path.dirname(current_dir) # src
+current_dir = os.path.dirname(os.path.abspath(__file__))  # src/app
+src_dir = os.path.dirname(current_dir)  # src
 
 # adicionar a pasta src ao caminho de procura do Python
 if src_dir not in sys.path:
     sys.path.insert(0, src_dir)
 
-from PyQt6.QtWidgets import QApplication
-
-from app.ui.main_window import MainWindow
+from app.ui.main_window import MainWindow  # noqa: E402
+from PyQt6.QtWidgets import QApplication  # noqa: E402
 
 
 def main():

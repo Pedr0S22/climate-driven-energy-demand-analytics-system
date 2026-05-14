@@ -12,16 +12,16 @@ class ErrorCard(QtWidgets.QFrame):
                 border-radius: 10px;
             }
         """)
-        
+
         self.layout = QtWidgets.QVBoxLayout(self)
         self.layout.setAlignment(QtCore.Qt.AlignmentFlag.AlignCenter)
         self.layout.setSpacing(20)
 
         # Warning Icon (Yellow Triangle) - Using a QLabel with stylized text/drawing
-        self.icon_label = QtWidgets.QLabel("⚠") # Standard warning sign emoji/char
+        self.icon_label = QtWidgets.QLabel("⚠")  # Standard warning sign emoji/char
         font_icon = QtGui.QFont("Arial", 80)
         self.icon_label.setFont(font_icon)
-        self.icon_label.setStyleSheet("color: #FFD700; border: none;") # Gold/Yellow
+        self.icon_label.setStyleSheet("color: #FFD700; border: none;")  # Gold/Yellow
         self.icon_label.setAlignment(QtCore.Qt.AlignmentFlag.AlignCenter)
         self.layout.addWidget(self.icon_label)
 

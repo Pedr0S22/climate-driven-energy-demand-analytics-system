@@ -4,6 +4,7 @@ from PyQt6 import QtCore, QtGui, QtWidgets
 
 BASE_PATH = os.path.join(os.path.dirname(__file__), "..", "resources")
 
+
 class TopBar(QtWidgets.QFrame):
     def __init__(self, parent=None, title=""):
         super().__init__(parent)
@@ -17,7 +18,7 @@ class TopBar(QtWidgets.QFrame):
             border-bottom-left-radius: 0px;
             border-bottom-right-radius: 0px;
         """)
-        
+
         self.layout = QtWidgets.QHBoxLayout(self)
         self.layout.setContentsMargins(40, 0, 40, 0)
 

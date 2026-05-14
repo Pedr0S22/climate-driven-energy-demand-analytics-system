@@ -1,8 +1,7 @@
 import os
 
-from PyQt6 import QtCore, QtGui, QtWidgets
-
 from app.ui.components import Sidebar, TopBar
+from PyQt6 import QtCore, QtGui, QtWidgets
 
 
 class Ui_MainWindow:
@@ -13,7 +12,7 @@ class Ui_MainWindow:
 
         self.centralwidget = QtWidgets.QWidget(parent=MainWindow)
         self.centralwidget.setObjectName("centralwidget")
-        
+
         self.main_layout = QtWidgets.QVBoxLayout(self.centralwidget)
         self.main_layout.setContentsMargins(16, 18, 16, 18)
         self.main_layout.setSpacing(0)
@@ -28,7 +27,7 @@ class Ui_MainWindow:
         # 1. TOP BAR
         self.top_bar = TopBar(parent=self.container, title="Welcome back!")
         self.container_layout.addWidget(self.top_bar)
-        
+
         # Connections
         self.pushButton = self.top_bar.logout_btn
         self.toolButton = self.top_bar.menu_btn
@@ -40,19 +39,23 @@ class Ui_MainWindow:
         # --- SIDEBAR ---
         self.sidebar = Sidebar(parent=self.container)
         self.sidebar.setFixedWidth(280)
-        
+
         self.home_btn = self.sidebar.add_menu_item("Home", active=True)
-        
+
         self.sidebar.add_menu_header("Predictions:")
         self.daily_btn = self.sidebar.add_menu_item("daily", active=False, indent=True, header_parent="Predictions:")
         self.hourly_btn = self.sidebar.add_menu_item("hourly", active=False, indent=True, header_parent="Predictions:")
-        
+
         self.sidebar.add_menu_header("Scenario Simulation:")
-        self.sim_daily_btn = self.sidebar.add_menu_item("daily", active=False, indent=True, header_parent="Scenario Simulation:")
-        self.sim_hourly_btn = self.sidebar.add_menu_item("hourly", active=False, indent=True, header_parent="Scenario Simulation:")
-        
+        self.sim_daily_btn = self.sidebar.add_menu_item(
+            "daily", active=False, indent=True, header_parent="Scenario Simulation:"
+        )
+        self.sim_hourly_btn = self.sidebar.add_menu_item(
+            "hourly", active=False, indent=True, header_parent="Scenario Simulation:"
+        )
+
         self.model_mgmt_btn = self.sidebar.add_menu_item("Model Management", active=False)
-        
+
         self.sidebar.layout.addStretch()
         self.sidebar.setVisible(False)
         self.horizontal_container.addWidget(self.sidebar)
@@ -93,10 +96,10 @@ class Ui_MainWindow:
         self.add_section_header("Predictions")
         self.pred_layout = QtWidgets.QHBoxLayout()
         self.pred_layout.setSpacing(30)
-        
+
         self.daily_button = self.create_big_button("Daily Forecast", "calendar.png", dashboard_btn_style)
         self.hourly_button = self.create_big_button("Hourly Forecast", "clock.png", dashboard_btn_style)
-        
+
         self.pred_layout.addWidget(self.daily_button)
         self.pred_layout.addWidget(self.hourly_button)
         self.pred_layout.addStretch()
@@ -106,10 +109,10 @@ class Ui_MainWindow:
         self.add_section_header("Scenario Simulation")
         self.sim_layout = QtWidgets.QHBoxLayout()
         self.sim_layout.setSpacing(30)
-        
+
         self.sim_daily_button = self.create_big_button("Daily Simulation", "calendar.png", dashboard_btn_style)
         self.sim_hourly_button = self.create_big_button("Hourly Simulation", "clock.png", dashboard_btn_style)
-        
+
         self.sim_layout.addWidget(self.sim_daily_button)
         self.sim_layout.addWidget(self.sim_hourly_button)
         self.sim_layout.addStretch()
@@ -118,10 +121,10 @@ class Ui_MainWindow:
         # 3. MANAGEMENT SECTION
         self.add_section_header("System Management")
         self.mgmt_layout = QtWidgets.QHBoxLayout()
-        
+
         self.model_mgmt_button = self.create_big_button("Model Management", None, dashboard_btn_style)
         self.model_mgmt_button.setFixedWidth(400)
-        
+
         self.mgmt_layout.addWidget(self.model_mgmt_button)
         self.mgmt_layout.addStretch()
         self.content_layout.addLayout(self.mgmt_layout)
@@ -151,11 +154,11 @@ class Ui_MainWindow:
         btn.setFixedSize(300, 120)
         btn.setCursor(QtGui.QCursor(QtCore.Qt.CursorShape.PointingHandCursor))
         btn.setStyleSheet(style)
-        
+
         if icon_name:
             icon_path = os.path.join(os.path.dirname(__file__), "..", "resources", icon_name)
             if os.path.exists(icon_path):
                 btn.setIcon(QtGui.QIcon(icon_path))
                 btn.setIconSize(QtCore.QSize(40, 40))
-        
+
         return btn

@@ -1,7 +1,6 @@
+from app.ui.components import Sidebar, ToggleSwitch, TopBar
 from PyQt6 import QtCore, QtGui, QtWidgets
 from PyQt6.QtWidgets import QGraphicsDropShadowEffect
-
-from app.ui.components import Sidebar, ToggleSwitch, TopBar
 
 
 class ModelRow(QtWidgets.QWidget):
@@ -13,7 +12,7 @@ class ModelRow(QtWidgets.QWidget):
         layout.setSpacing(10)
 
         font = QtGui.QFont("Tw Cen MT", 16)
-        
+
         # Consistent widths matching the header
         self.add_label(model_type, 140, font, layout)
         self.add_label(date, 180, font, layout)
@@ -38,11 +37,12 @@ class ModelRow(QtWidgets.QWidget):
         lbl.setStyleSheet("color: black;")
         layout.addWidget(lbl)
 
+
 class ModelFrame(QtWidgets.QFrame):
     def __init__(self, title, parent=None):
         super().__init__(parent)
-        self.rows = [] # List to track rows for exclusive selection
-        self.setFixedWidth(850) # Fixed width for the table
+        self.rows = []  # List to track rows for exclusive selection
+        self.setFixedWidth(850)  # Fixed width for the table
         self.setStyleSheet("""
             QFrame {
                 background-color: #EAEAEF;
@@ -50,7 +50,7 @@ class ModelFrame(QtWidgets.QFrame):
                 border-radius: 10px;
             }
         """)
-        
+
         self.main_layout = QtWidgets.QVBoxLayout(self)
         self.main_layout.setContentsMargins(0, 10, 0, 10)
         self.main_layout.setSpacing(0)
@@ -64,18 +64,20 @@ class ModelFrame(QtWidgets.QFrame):
         header_layout.setSpacing(10)
 
         header_font = QtGui.QFont("Tw Cen MT Condensed", 18, QtGui.QFont.Weight.Bold)
-        
+
         headers = ["Model Type", "Creation Date", "Dataset", "RMSE", "MAE", "R2", "Active"]
         widths = [140, 180, 120, 80, 80, 80, 100]
-        
-        for h_text, w in zip(headers, widths):
+
+        for h_text, w in zip(headers, widths, strict=False):
             lbl = QtWidgets.QLabel(h_text)
             lbl.setFont(header_font)
             lbl.setFixedWidth(w)
-            lbl.setAlignment(QtCore.Qt.AlignmentFlag.AlignCenter if h_text == "Active" else QtCore.Qt.AlignmentFlag.AlignLeft)
+            lbl.setAlignment(
+                QtCore.Qt.AlignmentFlag.AlignCenter if h_text == "Active" else QtCore.Qt.AlignmentFlag.AlignLeft
+            )
             lbl.setStyleSheet("color: black; border: none;")
             header_layout.addWidget(lbl)
-        
+
         self.main_layout.addWidget(header_widget)
 
         # Rows Container
@@ -92,7 +94,7 @@ class ModelFrame(QtWidgets.QFrame):
         row.setStyleSheet("border: none; border-bottom: 1px solid #CCCCCC;")
         self.rows_layout.addWidget(row)
         self.rows.append(row)
-        
+
         # Connect toggle signal to ensure only one is active
         row.toggle.clicked.connect(lambda state, r=row: self._handle_toggle(r, state))
 
@@ -105,6 +107,7 @@ class ModelFrame(QtWidgets.QFrame):
         else:
             # Force at least one to be active
             clicked_row.toggle.set_active(True)
+
 
 class Ui_ModelManagementWindow:
     def setupUi(self, MainWindow):
@@ -123,7 +126,7 @@ class Ui_ModelManagementWindow:
         self.container_layout = QtWidgets.QVBoxLayout(self.container)
         self.container_layout.setContentsMargins(0, 0, 0, 0)
         self.container_layout.setSpacing(0)
-        
+
         # Drop shadow
         shadow = QGraphicsDropShadowEffect()
         shadow.setBlurRadius(15)
@@ -134,7 +137,7 @@ class Ui_ModelManagementWindow:
         # 1. TOP BAR
         self.top_bar = TopBar(parent=self.container, title="Model Management")
         self.container_layout.addWidget(self.top_bar)
-        
+
         self.logout_btn = self.top_bar.logout_btn
         self.menu_btn = self.top_bar.menu_btn
 
@@ -145,18 +148,22 @@ class Ui_ModelManagementWindow:
         # --- SIDEBAR ---
         self.sidebar = Sidebar(parent=self.container)
         self.sidebar.setFixedWidth(300)
-        
+
         self.home_btn = self.sidebar.add_menu_item("Home", active=False)
         self.sidebar.add_menu_header("Predictions:")
         self.daily_btn = self.sidebar.add_menu_item("daily", active=False, indent=True, header_parent="Predictions:")
         self.hourly_btn = self.sidebar.add_menu_item("hourly", active=False, indent=True, header_parent="Predictions:")
-        
+
         self.sidebar.add_menu_header("Scenario Simulation:")
-        self.sim_daily_btn = self.sidebar.add_menu_item("daily", active=False, indent=True, header_parent="Scenario Simulation:")
-        self.sim_hourly_btn = self.sidebar.add_menu_item("hourly", active=False, indent=True, header_parent="Scenario Simulation:")
-        
+        self.sim_daily_btn = self.sidebar.add_menu_item(
+            "daily", active=False, indent=True, header_parent="Scenario Simulation:"
+        )
+        self.sim_hourly_btn = self.sidebar.add_menu_item(
+            "hourly", active=False, indent=True, header_parent="Scenario Simulation:"
+        )
+
         self.model_btn = self.sidebar.add_menu_item("Model Management", active=True)
-        
+
         self.sidebar.layout.addStretch()
         self.sidebar.setVisible(False)
         self.horizontal_container.addWidget(self.sidebar)
@@ -178,27 +185,31 @@ class Ui_ModelManagementWindow:
         # HOURLY MODEL SECTION
         self.hourly_section = self.create_centered_section("Hourly Model", "hourly_frame")
         self.tables_centering_layout.addLayout(self.hourly_section)
-        
+
         # Add sample data to hourly_frame (only one active)
         self.hourly_frame.add_row("RandomForest", "2026-01-24 14:30", "full", "3.52", "2.10", "0.98", is_active=True)
         self.hourly_frame.add_row("LinearReg", "2025-10-10 09:15", "pca", "4.05", "2.54", "0.95", is_active=False)
-        self.hourly_frame.add_row("RandomForest", "2026-02-24 11:00", "selected", "5.21", "3.02", "0.90", is_active=False)
+        self.hourly_frame.add_row(
+            "RandomForest", "2026-02-24 11:00", "selected", "5.21", "3.02", "0.90", is_active=False
+        )
 
         # DAILY MODEL SECTION
         self.daily_section = self.create_centered_section("Daily Model", "daily_frame")
         self.tables_centering_layout.addLayout(self.daily_section)
-        
+
         # Add sample data to daily_frame (only one active)
         self.daily_frame.add_row("RandomForest", "2026-01-24 15:45", "full", "150.22", "100.51", "0.99", is_active=True)
         self.daily_frame.add_row("LinearReg", "2025-10-10 10:30", "pca", "180.54", "120.32", "0.97", is_active=False)
-        self.daily_frame.add_row("RandomForest", "2026-02-24 12:15", "selected", "210.88", "150.04", "0.92", is_active=False)
+        self.daily_frame.add_row(
+            "RandomForest", "2026-02-24 12:15", "selected", "210.88", "150.04", "0.92", is_active=False
+        )
 
         self.content_layout.addLayout(self.tables_centering_layout)
 
         # BUTTONS AT BOTTOM
         self.buttons_layout = QtWidgets.QHBoxLayout()
         self.buttons_layout.addStretch()
-        
+
         self.reset_btn = QtWidgets.QPushButton("Reset")
         self.reset_btn.setFixedSize(180, 60)
         self.reset_btn.setFont(QtGui.QFont("Tw Cen MT", 24, QtGui.QFont.Weight.Bold))
@@ -231,7 +242,7 @@ class Ui_ModelManagementWindow:
         """)
         self.buttons_layout.addWidget(self.save_btn)
         self.buttons_layout.addStretch()
-        
+
         self.content_layout.addLayout(self.buttons_layout)
         self.content_layout.addStretch()
 
@@ -246,11 +257,11 @@ class Ui_ModelManagementWindow:
 
     def create_centered_section(self, title, frame_attr_name):
         section_layout = QtWidgets.QVBoxLayout()
-        
+
         title_lbl = QtWidgets.QLabel(title)
         title_lbl.setFont(QtGui.QFont("Tw Cen MT Condensed", 36, QtGui.QFont.Weight.Bold))
         title_lbl.setStyleSheet("color: black;")
-        
+
         # Center title
         title_wrapper = QtWidgets.QHBoxLayout()
         title_wrapper.addStretch()
@@ -261,13 +272,13 @@ class Ui_ModelManagementWindow:
         # Create and center frame
         frame = ModelFrame(title)
         setattr(self, frame_attr_name, frame)
-        
+
         frame_wrapper = QtWidgets.QHBoxLayout()
         frame_wrapper.addStretch()
         frame_wrapper.addWidget(frame)
         frame_wrapper.addStretch()
         section_layout.addLayout(frame_wrapper)
-        
+
         return section_layout
 
     def toggle_sidebar(self):

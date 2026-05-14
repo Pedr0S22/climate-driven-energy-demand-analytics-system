@@ -1,8 +1,8 @@
 import os
 
-from flask import logging
 import keyring
 from dotenv import load_dotenv
+from flask import logging
 
 load_dotenv()
 

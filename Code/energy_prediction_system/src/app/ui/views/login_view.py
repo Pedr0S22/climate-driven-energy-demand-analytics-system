@@ -1,7 +1,6 @@
-from PyQt6 import QtCore, QtGui, QtWidgets
-
 from app.ui.components.logo_label import LogoLabel
 from app.ui.components.styled_input import StyledInput
+from PyQt6 import QtCore, QtGui, QtWidgets
 
 
 class Ui_LoginWindow:
@@ -12,7 +11,7 @@ class Ui_LoginWindow:
 
         self.centralwidget = QtWidgets.QWidget(parent=MainWindow)
         self.centralwidget.setObjectName("centralwidget")
-        
+
         self.main_layout = QtWidgets.QVBoxLayout(self.centralwidget)
         self.main_layout.setContentsMargins(16, 18, 16, 18)
         self.main_layout.setSpacing(0)
@@ -27,16 +26,18 @@ class Ui_LoginWindow:
         # Top Blue Bar
         self.up_bar = QtWidgets.QWidget(parent=self.container)
         self.up_bar.setFixedHeight(60)
-        self.up_bar.setStyleSheet("background-color: rgb(0, 1, 128); border-top-left-radius: 5px; border-top-right-radius: 5px;")
+        self.up_bar.setStyleSheet(
+            "background-color: rgb(0, 1, 128); border-top-left-radius: 5px; border-top-right-radius: 5px;"
+        )
         self.up_bar_layout = QtWidgets.QHBoxLayout(self.up_bar)
-        
+
         self.Login_label = QtWidgets.QLabel("Login")
         font = QtGui.QFont("Tw Cen MT", 24, QtGui.QFont.Weight.Bold)
         self.Login_label.setFont(font)
         self.Login_label.setStyleSheet("color: rgb(255, 255, 255);")
         self.Login_label.setAlignment(QtCore.Qt.AlignmentFlag.AlignCenter)
         self.up_bar_layout.addWidget(self.Login_label)
-        
+
         self.container_layout.addWidget(self.up_bar)
 
         # Content Area
@@ -60,10 +61,10 @@ class Ui_LoginWindow:
         # Forms Wrapper (to limit width and center)
         self.forms_wrapper = QtWidgets.QHBoxLayout()
         self.forms_wrapper.addStretch()
-        
+
         self.forms_container = QtWidgets.QVBoxLayout()
         self.forms_container.setSpacing(15)
-        
+
         label_font = QtGui.QFont("Tw Cen MT Condensed", 20)
         label_style = "color: black;"
 
@@ -149,7 +150,7 @@ class Ui_LoginWindow:
         self.content_layout.addWidget(self.register_link)
 
         self.content_layout.addStretch()
-        
+
         self.container_layout.addWidget(self.content_widget)
         self.main_layout.addWidget(self.container)
 

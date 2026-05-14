@@ -16,10 +16,7 @@ def mock_env_vars(monkeypatch):
 
 @patch("data_pipeline.ingestion.os.path.exists")
 @patch("data_pipeline.ingestion.EntsoePandasClient")
-def test_fetch_entsoe_single_day(
-        mock_entsoe_client,
-        mock_exists,
-        mock_env_vars):
+def test_fetch_entsoe_single_day(mock_entsoe_client, mock_exists, mock_env_vars):
     """Test single day ingestion logic (start_date == end_date)"""
     mock_exists.return_value = False
 
@@ -41,10 +38,7 @@ def test_fetch_entsoe_single_day(
 
 @patch("data_pipeline.ingestion.os.path.exists")
 @patch("data_pipeline.ingestion.EntsoePandasClient")
-def test_fetch_entsoe_date_range(
-        mock_entsoe_client,
-        mock_exists,
-        mock_env_vars):
+def test_fetch_entsoe_date_range(mock_entsoe_client, mock_exists, mock_env_vars):
     """Test small/large date range ingestion logic"""
     mock_exists.return_value = False
     mock_client_instance = MagicMock()
@@ -62,11 +56,7 @@ def test_fetch_entsoe_date_range(
 @patch("data_pipeline.ingestion.time.sleep", return_value=None)
 @patch("data_pipeline.ingestion.os.path.exists")
 @patch("data_pipeline.ingestion.EntsoePandasClient")
-def test_fetch_entsoe_retry_mechanism(
-        mock_entsoe_client,
-        mock_exists,
-        mock_sleep,
-        mock_env_vars):
+def test_fetch_entsoe_retry_mechanism(mock_entsoe_client, mock_exists, mock_sleep, mock_env_vars):
     """Test that the script retries 3 times upon failure with exponential backoff"""
     mock_exists.return_value = False
     mock_client_instance = MagicMock()
@@ -88,12 +78,7 @@ def test_fetch_entsoe_retry_mechanism(
 @patch("data_pipeline.ingestion.cdsapi.Client")
 @patch("data_pipeline.ingestion.os.remove")
 @patch("data_pipeline.ingestion.os.replace")
-def test_fetch_copernicus_data_success(
-        mock_replace,
-        mock_remove,
-        mock_cds_client,
-        mock_zip,
-        mock_exists):
+def test_fetch_copernicus_data_success(mock_replace, mock_remove, mock_cds_client, mock_zip, mock_exists):
     """Test successful fetch, ZIP extraction, and cleanup for Copernicus data"""
     # Ensure it passes the initial 'file exists' check
     mock_exists.return_value = False
@@ -120,11 +105,7 @@ def test_fetch_copernicus_data_success(
 @patch("data_pipeline.gdrive_sync.upload_file_to_drive")
 @patch("data_pipeline.gdrive_sync.os.listdir")
 @patch("data_pipeline.gdrive_sync.os.path.exists")
-def test_backup_project_data(
-        mock_exists,
-        mock_listdir,
-        mock_upload,
-        mock_env_vars):
+def test_backup_project_data(mock_exists, mock_listdir, mock_upload, mock_env_vars):
     """Test the GDrive backup logic correctly loops over directories and uploads files"""
     mock_exists.return_value = True
 
@@ -176,8 +157,7 @@ def test_fetch_copernicus_skips_if_exists(mock_exists):
 @patch("data_pipeline.ingestion.time.sleep", return_value=None)
 @patch("data_pipeline.ingestion.os.path.exists", return_value=False)
 @patch("data_pipeline.ingestion.cdsapi.Client")
-def test_fetch_copernicus_bad_zip_file(
-        mock_cds_client, mock_exists, mock_sleep):
+def test_fetch_copernicus_bad_zip_file(mock_cds_client, mock_exists, mock_sleep):
     """Test Copernicus API quotas/messages handling as BadZipFile"""
     mock_client_instance = MagicMock()
     mock_cds_client.return_value = mock_client_instance
@@ -203,8 +183,7 @@ def test_backup_project_data_missing_ids(monkeypatch):
 def test_upload_file_to_drive_duplicate():
     """Test upload skipped when file already exists on GDrive"""
     mock_service = MagicMock()
-    mock_service.files().list().execute.return_value = {
-        "files": [{"id": "123"}]}
+    mock_service.files().list().execute.return_value = {"files": [{"id": "123"}]}
     upload_file_to_drive(mock_service, "dummy/test.csv", "folder_id")
     mock_service.files().create.assert_not_called()
 
@@ -249,8 +228,7 @@ def test_ingestion_spain_coordinates_random_samples():
 
     for _, row in samples.iterrows():
         assert row["latitude"] == 40.4, f"Latitude {row['latitude']} is not 40.4 (Madrid)"
-        assert row["longitude"] == - \
-            3.7, f"Longitude {row['longitude']} is not -3.7 (Madrid)"
+        assert row["longitude"] == -3.7, f"Longitude {row['longitude']} is not -3.7 (Madrid)"
 
 
 @patch("data_pipeline.ingestion.cdsapi.Client")
@@ -258,12 +236,7 @@ def test_ingestion_spain_coordinates_random_samples():
 @patch("data_pipeline.ingestion.zipfile.ZipFile")
 @patch("data_pipeline.ingestion.os.replace")
 @patch("data_pipeline.ingestion.os.remove")
-def test_ingestion_features_uc1_compliance(
-        mock_remove,
-        mock_replace,
-        mock_zip,
-        mock_exists,
-        mock_cds_client):
+def test_ingestion_features_uc1_compliance(mock_remove, mock_replace, mock_zip, mock_exists, mock_cds_client):
     """
     Test if the Copernicus ingestion request includes all mandatory features defined in UC1.
 
@@ -303,5 +276,4 @@ def test_ingestion_features_uc1_compliance(
     for var in expected_vars:
         assert var in requested_vars, f"Missing mandatory UC1 feature: {var}"
 
-    assert len(requested_vars) == len(
-        expected_vars), "Unexpected number of features requested"
+    assert len(requested_vars) == len(expected_vars), "Unexpected number of features requested"

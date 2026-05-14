@@ -4,30 +4,31 @@ from PyQt6 import QtCore, QtGui, QtWidgets
 
 BASE_PATH = os.path.join(os.path.dirname(__file__), "..", "resources")
 
+
 class DatePicker(QtWidgets.QDateEdit):
     def __init__(self, parent=None, initial_date=QtCore.QDate(2026, 4, 25)):
         super().__init__(parent)
         self.setFixedSize(310, 65)
         self.setCalendarPopup(True)
-        
+
         # Force English locale for full month names
         self.setLocale(QtCore.QLocale(QtCore.QLocale.Language.English, QtCore.QLocale.Country.UnitedStates))
-        
+
         self.setDate(initial_date)
         self.setDisplayFormat("MMMM dd yyyy")
         self.setCursor(QtGui.QCursor(QtCore.Qt.CursorShape.PointingHandCursor))
-        
+
         # Disable keyboard editing
         self.lineEdit().setReadOnly(True)
         self.lineEdit().setFocusPolicy(QtCore.Qt.FocusPolicy.NoFocus)
-        
+
         # Custom Calendar Widget
         self.calendar = QtWidgets.QCalendarWidget()
         self.calendar.setLocale(self.locale())
         self.calendar.setGridVisible(False)
         self.calendar.setVerticalHeaderFormat(QtWidgets.QCalendarWidget.VerticalHeaderFormat.NoVerticalHeader)
         self.calendar.setMinimumWidth(400)
-        
+
         self.calendar.setStyleSheet("""
             QCalendarWidget QWidget { 
                 background-color: white; 
@@ -63,9 +64,9 @@ class DatePicker(QtWidgets.QDateEdit):
                 outline: 0;
             }
         """)
-        
+
         self.setCalendarWidget(self.calendar)
-        
+
         # Main styling
         self.setStyleSheet("""
             QDateEdit {
@@ -94,9 +95,11 @@ class DatePicker(QtWidgets.QDateEdit):
         self.cal_icon.setGeometry(20, 15, 35, 35)
         icon_path = os.path.join(BASE_PATH, "calendar.png")
         if os.path.exists(icon_path):
-            pix = QtGui.QPixmap(icon_path).scaled(35, 35, QtCore.Qt.AspectRatioMode.KeepAspectRatio, QtCore.Qt.TransformationMode.SmoothTransformation)
+            pix = QtGui.QPixmap(icon_path).scaled(
+                35, 35, QtCore.Qt.AspectRatioMode.KeepAspectRatio, QtCore.Qt.TransformationMode.SmoothTransformation
+            )
             self.cal_icon.setPixmap(pix)
         else:
             self.cal_icon.setStyleSheet("background-color: #888; border-radius: 5px;")
-        
+
         self.cal_icon.setAttribute(QtCore.Qt.WidgetAttribute.WA_TransparentForMouseEvents)

@@ -4,6 +4,7 @@ from PyQt6 import QtCore, QtGui, QtWidgets
 
 BASE_PATH = os.path.join(os.path.dirname(__file__), "..", "resources")
 
+
 class LogoLabel(QtWidgets.QLabel):
     def __init__(self, parent=None, size=(120, 120)):
         super().__init__(parent)

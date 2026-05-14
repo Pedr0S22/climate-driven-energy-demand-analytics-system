@@ -15,7 +15,7 @@ class Sidebar(QtWidgets.QFrame):
         self.layout = QtWidgets.QVBoxLayout(self)
         self.layout.setContentsMargins(0, 20, 0, 20)
         self.layout.setSpacing(0)
-        
+
         # Dictionary to store sections and their children
         self.sections = {}
         # Track if a section is expanded
@@ -28,7 +28,7 @@ class Sidebar(QtWidgets.QFrame):
         font = QtGui.QFont("Tw Cen MT Condensed", 22, QtGui.QFont.Weight.Bold)
         btn.setFont(font)
         btn.setCursor(QtGui.QCursor(QtCore.Qt.CursorShape.PointingHandCursor))
-        
+
         btn.setStyleSheet("""
             QPushButton {
                 background: transparent;
@@ -42,11 +42,11 @@ class Sidebar(QtWidgets.QFrame):
                 background-color: rgba(0, 1, 128, 0.05);
             }
         """)
-        
+
         self.layout.addWidget(btn)
         self.sections[text] = []
         self.section_expanded[text] = False
-        
+
         btn.clicked.connect(lambda: self.toggle_section(text))
         return btn
 
@@ -74,10 +74,10 @@ class Sidebar(QtWidgets.QFrame):
         if active:
             font.setBold(True)
         btn.setFont(font)
-        
+
         color = "#000180" if active else "#262626"
         left_padding = 40 if indent else 5
-        
+
         btn.setStyleSheet(f"""
             QPushButton {{
                 background: transparent;
@@ -93,20 +93,20 @@ class Sidebar(QtWidgets.QFrame):
         """)
         btn.setCursor(QtGui.QCursor(QtCore.Qt.CursorShape.PointingHandCursor))
         item_layout.addWidget(btn)
-        
+
         self.layout.addWidget(container)
-        
+
         # Section Logic
         if header_parent and header_parent in self.sections:
             self.sections[header_parent].append(container)
-            
+
             # If this item is active, expand the parent section
             if active:
                 self.section_expanded[header_parent] = True
-            
+
             # Set visibility based on section state
             container.setVisible(self.section_expanded[header_parent])
-        
+
         return btn
 
     def toggle_section(self, header_text):
@@ -115,7 +115,7 @@ class Sidebar(QtWidgets.QFrame):
             # Toggle state
             is_visible = not self.section_expanded[header_text]
             self.section_expanded[header_text] = is_visible
-            
+
             # Apply visibility to all children
             for item in self.sections[header_text]:
                 item.setVisible(is_visible)

@@ -1,6 +1,5 @@
-from PyQt6 import QtCore, QtGui, QtWidgets
-
 from app.ui.components import DriverCard, PlotWidget, PredictionParams, Sidebar, TopBar
+from PyQt6 import QtCore, QtGui, QtWidgets
 
 
 class Ui_HourlyPredictionAdminWindow:
@@ -11,7 +10,7 @@ class Ui_HourlyPredictionAdminWindow:
 
         self.centralwidget = QtWidgets.QWidget(parent=MainWindow)
         self.centralwidget.setObjectName("centralwidget")
-        
+
         self.main_layout = QtWidgets.QVBoxLayout(self.centralwidget)
         self.main_layout.setContentsMargins(16, 18, 16, 18)
         self.main_layout.setSpacing(0)
@@ -26,7 +25,7 @@ class Ui_HourlyPredictionAdminWindow:
         # 1. TOP BAR
         self.top_bar = TopBar(parent=self.container, title="Hourly Demand Prediction")
         self.container_layout.addWidget(self.top_bar)
-        
+
         self.logout_btn = self.top_bar.logout_btn
         self.menu_btn = self.top_bar.menu_btn
 
@@ -37,20 +36,24 @@ class Ui_HourlyPredictionAdminWindow:
         # --- SIDEBAR ---
         self.sidebar = Sidebar(parent=self.container)
         self.sidebar.setFixedWidth(280)
-        
+
         self.home_btn = self.sidebar.add_menu_item("Home", active=False)
-        
+
         self.sidebar.add_menu_header("Predictions:")
         self.daily_btn = self.sidebar.add_menu_item("daily", active=False, indent=True, header_parent="Predictions:")
         self.hourly_btn = self.sidebar.add_menu_item("hourly", active=True, indent=True, header_parent="Predictions:")
-        
+
         self.sidebar.add_menu_header("Scenario Simulation:")
-        self.sim_daily_btn = self.sidebar.add_menu_item("daily", active=False, indent=True, header_parent="Scenario Simulation:")
-        self.sim_hourly_btn = self.sidebar.add_menu_item("hourly", active=False, indent=True, header_parent="Scenario Simulation:")
-        
+        self.sim_daily_btn = self.sidebar.add_menu_item(
+            "daily", active=False, indent=True, header_parent="Scenario Simulation:"
+        )
+        self.sim_hourly_btn = self.sidebar.add_menu_item(
+            "hourly", active=False, indent=True, header_parent="Scenario Simulation:"
+        )
+
         self.model_btn = self.sidebar.add_menu_item("Model Management", active=False)
         # To hide for normal users, you can call self.model_btn.parent().setVisible(False)
-        
+
         self.sidebar.layout.addStretch()
         self.sidebar.setVisible(False)
         self.horizontal_container.addWidget(self.sidebar)
@@ -75,7 +78,9 @@ class Ui_HourlyPredictionAdminWindow:
         self.drivers_title.setStyleSheet("color: black;")
         self.drivers_section.addWidget(self.drivers_title)
 
-        self.drivers_desc = QtWidgets.QLabel("The following variables had the highest impact on the current forecast results.")
+        self.drivers_desc = QtWidgets.QLabel(
+            "The following variables had the highest impact on the current forecast results."
+        )
         self.drivers_desc.setFont(QtGui.QFont("Tw Cen MT Condensed", 22))
         self.drivers_desc.setAlignment(QtCore.Qt.AlignmentFlag.AlignCenter)
         self.drivers_desc.setStyleSheet("color: #262626;")
@@ -110,12 +115,12 @@ class Ui_HourlyPredictionAdminWindow:
 
         # Widgets Row (Row 1)
         self.params_widget = PredictionParams(mode="hourly")
-        self.params_widget.title.setVisible(False) 
+        self.params_widget.title.setVisible(False)
         self.dashboard_grid.addWidget(self.params_widget, 1, 0, QtCore.Qt.AlignmentFlag.AlignTop)
 
         self.plot_widget = PlotWidget()
         self.dashboard_grid.addWidget(self.plot_widget, 1, 1)
-        
+
         self.content_layout.addLayout(self.dashboard_grid)
 
         self.scroll_area.setWidget(self.scroll_content)

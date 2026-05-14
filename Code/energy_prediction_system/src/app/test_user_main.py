@@ -1,19 +1,18 @@
 import os
 import sys
 
-current_dir = os.path.dirname(os.path.abspath(__file__)) # src/app
-src_dir = os.path.dirname(current_dir) # src
+current_dir = os.path.dirname(os.path.abspath(__file__))  # src/app
+src_dir = os.path.dirname(current_dir)  # src
 
 if src_dir not in sys.path:
     sys.path.insert(0, src_dir)
 
-from PyQt6.QtWidgets import QApplication, QMainWindow, QStackedWidget
-
-from app.ui.views.daily_prediction_view import Ui_DailyPredictionAdminWindow
-from app.ui.views.hourly_prediction_view import Ui_HourlyPredictionAdminWindow
-from app.ui.views.login_view import Ui_LoginWindow
-from app.ui.views.register_view import Ui_RegisterWindow
-from app.ui.views.user_homepage import Ui_UserMainWindow
+from app.ui.views.daily_prediction_view import Ui_DailyPredictionAdminWindow  # noqa: E402
+from app.ui.views.hourly_prediction_view import Ui_HourlyPredictionAdminWindow  # noqa: E402
+from app.ui.views.login_view import Ui_LoginWindow  # noqa: E402
+from app.ui.views.register_view import Ui_RegisterWindow  # noqa: E402
+from app.ui.views.user_homepage import Ui_UserMainWindow  # noqa: E402
+from PyQt6.QtWidgets import QApplication, QMainWindow, QStackedWidget  # noqa: E402
 
 
 class TestUserMainWindow(QMainWindow):
@@ -53,11 +52,11 @@ class TestUserMainWindow(QMainWindow):
         self.ui_hourly.model_btn.parent().setVisible(False)
 
         # Add to stack
-        self.stack.addWidget(self.login_page)    # 0
-        self.stack.addWidget(self.register_page) # 1
-        self.stack.addWidget(self.home_page)     # 2
-        self.stack.addWidget(self.daily_page)    # 3
-        self.stack.addWidget(self.hourly_page)   # 4
+        self.stack.addWidget(self.login_page)  # 0
+        self.stack.addWidget(self.register_page)  # 1
+        self.stack.addWidget(self.home_page)  # 2
+        self.stack.addWidget(self.daily_page)  # 3
+        self.stack.addWidget(self.hourly_page)  # 4
 
         # Iniciar na Home para facilitar o seu teste (Índice 2)
         self.stack.setCurrentIndex(2)
@@ -65,12 +64,12 @@ class TestUserMainWindow(QMainWindow):
         # --- LIGAÇÕES DE NAVEGAÇÃO ---
 
         # No Login (0)
-        self.ui_login.login_button.clicked.connect(lambda: self.stack.setCurrentIndex(2)) # Para Home
-        self.ui_login.register_link.clicked.connect(lambda: self.stack.setCurrentIndex(1)) # Para Registo
+        self.ui_login.login_button.clicked.connect(lambda: self.stack.setCurrentIndex(2))  # Para Home
+        self.ui_login.register_link.clicked.connect(lambda: self.stack.setCurrentIndex(1))  # Para Registo
 
         # No Registo (1)
-        self.ui_register.login_link.clicked.connect(lambda: self.stack.setCurrentIndex(0)) # Volta para Login
-        self.ui_register.signup_button.clicked.connect(lambda: self.stack.setCurrentIndex(0)) # Simula sucesso -> Login
+        self.ui_register.login_link.clicked.connect(lambda: self.stack.setCurrentIndex(0))  # Volta para Login
+        self.ui_register.signup_button.clicked.connect(lambda: self.stack.setCurrentIndex(0))  # Simula sucesso -> Login
 
         # Logout em todas as páginas -> Volta para Login (0)
         self.ui_home.logout_btn.clicked.connect(lambda: self.stack.setCurrentIndex(0))
@@ -81,7 +80,7 @@ class TestUserMainWindow(QMainWindow):
         self.ui_home.home_btn.clicked.connect(lambda: self.stack.setCurrentIndex(2))
         self.ui_home.daily_btn.clicked.connect(lambda: self.stack.setCurrentIndex(3))
         self.ui_home.hourly_btn.clicked.connect(lambda: self.stack.setCurrentIndex(4))
-        
+
         # Home Dashboard
         self.ui_home.daily_button.clicked.connect(lambda: self.stack.setCurrentIndex(3))
         self.ui_home.hourly_button.clicked.connect(lambda: self.stack.setCurrentIndex(4))
@@ -96,11 +95,13 @@ class TestUserMainWindow(QMainWindow):
         self.ui_hourly.daily_btn.clicked.connect(lambda: self.stack.setCurrentIndex(3))
         self.ui_hourly.hourly_btn.clicked.connect(lambda: self.stack.setCurrentIndex(4))
 
+
 def main():
     app = QApplication(sys.argv)
     window = TestUserMainWindow()
     window.show()
     sys.exit(app.exec())
+
 
 if __name__ == "__main__":
     main()

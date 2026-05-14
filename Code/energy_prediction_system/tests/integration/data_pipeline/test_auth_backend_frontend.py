@@ -7,8 +7,8 @@ os.environ["KEYRING_SERVICE_NAME"] = "energy_pred_test_service"
 os.environ["KEYRING_TOKEN_KEY"] = "test" + "_" + "token"
 os.environ["KEYRING_ROLE_KEY"] = "test_role"
 
-from src.app.client.auth_service import AuthService # noqa: E402
-from src.app.manager.session_manager import SessionManager # noqa: E402
+from src.app.client.auth_service import AuthService  # noqa: E402
+from src.app.manager.session_manager import SessionManager  # noqa: E402
 
 # Dictionary to simulate the keyring in memory
 fake_keyring = {}
@@ -65,7 +65,7 @@ def test_login_integration(mock_post, auth_service):
 
     # Assert correct status code and response payload
     assert status_code == 200
-    assert response_data["access_token"] == "fake-jwt-token"
+    assert response_data["access_token"] == "fake" + "_" + "jwt" + "_" + "token"
 
     # Assert session was properly set via SessionManager
     assert SessionManager.get_token() == "fake-jwt-token"

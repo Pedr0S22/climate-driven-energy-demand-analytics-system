@@ -8,7 +8,7 @@ class StyledInput(QtWidgets.QLineEdit):
         self.setPlaceholderText(placeholder)
         if is_password:
             self.setEchoMode(QtWidgets.QLineEdit.EchoMode.Password)
-            
+
         self.setStyleSheet("""
             QLineEdit {
                 background-color: rgb(234, 234, 239);

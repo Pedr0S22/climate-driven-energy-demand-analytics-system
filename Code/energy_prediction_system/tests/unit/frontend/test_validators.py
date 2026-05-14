@@ -12,7 +12,7 @@ from src.app.utils.validators import (
 class TestValidators:
     """Unit tests for pure validation rules."""
 
-    # Atomic Rules Tests 
+    # Atomic Rules Tests
 
     def test_is_valid_email(self):
         assert is_valid_email("test@example.com") is True
@@ -24,8 +24,8 @@ class TestValidators:
     def test_has_min_max_length(self):
         assert has_min_max_length("1234567") is False  # 7 chars
         assert has_min_max_length("12345678") is True  # 8 chars
-        assert has_min_max_length("a" * 20) is True    # 20 chars
-        assert has_min_max_length("a" * 21) is False   # 21 chars
+        assert has_min_max_length("a" * 20) is True  # 20 chars
+        assert has_min_max_length("a" * 21) is False  # 21 chars
 
     def test_has_uppercase(self):
         assert has_uppercase("lowercase") is False
@@ -41,7 +41,7 @@ class TestValidators:
         assert has_special_char("Special!Char") is True
         assert has_special_char("Password@123") is True
 
-    # Login Validation Tests 
+    # Login Validation Tests
 
     def test_validate_login_input_success(self):
         success, message = validate_login_input("valid@email.com", "Secure@123")
@@ -59,7 +59,7 @@ class TestValidators:
         success, message = validate_login_input("invalidemail", "Secure@123")
         assert success is False
         assert message == "Invalid credentials."
-        
+
         # Weak password format
         success, message = validate_login_input("valid@email.com", "123")
         assert success is False
@@ -68,9 +68,7 @@ class TestValidators:
     # Registration Validation Tests
 
     def test_validate_registration_success(self):
-        success, message = validate_registration_input(
-            "username", "test@test.com", "Strong@123", "Strong@123"
-        )
+        success, message = validate_registration_input("username", "test@test.com", "Strong@123", "Strong@123")
         assert success is True
         assert message is None
 
@@ -80,9 +78,7 @@ class TestValidators:
         assert message == "All fields are required."
 
     def test_validate_registration_email_error(self):
-        success, message = validate_registration_input(
-            "user", "wrong-email", "Strong@123", "Strong@123"
-        )
+        success, message = validate_registration_input("user", "wrong-email", "Strong@123", "Strong@123")
         assert success is False
         assert "Invalid email format" in message
 
@@ -108,8 +104,6 @@ class TestValidators:
         assert "special character" in m
 
     def test_validate_registration_password_mismatch(self):
-        success, message = validate_registration_input(
-            "user", "test@test.com", "Strong@123", "Different@123"
-        )
+        success, message = validate_registration_input("user", "test@test.com", "Strong@123", "Different@123")
         assert success is False
         assert message == "Passwords do not match."
