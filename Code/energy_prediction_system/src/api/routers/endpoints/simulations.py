@@ -4,7 +4,8 @@ from sqlalchemy.orm import Session
 from src.api.core.security import get_current_user
 from src.api.database.session import get_db
 from src.api.schemas.simulation import (
-    SimulationInput,
+    DailySimulationInput,
+    HourlySimulationInput,
     SimulationOutput,
     TemplateInput,
     TemplateOutput,
@@ -36,20 +37,38 @@ def get_template(request: TemplateInput, db: Session = Depends(get_db), current_
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(e)) from e
 
 
-@router.post("/run", response_model=SimulationOutput)
-def run_simulation(request: SimulationInput, db: Session = Depends(get_db), current_user=Depends(get_current_user)):
+@router.post("/daily", response_model=SimulationOutput)
+def run_daily_simulation(
+    request: DailySimulationInput, db: Session = Depends(get_db), current_user=Depends(get_current_user)
+):
     try:
-        if request.overrides:
-            errors = SimulationService.validate_overrides(request.overrides)
-            if errors:
-                raise ValueError(f"Erro de validação: {'; '.join(errors)}")
-
         result = SimulationService.run_simulation(
             db=db,
-            frequency=request.frequency,
+            frequency="daily",
             template_name=request.template_name,
+            year=request.year,
             month=request.month,
             day_of_week=request.day_of_week,
+            overrides=request.overrides,
+        )
+        return SimulationOutput(**result)
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e)) from e
+
+
+@router.post("/hourly", response_model=SimulationOutput)
+def run_hourly_simulation(
+    request: HourlySimulationInput, db: Session = Depends(get_db), current_user=Depends(get_current_user)
+):
+    try:
+        result = SimulationService.run_simulation(
+            db=db,
+            frequency="hourly",
+            template_name=request.template_name,
+            year=request.year,
+            month=request.month,
+            day_of_week=request.day_of_week,
+            hour=request.hour,
             overrides=request.overrides,
         )
         return SimulationOutput(**result)

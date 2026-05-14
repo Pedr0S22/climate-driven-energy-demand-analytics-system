@@ -1,4 +1,5 @@
 import logging
+import os
 import time
 import warnings
 from pathlib import Path
@@ -282,6 +283,15 @@ class FeatureEngineer:
             joblib.dump(self.pca_features, self.models_dir / f"pca_features_{self.frequency}{suffix}.joblib")
             logger.info(f"Transformers persisted to {self.models_dir} with suffix {self.frequency}")
 
+    def load(self, suffix=""):
+        """Loads fitted transformers and feature lists for real-time inference."""
+        if self.models_dir:
+            self.scaler = joblib.load(self.models_dir / f"scaler_{self.frequency}{suffix}.joblib")
+            self.pca = joblib.load(self.models_dir / f"pca_{self.frequency}{suffix}.joblib")
+            self.selected_features = joblib.load(self.models_dir / f"selected_features_{self.frequency}{suffix}.joblib")
+            self.pca_features = joblib.load(self.models_dir / f"pca_features_{self.frequency}{suffix}.joblib")
+            logger.info(f"Transformers loaded from {self.models_dir} for frequency {self.frequency}")
+
     def run_pipeline(self, df: pd.DataFrame, fit=True):
         df = self.extract_temporal_features(df)
         climate_vars = ["skt", "t2m", "d2m", "stl1", "ssrd", "strd", "sp", "u10", "v10", "swvl1", "tp"]
@@ -294,10 +304,25 @@ class FeatureEngineer:
         if fit:
             self.fit_selection(df)
 
-        features_full = df.copy()
         # All columns except metadata are the "full feature set" for PCA
-        self.pca_features = [c for c in df.columns if c not in ["datetime", self.target_col]]
+        if self.pca_features is None:
+            self.pca_features = [c for c in df.columns if c not in ["datetime", self.target_col]]
 
+        # Ensure all columns required for models exist in real-time data
+        if not fit:
+            missing = set(self.pca_features) - set(df.columns)
+            if missing:
+                logger.warning(f"Missing columns in real-time data: {missing}. Filling with 0.")
+                for col in missing:
+                    df[col] = 0
+
+        # Construct engineered datasets while preserving natural order from df.columns for 'full'
+        # Training 'features_daily_full.csv' has Load at index 12
+        full_wanted = set(["datetime", self.target_col] + self.pca_features)
+        features_full = df[[c for c in df.columns if c in full_wanted]].copy()
+
+        # For 'selected' and 'pca': Use meta_cols as prefix (matches training behavior)
+        # Training 'features_daily_selected.csv' and PCA have Load at index 1
         meta_cols = ["datetime", self.target_col] if "datetime" in df.columns else []
         features_selected = df[meta_cols + self.selected_features].copy()
 
@@ -310,6 +335,52 @@ class FeatureEngineer:
         features_pca = pd.concat([df[base_cols].reset_index(drop=True), pca_df], axis=1)
 
         return {"full": features_full.fillna(0), "selected": features_selected.fillna(0), "pca": features_pca.fillna(0)}
+
+
+def run_realtime_engineering(freq: str):
+    """
+    Entry point for real-time feature engineering.
+    Uses pre-fitted models to transform incoming live data context.
+    """
+    APP_ROOT = Path(__file__).resolve().parent.parent.parent
+    DATA_PROCESSED = APP_ROOT / "data" / "processed"
+    MODELS_FEAT = APP_ROOT / "models" / "feat-engineering"
+    OUTPUT_DIR = DATA_PROCESSED / "feat-engineering" / "real-time"
+    OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
+
+    input_path = DATA_PROCESSED / f"realtime_{freq}.csv"
+    if not input_path.exists():
+        logger.error(f"Real-time input file {input_path} not found.")
+        return
+
+    df = pd.read_csv(input_path)
+    fe = FeatureEngineer(models_dir=MODELS_FEAT, frequency=freq)
+    fe.load()
+
+    datasets = fe.run_pipeline(df, fit=False)
+
+    for name, df_set in datasets.items():
+        out_name = f"realtime_{freq}_{name}.csv"
+        output_file = OUTPUT_DIR / out_name
+        # Pathlib way to generate tmp path
+        tmp_file = output_file.with_suffix(output_file.suffix + ".tmp")
+
+        try:
+            # Save to temporary file
+            df_set.to_csv(tmp_file, index=False)
+
+            # Atomic replace (os.replace handles overwrite)
+            # Use string representation for Windows compatibility
+            os.replace(str(tmp_file), str(output_file))
+            logger.info(f"Successfully persisted real-time engineered {freq} {name} data to {output_file}")
+        except Exception as e:
+            logger.error(f"Failed to save {out_name}: {e}")
+            # Cleanup if possible
+            if tmp_file.exists():
+                try:
+                    tmp_file.unlink()
+                except Exception as e1:
+                    logger.error(f"Failed File {out_name} Unlik: {e1}")
 
 
 def main():
@@ -337,7 +408,13 @@ def main():
 
         for name, df_set in datasets.items():
             out_name = f"features_{freq}_{name}.csv"
-            df_set.to_csv(OUTPUT_DIR / out_name, index=False)
+            output_file = OUTPUT_DIR / out_name
+
+            # Robust Save: Save to .tmp and rename only on success
+            tmp_path = f"{output_file}.tmp"
+            df_set.to_csv(tmp_path, index=False)
+            os.replace(tmp_path, output_file)
+
             logger.info(f"Exported '{freq}/{name}' dataset.")
 
     duration = time.time() - start_time

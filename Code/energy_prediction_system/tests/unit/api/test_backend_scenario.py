@@ -1,5 +1,6 @@
 from unittest.mock import MagicMock, patch
 
+import numpy as np
 import pytest
 from fastapi.testclient import TestClient
 from sqlalchemy import func
@@ -57,11 +58,11 @@ def active_hourly_model(db):
 
     # Criar mock do modelo que retorna uma predição
     mock_model = MagicMock()
-    mock_model.predict.return_value = 30000.0
+    mock_model.predict.return_value = np.array([30000.0])
 
     # Criar mock do scaler com transform
     mock_scaler = MagicMock()
-    mock_scaler.transform.return_value = [[0.5, 0.3, 0.2]]
+    mock_scaler.transform.return_value = np.array([[0.5, 0.3, 0.2]])
 
     engine._models["hourly"] = mock_model
     engine._scalers["hourly"] = mock_scaler
@@ -225,17 +226,26 @@ class TestSimulationTemplates:
 
 
 class TestSimulationRun:
-    RUN_URL = "/api/simulations/run"
+    DAILY_URL = "/api/simulations/daily"
+    HOURLY_URL = "/api/simulations/hourly"
 
-    def test_run_simulation_heatwave(self, client, client_token, active_hourly_model):
+    def test_run_simulation_daily_heatwave(self, client, client_token, db):
+        _create_test_model(db, model_pred_type="daily", is_active=True, dataset="full")
+
+        # Mock engine for daily
+        engine = get_inference_engine()
+        mock_model = MagicMock()
+        mock_model.predict.return_value = np.array([50000.0])
+        engine._models["daily"] = mock_model
+
         response = client.post(
-            self.RUN_URL,
+            self.DAILY_URL,
             json={
-                "frequency": "hourly",
                 "template_name": "heatwave",
-                "month": 5,
-                "day_of_week": 0,
-                "overrides": {"t2m": 50.0},
+                "year": 2024,
+                "month": 7,
+                "day_of_week": 2,
+                "overrides": {"t2m": 45.0},
             },
             headers={"Authorization": f"Bearer {client_token}"},
         )
@@ -244,6 +254,23 @@ class TestSimulationRun:
         assert "predicted_mw" in data
         assert len(data["top_drivers"]) == 2
 
+    def test_run_simulation_hourly_storm(self, client, client_token, active_hourly_model):
+        response = client.post(
+            self.HOURLY_URL,
+            json={
+                "template_name": "storm",
+                "year": 2024,
+                "month": 5,
+                "day_of_week": 0,
+                "hour": 15,
+                "overrides": {"tp": 20.0},
+            },
+            headers={"Authorization": f"Bearer {client_token}"},
+        )
+        assert response.status_code == 200
+        data = response.json()
+        assert "predicted_mw" in data
+
     def test_simulation_extreme_temp_increases_load(self, client, client_token, active_hourly_model):
         """Temperatura extrema aumenta carga prevista"""
         from unittest.mock import MagicMock
@@ -251,28 +278,35 @@ class TestSimulationRun:
         engine = get_inference_engine()
 
         mock_model = MagicMock()
-        mock_model.predict.side_effect = [40000.0, 25000.0]  # heatwave > average
+        mock_model.predict.side_effect = [np.array([40000.0]), np.array([25000.0])]  # heatwave > average
 
         mock_scaler = MagicMock()
-        mock_scaler.transform.return_value = [[0.5, 0.3]]
+        mock_scaler.transform.return_value = np.array([[0.5, 0.3]])
 
         engine._models["hourly"] = mock_model
         engine._scalers["hourly"] = mock_scaler
 
         hot = client.post(
-            self.RUN_URL,
+            self.HOURLY_URL,
             json={
-                "frequency": "hourly",
                 "template_name": "heatwave",
+                "year": 2024,
                 "month": 5,
                 "day_of_week": 0,
+                "hour": 14,
                 "overrides": {"t2m": 50.0},
             },
             headers={"Authorization": f"Bearer {client_token}"},
         )
         avg = client.post(
-            self.RUN_URL,
-            json={"frequency": "hourly", "template_name": "average", "month": 5, "day_of_week": 0},
+            self.HOURLY_URL,
+            json={
+                "template_name": "average",
+                "year": 2024,
+                "month": 5,
+                "day_of_week": 0,
+                "hour": 14,
+            },
             headers={"Authorization": f"Bearer {client_token}"},
         )
 
@@ -280,14 +314,15 @@ class TestSimulationRun:
         assert avg.status_code == 200
         assert hot.json()["predicted_mw"] > avg.json()["predicted_mw"]
 
-    def test_simulation_validation_error(self, client, client_token):
+    def test_simulation_validation_error(self, client, client_token, active_hourly_model):
         response = client.post(
-            self.RUN_URL,
+            self.HOURLY_URL,
             json={
-                "frequency": "hourly",
                 "template_name": "average",
+                "year": 2024,
                 "month": 7,
                 "day_of_week": 3,
+                "hour": 10,
                 "overrides": {"t2m": 100.0},
             },
             headers={"Authorization": f"Bearer {client_token}"},
@@ -298,16 +333,16 @@ class TestSimulationRun:
         db.query(Model).update({"is_active": False})
         db.commit()
         response = client.post(
-            self.RUN_URL,
-            json={"frequency": "daily", "template_name": "average", "month": 1, "day_of_week": 0},
+            self.DAILY_URL,
+            json={"template_name": "average", "year": 2024, "month": 1, "day_of_week": 0},
             headers={"Authorization": f"Bearer {client_token}"},
         )
         assert response.status_code == 400
 
-    def test_simulation_invalid_template(self, client, client_token):
+    def test_simulation_invalid_template(self, client, client_token, active_hourly_model):
         response = client.post(
-            self.RUN_URL,
-            json={"frequency": "hourly", "template_name": "tornado", "month": 1, "day_of_week": 0},
+            self.HOURLY_URL,
+            json={"template_name": "tornado", "year": 2024, "month": 1, "day_of_week": 0, "hour": 12},
             headers={"Authorization": f"Bearer {client_token}"},
         )
         assert response.status_code == 400
@@ -331,13 +366,13 @@ class TestPCAFlow:
         db.commit()
 
         mock_pca = MagicMock()
-        mock_pca.transform = MagicMock(return_value=[[1.0, 2.0, 3.0]])
+        mock_pca.transform = MagicMock(return_value=np.array([[1.0, 2.0, 3.0]]))
 
         mock_scaler = MagicMock()
-        mock_scaler.transform.return_value = [[0.5, 0.3, 0.2]]
+        mock_scaler.transform.return_value = np.array([[0.5, 0.3, 0.2]])
 
         mock_model = MagicMock()
-        mock_model.predict.return_value = 35000.0
+        mock_model.predict.return_value = np.array([35000.0])
 
         engine = get_inference_engine()
 
@@ -350,7 +385,7 @@ class TestPCAFlow:
             engine.load_active_model(model)
 
             result = SimulationService.run_simulation(
-                db=db, frequency="daily", template_name="average", month=6, day_of_week=3
+                db=db, frequency="daily", template_name="average", year=2024, month=6, day_of_week=3
             )
 
         assert result["predicted_mw"] == 35000.0
