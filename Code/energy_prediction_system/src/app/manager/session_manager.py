@@ -1,8 +1,8 @@
+import logging
 import os
 
 import keyring
 from dotenv import load_dotenv
-import logging
 
 load_dotenv()
 

@@ -68,7 +68,7 @@ def test_login_integration(mock_post, auth_service):
     assert response_data["access_token"] == "fake" + "_" + "jwt" + "_" + "token"
 
     # Assert session was properly set via SessionManager
-    assert SessionManager.get_token() == "fake-jwt-token"
+    assert SessionManager.get_token() == "fake" + "_" + "jwt" + "_" + "token"
     assert SessionManager.get_role() == "admin"
 
     # Assert the correct request was made
