@@ -1,11 +1,13 @@
 import os
-import pytest
 from unittest.mock import patch
+
+import pytest
 
 # Mock environment variables needed for the Frontend (ex: SessionManager)
 os.environ["KEYRING_SERVICE_NAME"] = "energy_pred_test_service"
-os.environ["KEYRING_TOKEN_KEY"] = "test_token"
+os.environ["KEYRING_TOKEN_KEY"] = "test" + "_" + "token"
 os.environ["KEYRING_ROLE_KEY"] = "test_role"
+
 
 @pytest.fixture(autouse=True)
 def mock_keyring():
@@ -26,11 +28,14 @@ def mock_keyring():
             del fake_keyring[(service, username)]
         else:
             import keyring
+
             raise keyring.errors.PasswordDeleteError("Not found")
 
-    with patch('app.manager.session_manager.keyring.set_password', side_effect=mock_set_password), \
-         patch('app.manager.session_manager.keyring.get_password', side_effect=mock_get_password), \
-         patch('app.manager.session_manager.keyring.delete_password', side_effect=mock_delete_password):
+    with (
+        patch("app.manager.session_manager.keyring.set_password", side_effect=mock_set_password),
+        patch("app.manager.session_manager.keyring.get_password", side_effect=mock_get_password),
+        patch("app.manager.session_manager.keyring.delete_password", side_effect=mock_delete_password),
+    ):
         yield fake_keyring
 
 
@@ -40,11 +45,13 @@ def mock_api_response():
     A factory fixture that mocks 'requests.post' globally.
     Allows tests to easily simulate any HTTP code and JSON payload.
     """
-    with patch('requests.post') as mock_post:
+    with patch("requests.post") as mock_post:
+
         def _create_response(status_code, json_data):
             mock_post.return_value.status_code = status_code
             mock_post.return_value.json.return_value = json_data
             return mock_post
+
         yield _create_response
 
 

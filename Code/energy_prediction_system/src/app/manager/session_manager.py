@@ -1,8 +1,11 @@
-import keyring
 import os
+
+from flask import logging
+import keyring
 from dotenv import load_dotenv
 
 load_dotenv()
+
 
 class SessionManager:
     _SERVICE_NAME = os.getenv("KEYRING_SERVICE_NAME")
@@ -26,10 +29,10 @@ class SessionManager:
     def clear_session(cls) -> None:
         try:
             keyring.delete_password(cls._SERVICE_NAME, cls._KEY_TOKEN)
-        except (keyring.errors.PasswordDeleteError, Exception):
-            pass 
+        except Exception as e:
+            logging.debug(f"Could not delete token: {e}")
 
         try:
             keyring.delete_password(cls._SERVICE_NAME, cls._KEY_ROLE)
-        except (keyring.errors.PasswordDeleteError, Exception):
-            pass
+        except Exception as e:
+            logging.debug(f"Could not delete role: {e}")

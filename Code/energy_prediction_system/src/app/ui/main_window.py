@@ -1,9 +1,10 @@
-from app.manager.session_manager import SessionManager
-from PyQt6.QtWidgets import QMainWindow, QMessageBox, QStackedWidget
-from PyQt6.QtCore import QThread, pyqtSignal
+import logging
 
+from app.client.auth_service import AuthService
+from app.manager.session_manager import SessionManager
 from app.utils.validators import validate_login_input, validate_registration_input
-from app.client.auth_service import AuthService    
+from PyQt6.QtCore import QThread, pyqtSignal
+from PyQt6.QtWidgets import QMainWindow, QMessageBox, QStackedWidget
 
 from .views.admin_homepage import Ui_MainWindow as Ui_AdminHome
 from .views.daily_prediction_view import Ui_DailyPredictionAdminWindow
@@ -16,12 +17,12 @@ from .views.user_homepage import Ui_UserMainWindow
 
 class LoginWorker(QThread):
     finished = pyqtSignal(object, int)
-    
+
     def __init__(self, email, password):
         super().__init__()
         self.email = email
         self.password = password
-        
+
     def run(self):
         auth_service = AuthService()
         try:
@@ -30,15 +31,16 @@ class LoginWorker(QThread):
         except Exception as e:
             self.finished.emit({"detail": str(e)}, 500)
 
+
 class RegisterWorker(QThread):
     finished = pyqtSignal(object, int)
-    
+
     def __init__(self, user, email, password):
         super().__init__()
         self.user = user
         self.email = email
         self.password = password
-        
+
     def run(self):
         auth_service = AuthService()
         try:
@@ -47,17 +49,19 @@ class RegisterWorker(QThread):
         except Exception as e:
             self.finished.emit({"detail": str(e)}, 500)
 
+
 class LogoutWorker(QThread):
     finished = pyqtSignal()
 
     def run(self):
         try:
             auth_service = AuthService()
-            if hasattr(auth_service, 'logout_user'):
+            if hasattr(auth_service, "logout_user"):
                 auth_service.logout_user()
-        except:
-            pass
+        except Exception as e:
+            logging.error(f"UI Error: {e}")
         self.finished.emit()
+
 
 class MainWindow(QMainWindow):
     def __init__(self):
@@ -98,18 +102,18 @@ class MainWindow(QMainWindow):
         self.ui_model_mgmt.setupUi(self.model_mgmt_page)
 
         self.ui_user_homepage = Ui_UserMainWindow()
-        self.ui_user_homepage.setupUi(self.user_homepage) # Criar um QMainWindow
+        self.ui_user_homepage.setupUi(self.user_homepage)  # Criar um QMainWindow
 
         # Adicionar à pilha (Stack)
-        self.stack.addWidget(self.login_page)             # Índice 0
-        self.stack.addWidget(self.register_page)          # Índice 1
-        self.stack.addWidget(self.admin_page)             # Índice 2
+        self.stack.addWidget(self.login_page)  # Índice 0
+        self.stack.addWidget(self.register_page)  # Índice 1
+        self.stack.addWidget(self.admin_page)  # Índice 2
         self.stack.addWidget(self.daily_pred_admin_page)  # Índice 3
-        self.stack.addWidget(self.hourly_pred_admin_page) # Índice 4
-        self.stack.addWidget(self.model_mgmt_page)        # Índice 5
-        self.stack.addWidget(self.user_homepage)         # Índice 6
+        self.stack.addWidget(self.hourly_pred_admin_page)  # Índice 4
+        self.stack.addWidget(self.model_mgmt_page)  # Índice 5
+        self.stack.addWidget(self.user_homepage)  # Índice 6
 
-        self.stack.setCurrentIndex(0) # Iniciar na Home por agora para testes
+        self.stack.setCurrentIndex(0)  # Iniciar na Home por agora para testes
 
         # --- LIGAÇÕES ---
 
@@ -132,7 +136,7 @@ class MainWindow(QMainWindow):
         self.ui_admin.daily_button.clicked.connect(lambda: self.stack.setCurrentIndex(3))
         self.ui_admin.hourly_button.clicked.connect(lambda: self.stack.setCurrentIndex(4))
         self.ui_admin.model_mgmt_button.clicked.connect(lambda: self.stack.setCurrentIndex(5))
-        
+
         self.ui_admin.sim_daily_button.clicked.connect(lambda: print("Go to Daily Simulation"))
         self.ui_admin.sim_hourly_button.clicked.connect(lambda: print("Go to Hourly Simulation"))
 
@@ -157,7 +161,7 @@ class MainWindow(QMainWindow):
         self.ui_model_mgmt.hourly_btn.clicked.connect(lambda: self.stack.setCurrentIndex(4))
         self.ui_model_mgmt.model_btn.clicked.connect(lambda: self.stack.setCurrentIndex(5))
 
-        #User Homepage
+        # User Homepage
         self.ui_user_homepage.logout_btn.clicked.connect(self.handle_logout)
         self.ui_user_homepage.home_btn.clicked.connect(lambda: self.stack.setCurrentIndex(2))
         self.ui_user_homepage.daily_btn.clicked.connect(lambda: self.stack.setCurrentIndex(3))
@@ -189,14 +193,14 @@ class MainWindow(QMainWindow):
 
         if status_code == 200:
             role = response_data.get("role")
-            
+
             self.ui_login.email_input.clear()
             self.ui_login.pass_input.clear()
 
             if role == "admin":
-                self.stack.setCurrentIndex(2) 
+                self.stack.setCurrentIndex(2)
             else:
-                self.stack.setCurrentIndex(6) 
+                self.stack.setCurrentIndex(6)
         elif status_code == 401:
             QMessageBox.warning(self, "Login Failed", "Incorrect credentials.")
         elif status_code == 403:
@@ -236,14 +240,14 @@ class MainWindow(QMainWindow):
 
         if status_code == 201:
             QMessageBox.information(self, "Success", "Account created successfully!")
-            
+
             self.ui_register.user_input.clear()
             self.ui_register.email_input.clear()
             self.ui_register.pass_input.clear()
             self.ui_register.conf_pass_input.clear()
-            
+
             self.stack.setCurrentIndex(0)
-            
+
         elif status_code == 409:
             self.ui_register.email_input.clear()
             error_message = response_data.get("detail", "Error: Email already registered.")
@@ -263,9 +267,8 @@ class MainWindow(QMainWindow):
         SessionManager.clear_session()
         self.stack.setCurrentIndex(0)
 
-        # QA5: Enviar notificação ao backend via QThread 
+        # QA5: Enviar notificação ao backend via QThread
         self.logout_worker = LogoutWorker()
         # O deleteLater garante que a thread é destruída da memória após terminar a execução
         self.logout_worker.finished.connect(self.logout_worker.deleteLater)
         self.logout_worker.start()
-
