@@ -1,4 +1,4 @@
-# QUALITY ATTRIBUTES DEFINITION - V2.1
+# QUALITY ATTRIBUTES DEFINITION - V2.2
 
 This file contains all QAs for the development of this project.
 
@@ -86,7 +86,7 @@ This file contains all QAs for the development of this project.
 
 * **Response:** The client app detects the unreachable server, prevents the user interface from freezing, and displays a user-friendly "network connection error" message.
 
-* **Response measure:** The network timeout is detected and the UI displays the error state within 3.0 seconds of the request, without crashing the application.
+* **Response measure:** The network timeout is detected and the UI displays the error state within 10.0 seconds of the request, without crashing the application.
 
 
 
@@ -135,7 +135,7 @@ This file contains all QAs for the development of this project.
 
 * **Response:** The system catches the data anomalies, applies predefined fallback rules, logs a data quality warning, and continues the pipeline execution without throwing unhandled exceptions.
 
-* **Response measure:** 100% of batches with missing/malformed data are processed without causing pipeline crashes, and the system logs the exact number of modified/dropped rows per run.
+* **Response measure:** 100% of batches with missing/malformed data are processed without causing pipeline crashes, and the system logs it.
 
 
 
