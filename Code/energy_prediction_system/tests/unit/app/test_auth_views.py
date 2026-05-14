@@ -116,6 +116,9 @@ def test_logout_functionality(mock_clear_session, app_window, qtbot):
     app_window.stack.setCurrentIndex(6)
 
     qtbot.mouseClick(app_window.ui_user_homepage.logout_btn, Qt.MouseButton.LeftButton)
+
+    # Wait for the worker to finish and call SessionManager.clear_session
+    qtbot.waitUntil(lambda: mock_clear_session.called, timeout=5000)
     mock_clear_session.assert_called_once()
 
     assert app_window.stack.currentIndex() == 0
@@ -282,7 +285,7 @@ def test_login_worker_run_exception(mock_auth_service_class, qtbot):
         worker.run()
 
     assert blocker.args[1] == 500
-    assert blocker.args[0]["detail"] == "Network failure"
+    assert blocker.args[0]["detail"] == "An internal error occurred. Please try again later."
 
 
 @patch("src.app.ui.main_window.AuthService")
@@ -296,7 +299,7 @@ def test_register_worker_run_exception(mock_auth_service_class, qtbot):
         worker.run()
 
     assert blocker.args[1] == 500
-    assert blocker.args[0]["detail"] == "Timeout Error"
+    assert blocker.args[0]["detail"] == "An internal error occurred during registration."
 
 
 @patch("src.app.ui.main_window.AuthService")

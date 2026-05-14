@@ -135,30 +135,6 @@ services:
       - "traefik.http.routers.energy-api.middlewares=api-ratelimit"
       - "traefik.http.services.energy-api.loadbalancer.server.port=8000"
 
-
-  # --- CAMADA 3: FRONTEND (APP) ---
-  app:
-    build:
-      context: .
-      dockerfile: src/app/Dockerfile
-    container_name: energy_app
-    restart: on-failure
-    env_file: .env
-    ports:
-      - "3000:3000"
-    networks:
-      - api_net
-    depends_on:
-      api:
-        condition: service_healthy
-    labels:
-      - "traefik.enable=true"
-      - "traefik.docker.network=api_net"
-      - "traefik.http.routers.energy-app.rule=(Host(`localhost`) || Host(`127.0.0.1`))"
-      - "traefik.http.routers.energy-app.entrypoints=web"
-      - "traefik.http.routers.energy-app.priority=1"
-      - "traefik.http.services.energy-app.loadbalancer.server.port=3000"
-
   # --- AUXILIAR: DATA PIPELINE ---
   pipeline:
     build:

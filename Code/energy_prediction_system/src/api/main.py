@@ -69,7 +69,7 @@ async def http_exception_handler(request: Request, exc: StarletteHTTPException):
     # QA10: Ensure generic messages for 401/403
     message = exc.detail
     if exc.status_code in [status.HTTP_401_UNAUTHORIZED, status.HTTP_403_FORBIDDEN]:
-        logger.warning(f"Auth failure: {exc.detail}")
+        logger.info(f"Auth failure: {exc.detail}")
         # Keep the message from exc if it's already generic or set to generic if needed
         # In our services we already use generic messages.
 

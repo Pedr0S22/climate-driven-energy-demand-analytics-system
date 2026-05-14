@@ -1,35 +1,38 @@
-import requests
+import logging
 
-from src.app.manager.session_manager import SessionManager
+from app.manager.session_manager import SessionManager
 
 from .api_client import APIClient
+
+logger = logging.getLogger(__name__)
 
 
 class AuthService:
     def __init__(self):
         self.client = APIClient()
-        self.base_url = self.client.base_url
 
     def register_user(self, username, email, password):
-        endpoint = "/register"
+        endpoint = "/auth/register"
         payload = {"email": email, "username": username, "password": password}
 
         try:
-            response = self.client.post(endpoint, data=payload)
-
+            # Registration expects JSON
+            response = self.client.post(endpoint, json=payload)
+            logger.info(f"Register attempt for {email}: Status {response.status_code}")
             return response.json(), response.status_code
 
         except Exception as e:
-            print(f"ERRO NO REQUESTS: {repr(e)}")
-            return {"detail": f"Connection error: {str(e)}"}, 500
+            logger.error(f"Error during registration for {email}: {repr(e)}")
+            return {"detail": "Unable to reach the server. Please check your connection."}, 500
 
     def login_user(self, email, password):
-        url = f"{self.base_url}/login"
-
+        endpoint = "/auth/login"
+        # OAuth2 (FastAPI) expects Form Data for login
         payload = {"username": email, "password": password}
 
         try:
-            response = requests.post(url, data=payload, timeout=10)
+            logger.info(f"Attempting login for {email}")
+            response = self.client.post(endpoint, data=payload)
             response_data = response.json()
 
             if response.status_code == 200:
@@ -37,12 +40,28 @@ class AuthService:
                 role = response_data.get("role")
 
                 if token and role:
+                    logger.info(f"Login successful for {email}. Role: {role}")
                     SessionManager.set_session(token, role)
 
                 return response_data, 200
 
+            logger.info(f"Login failed for {email}: Status {response.status_code}")
             return response_data, response.status_code
 
         except Exception as e:
-            print(f"Não ligou ao backend :( {e}")
-            return {"detail": f"Connection error: {str(e)}"}, 500
+            logger.error(f"Connection error during login for {email}: {e}")
+            return {"detail": "Unable to connect to the server. Please check your connection and try again later."}, 500
+
+    def logout_user(self):
+        """Notifies the backend about the logout event."""
+        endpoint = "/auth/logout"
+        try:
+            # APIClient automatically injects the Bearer token from SessionManager
+            response = self.client.post(endpoint)
+            if response.status_code == 200:
+                logger.info("Backend logout successful.")
+            else:
+                logger.warning(f"Backend logout failed with status: {response.status_code}")
+        except Exception as e:
+            # We don't return anything as logout is mostly for auditing
+            logger.error(f"Error during backend logout: {e}")

@@ -160,7 +160,7 @@ def test_register_integration_connection_error(mock_post, auth_service):
     response_data, status_code = auth_service.register_user("user", "user@test.com", "password")
 
     assert status_code == 500
-    assert "Connection error" in response_data["detail"]
+    assert "Unable to reach the server" in response_data["detail"]
 
 
 @patch("requests.post")
@@ -175,4 +175,4 @@ def test_login_integration_connection_error(mock_post, auth_service):
     response_data, status_code = auth_service.login_user("user@test.com", "password")
 
     assert status_code == 500
-    assert "Connection error" in response_data["detail"]
+    assert "Unable to connect to the server" in response_data["detail"]

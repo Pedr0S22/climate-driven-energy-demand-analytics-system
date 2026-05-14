@@ -14,6 +14,8 @@ from .views.model_management_view import Ui_ModelManagementWindow
 from .views.register_view import Ui_RegisterWindow
 from .views.user_homepage import Ui_UserMainWindow
 
+logger = logging.getLogger(__name__)
+
 
 class LoginWorker(QThread):
     finished = pyqtSignal(object, int)
@@ -29,7 +31,8 @@ class LoginWorker(QThread):
             data, status = auth_service.login_user(self.email, self.password)
             self.finished.emit(data, status)
         except Exception as e:
-            self.finished.emit({"detail": str(e)}, 500)
+            logger.error(f"LoginWorker error: {e}")
+            self.finished.emit({"detail": "An internal error occurred. Please try again later."}, 500)
 
 
 class RegisterWorker(QThread):
@@ -47,7 +50,8 @@ class RegisterWorker(QThread):
             data, status = auth_service.register_user(self.user, self.email, self.password)
             self.finished.emit(data, status)
         except Exception as e:
-            self.finished.emit({"detail": str(e)}, 500)
+            logger.error(f"RegisterWorker error: {e}")
+            self.finished.emit({"detail": "An internal error occurred during registration."}, 500)
 
 
 class LogoutWorker(QThread):
@@ -56,16 +60,16 @@ class LogoutWorker(QThread):
     def run(self):
         try:
             auth_service = AuthService()
-            if hasattr(auth_service, "logout_user"):
-                auth_service.logout_user()
+            auth_service.logout_user()
         except Exception as e:
-            logging.error(f"UI Error: {e}")
+            logger.error(f"LogoutWorker error: {e}")
         self.finished.emit()
 
 
 class MainWindow(QMainWindow):
     def __init__(self):
         super().__init__()
+        logger.info("Initializing MainWindow...")
         self.setWindowTitle("Energy Demand Prediction System")
         self.showMaximized()
 
@@ -264,11 +268,15 @@ class MainWindow(QMainWindow):
             QMessageBox.critical(self, "Registration Error", str(error_message))
 
     def handle_logout(self):
-        SessionManager.clear_session()
         self.stack.setCurrentIndex(0)
 
         # QA5: Enviar notificação ao backend via QThread
         self.logout_worker = LogoutWorker()
         # O deleteLater garante que a thread é destruída da memória após terminar a execução
+        self.logout_worker.finished.connect(self._on_logout_finished)
         self.logout_worker.finished.connect(self.logout_worker.deleteLater)
         self.logout_worker.start()
+
+    def _on_logout_finished(self):
+        SessionManager.clear_session()
+        logger.info("Logout process complete.")

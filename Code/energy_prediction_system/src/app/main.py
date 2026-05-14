@@ -1,5 +1,14 @@
+import logging
 import os
 import sys
+
+# Configuração de Logging
+logging.basicConfig(
+    level=logging.INFO,
+    format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
+    handlers=[logging.StreamHandler(sys.stdout)],
+)
+logger = logging.getLogger(__name__)
 
 current_dir = os.path.dirname(os.path.abspath(__file__))  # src/app
 src_dir = os.path.dirname(current_dir)  # src
@@ -13,6 +22,7 @@ from PyQt6.QtWidgets import QApplication  # noqa: E402
 
 
 def main():
+    logger.info("Starting Frontend Application...")
     # o motor do PyQt)
     app = QApplication(sys.argv)
 

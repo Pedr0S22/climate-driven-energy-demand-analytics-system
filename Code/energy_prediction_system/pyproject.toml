@@ -62,6 +62,11 @@ filterwarnings = [
     "ignore:pkg_resources is deprecated as an API:DeprecationWarning"
 ]
 
+[tool.coverage.run]
+omit = [
+    "src/app/frontend_main_check.py"
+]
+
 [tool.ruff]
 line-length = 120
 fix = true

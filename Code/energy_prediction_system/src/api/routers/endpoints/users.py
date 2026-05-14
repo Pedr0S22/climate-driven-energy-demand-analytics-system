@@ -77,14 +77,3 @@ def logout(current_user: User = Depends(get_current_user)):
         "user_id": current_user.id,
         "timestamp": datetime.now(UTC),
     }
-
-
-@router.get("/health")
-def health(current_user: User = Depends(get_current_user)):
-    logger.info(f"User {current_user.email} checked health")
-    return {
-        "status": 200,
-        "message": "Api is healthy!",
-        "user_id": current_user.id,
-        "timestamp": datetime.now(UTC),
-    }
