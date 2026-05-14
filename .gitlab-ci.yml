@@ -6,6 +6,7 @@ variables:
   PIP_CACHE_DIR: "$CI_PROJECT_DIR/.cache/pip"   # Tell pip to use a cache directory inside the project workspace
   PIP_ROOT_USER_ACTION: ignore                  # Suppress the root user warning in Docker
   PIP_DISABLE_PIP_VERSION_CHECK: "1"            # Suppress the "new version available" notice
+  QT_QPA_PLATFORM: "offscreen"
 
 # Cache pip downloads to speed up subsequent jobs and pipeline runs
 cache:
@@ -22,6 +23,8 @@ stages:
 
 unit-tests:
   stage: unit-tests
+  before_script:
+    - apt-get update -y && apt-get install -y libgl1 libglib2.0-0 libxcb-cursor0
   script:
     - echo "Assessing unit test coverage... "
     - cd $APP_DIR
@@ -38,6 +41,8 @@ unit-tests:
 
 integration-tests:
   stage: integration-tests
+  before_script:
+    - apt-get update -y && apt-get install -y libgl1 libglib2.0-0 libxcb-cursor0
   script:
     - echo "Assessing test coverage... "
     - cd $APP_DIR
