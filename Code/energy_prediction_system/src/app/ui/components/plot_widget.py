@@ -1,4 +1,6 @@
+import matplotlib.dates as mdates
 import numpy as np
+from dateutil.parser import parse
 from matplotlib.backends.backend_qtagg import FigureCanvasQTAgg as FigureCanvas
 from matplotlib.figure import Figure
 from PyQt6 import QtWidgets
@@ -55,31 +57,47 @@ class PlotWidget(QtWidgets.QStackedWidget):
         self.ax.set_axis_on()
         self.ax.set_facecolor("#EAEAEF")
 
+        # Convert ISO strings to datetime objects
+        if x_data and isinstance(x_data[0], str):
+            x_dt = [parse(t) for t in x_data]
+        else:
+            x_dt = x_data
+
         # Real Data (Solid Line)
-        self.ax.plot(x_data[: len(y_real)], y_real, color="#000180", linewidth=2, label="Historical")
+        self.ax.plot(x_dt[: len(y_real)], y_real, color="#000180", linewidth=3, label="Historical")
 
         # Prediction Data (Dashed Line)
         if y_pred is not None:
-            full_pred_x = x_data[len(y_real) - 1 :]
+            # We connect the last historical point with the first prediction point
+            full_pred_x = x_dt[len(y_real) - 1 :]
             full_pred_y = np.concatenate(([y_real[-1]], y_pred))
 
             if len(full_pred_x) == len(full_pred_y):
-                self.ax.plot(full_pred_x, full_pred_y, color="#000180", linewidth=2, linestyle="--", label="Forecast")
+                self.ax.plot(full_pred_x, full_pred_y, color="#000180", linewidth=3, linestyle="--", label="Forecast")
             else:
                 self.ax.plot(
-                    x_data[len(y_real) : len(y_real) + len(y_pred)],
+                    x_dt[len(y_real) : len(y_real) + len(y_pred)],
                     y_pred,
                     color="#000180",
-                    linewidth=2,
+                    linewidth=3,
                     linestyle="--",
                     label="Forecast",
                 )
 
-        self.ax.set_title("Energy Demand (MW)", fontsize=18, fontname="sans-serif", fontweight="bold")
-        self.ax.set_xlabel("Time", fontsize=14, fontname="sans-serif")
-        self.ax.set_ylabel("Load (MW)", fontsize=14, fontname="sans-serif")
-        self.ax.legend()
+        # Formatting
+        self.ax.set_title("Energy Demand Projection", fontsize=18, fontname="sans-serif", fontweight="bold")
+        self.ax.set_xlabel("Time (UTC)", fontsize=12, fontname="sans-serif")
+        self.ax.set_ylabel("Load (MWh)", fontsize=12, fontname="sans-serif")
+
+        # X-Axis Time Formatting
+        self.ax.xaxis.set_major_formatter(mdates.DateFormatter("%Y-%m-%d\n%H:%M"))
+        self.ax.xaxis.set_major_locator(mdates.AutoDateLocator())
+        self.figure.autofmt_xdate()  # Rotates labels automatically
+
+        self.ax.legend(loc="upper left")
         self.ax.grid(True, linestyle=":", alpha=0.6)
 
+        # Refresh
+        self.figure.tight_layout()
         self.canvas.draw()
         self.setCurrentIndex(0)
