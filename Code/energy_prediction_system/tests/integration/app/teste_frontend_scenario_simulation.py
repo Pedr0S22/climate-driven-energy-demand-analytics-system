@@ -11,10 +11,9 @@ from app.ui.main_window import TemplateWorker
 from app.ui.views.model_management_view import LoadModelsWorker
 from app.ui.views.model_management_view import ActivateModelWorker
 
-os.environ["KEYRING_SERVICE_NAME"] = "energy_pred_test_service"
-os.environ["KEYRING_TOKEN_KEY"] = "test_token"
-os.environ["KEYRING_ROLE_KEY"] = "test_role"
-
+os.environ.setdefault("KEYRING_SERVICE_NAME", "energy_pred_test_service")
+os.environ.setdefault("KEYRING_TOKEN_KEY", "test_token")
+os.environ.setdefault("KEYRING_ROLE_KEY", "test_role")
 # keyring
 fake_keyring: dict = {}
 
