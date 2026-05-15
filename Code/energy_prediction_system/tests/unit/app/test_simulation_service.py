@@ -63,6 +63,7 @@ class TestSimulationServiceGetTemplate:
             data, status = simulation_service.get_template("daily", "average")
 
             assert status == 500
+            assert data["detail"] == "Server error"
 
     def test_get_template_connection_error(self, simulation_service):
         """Testa erro de conexão"""
@@ -80,9 +81,8 @@ class TestSimulationServiceRunDaily:
         """Testa simulação diária bem-sucedida"""
         expected = {
             "predicted_mw": 650000.5,
-            "top_drivers": [
-                "t2m",
-                "L1_Load"]}
+            "top_drivers": ["t2m", "L1_Load"],
+        }
         with patch.object(simulation_service.client, "post") as mock_post:
             mock_post.return_value.status_code = 200
             mock_post.return_value.json.return_value = expected
@@ -97,6 +97,17 @@ class TestSimulationServiceRunDaily:
 
             assert status == 200
             assert data["predicted_mw"] == 650000.5
+            assert data["top_drivers"] == ["t2m", "L1_Load"]
+            mock_post.assert_called_once_with(
+                "/simulations/daily",
+                json={
+                    "template_name": "average",
+                    "year": 2025,
+                    "month": 6,
+                    "day_of_week": 3,
+                    "overrides": {"t2m": 25.0},
+                },
+            )
 
     def test_run_daily_without_overrides(self, simulation_service):
         """Testa simulação diária sem overrides"""
@@ -151,6 +162,7 @@ class TestSimulationServiceRunDaily:
             )
 
             assert status == 400
+            assert "modelo ativo" in data["detail"]
 
     def test_run_daily_connection_error(self, simulation_service):
         """Testa erro de conexão"""
@@ -168,16 +180,15 @@ class TestSimulationServiceRunDaily:
             assert "Unable to connect to server" in data["detail"]
 
 
-# ============================================================
-# SIMULATION SERVICE - RUN HOURLY SIMULATION
-# ============================================================
-
 class TestSimulationServiceRunHourly:
     """Testes para o método run_hourly_simulation()"""
 
     def test_run_hourly_success(self, simulation_service):
         """Testa simulação horária bem-sucedida"""
-        expected = {"predicted_mw": 28500.0, "top_drivers": ["hour", "t2m"]}
+        expected = {
+            "predicted_mw": 28500.0,
+            "top_drivers": ["hour", "t2m"],
+        }
         with patch.object(simulation_service.client, "post") as mock_post:
             mock_post.return_value.status_code = 200
             mock_post.return_value.json.return_value = expected
@@ -193,6 +204,18 @@ class TestSimulationServiceRunHourly:
 
             assert status == 200
             assert data["predicted_mw"] == 28500.0
+            assert data["top_drivers"] == ["hour", "t2m"]
+            mock_post.assert_called_once_with(
+                "/simulations/hourly",
+                json={
+                    "template_name": "average",
+                    "year": 2025,
+                    "month": 9,
+                    "day_of_week": 3,
+                    "hour": 14,
+                    "overrides": {"sp": 950.0},
+                },
+            )
 
     def test_run_hourly_without_overrides(self, simulation_service):
         """Testa simulação horária sem overrides"""
@@ -249,26 +272,28 @@ class TestSimulationServiceRunHourly:
             )
 
             assert status == 400
+            assert "modelo ativo" in data["detail"]
 
-
-# ============================================================
-# SIMULATION SERVICE - GET AVAILABLE TEMPLATES
-# ============================================================
 
 class TestSimulationServiceGetAvailableTemplates:
     """Testes para o método get_available_templates()"""
 
     def test_get_available_templates_success(self, simulation_service):
-        """Testa obtenção de templates do backend"""
+        expected_templates = ["average", "heatwave", "storm", "rainy"]
+
         with patch.object(simulation_service.client, "get") as mock_get:
             mock_get.return_value.status_code = 200
             mock_get.return_value.json.return_value = {
-                "templates": ["average", "heatwave", "storm", "rainy"]
+                "templates": expected_templates
             }
 
             templates = simulation_service.get_available_templates("daily")
 
-            assert templates == ["average", "heatwave", "storm", "rainy"]
+            assert templates == expected_templates
+            mock_get.assert_called_once_with(
+                "/simulations/available-templates",
+                params={"frequency": "daily"},
+            )
 
     def test_get_available_templates_fallback_on_error(
             self, simulation_service):
@@ -291,15 +316,10 @@ class TestSimulationServiceGetAvailableTemplates:
             assert templates == ["average", "rainy", "storm", "heatwave"]
 
 
-# ============================================================
-# TEMPLATE WORKER
-# ============================================================
-
 class TestTemplateWorker:
     """Testes para o TemplateWorker (QThread)"""
 
     def test_template_worker_run_success(self, qtbot):
-        """Testa que o TemplateWorker emite os dados corretos em caso de sucesso"""
         expected_data = {
             "frequency": "daily",
             "template_name": "average",
@@ -373,10 +393,6 @@ class TestTemplateWorker:
 
             assert blocker.args[1] == 500
 
-
-# ============================================================
-# DAILY SIMULATION WORKER
-# ============================================================
 
 class TestDailySimulationWorker:
     """Testes para o DailySimulationWorker (QThread)"""
@@ -498,10 +514,6 @@ class TestDailySimulationWorker:
             assert blocker.args[1] == 500
             assert "Network error" in blocker.args[0]["detail"]
 
-
-# ============================================================
-# HOURLY SIMULATION WORKER
-# ============================================================
 
 class TestHourlySimulationWorker:
     """Testes para o HourlySimulationWorker (QThread)"""

@@ -78,10 +78,6 @@ def sample_models_list():
     ]
 
 
-# ============================================================
-# MODELS SERVICE - GET ALL MODELS
-# ============================================================
-
 class TestModelsServiceGetAllModels:
     """Testes para o método get_all_models()"""
 
@@ -154,12 +150,8 @@ class TestModelsServiceGetAllModels:
             data, status = models_service.get_all_models()
 
             assert status == 500
-            assert "Unable to reach the server" in data["detail"]
+            assert data["detail"] == "Unable to reach the server. Please check your connection."
 
-
-# ============================================================
-# MODELS SERVICE - ACTIVATE MODEL
-# ============================================================
 
 class TestModelsServiceActivateModel:
     """Testes para o método activate_model()"""
@@ -214,8 +206,8 @@ class TestModelsServiceActivateModel:
                 "detail": "Admin privileges required"}
 
             data, status = models_service.activate_model(1)
-
             assert status == 403
+            assert data["detail"] == "Admin privileges required"
 
     def test_activate_model_server_error(self, models_service):
         """Testa erro do servidor (500)"""
@@ -239,10 +231,6 @@ class TestModelsServiceActivateModel:
             assert status == 500
             assert "Unable to reach the server" in data["detail"]
 
-
-# ============================================================
-# LOAD MODELS WORKER
-# ============================================================
 
 class TestLoadModelsWorker:
     """Testes para o LoadModelsWorker (QThread)"""
@@ -321,10 +309,6 @@ class TestLoadModelsWorker:
             assert models == []
             assert error == "Network failure"
 
-
-# ============================================================
-# ACTIVATE MODEL WORKER
-# ============================================================
 
 class TestActivateModelWorker:
     """Testes para o ActivateModelWorker (QThread)"""
