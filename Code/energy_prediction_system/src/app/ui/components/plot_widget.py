@@ -30,8 +30,13 @@ class PlotWidget(QtWidgets.QStackedWidget):
 
         # Initial empty plot
         self.ax.text(
-            0.5, 0.5, "Waiting for data from API...", ha="center", va="center", fontsize=20, fontname="sans-serif"
-        )
+            0.5,
+            0.5,
+            "Waiting for data from API...",
+            ha="center",
+            va="center",
+            fontsize=20,
+            fontname="sans-serif")
         self.ax.set_axis_off()
 
         self.chart_layout.addWidget(self.canvas)
@@ -56,18 +61,25 @@ class PlotWidget(QtWidgets.QStackedWidget):
         self.ax.set_facecolor("#EAEAEF")
 
         # Real Data (Solid Line)
-        self.ax.plot(x_data[: len(y_real)], y_real, color="#000180", linewidth=2, label="Historical")
+        self.ax.plot(x_data[: len(y_real)], y_real,
+                     color="#000180", linewidth=2, label="Historical")
 
         # Prediction Data (Dashed Line)
         if y_pred is not None:
-            full_pred_x = x_data[len(y_real) - 1 :]
+            full_pred_x = x_data[len(y_real) - 1:]
             full_pred_y = np.concatenate(([y_real[-1]], y_pred))
 
             if len(full_pred_x) == len(full_pred_y):
-                self.ax.plot(full_pred_x, full_pred_y, color="#000180", linewidth=2, linestyle="--", label="Forecast")
+                self.ax.plot(
+                    full_pred_x,
+                    full_pred_y,
+                    color="#000180",
+                    linewidth=2,
+                    linestyle="--",
+                    label="Forecast")
             else:
                 self.ax.plot(
-                    x_data[len(y_real) : len(y_real) + len(y_pred)],
+                    x_data[len(y_real): len(y_real) + len(y_pred)],
                     y_pred,
                     color="#000180",
                     linewidth=2,
@@ -75,7 +87,11 @@ class PlotWidget(QtWidgets.QStackedWidget):
                     label="Forecast",
                 )
 
-        self.ax.set_title("Energy Demand (MW)", fontsize=18, fontname="sans-serif", fontweight="bold")
+        self.ax.set_title(
+            "Energy Demand (MW)",
+            fontsize=18,
+            fontname="sans-serif",
+            fontweight="bold")
         self.ax.set_xlabel("Time", fontsize=14, fontname="sans-serif")
         self.ax.set_ylabel("Load (MW)", fontsize=14, fontname="sans-serif")
         self.ax.legend()

@@ -36,7 +36,12 @@ class TestPipelineIntegration:
     @patch("data_pipeline.ingestion.EntsoePandasClient")
     @patch("data_pipeline.ingestion.backup_project_data")
     @patch("data_pipeline.ingestion.os.getenv")
-    def test_ingestion_orchestration(self, mock_getenv, mock_backup, mock_entsoe, mock_cds):
+    def test_ingestion_orchestration(
+            self,
+            mock_getenv,
+            mock_backup,
+            mock_entsoe,
+            mock_cds):
         """Validate orchestration of data retrieval from external APIs."""
         mock_getenv.return_value = "fake_api_key"
         mock_entsoe_instance = mock_entsoe.return_value
@@ -49,7 +54,8 @@ class TestPipelineIntegration:
             patch("data_pipeline.ingestion.os.makedirs"),
             patch("pandas.DataFrame.to_csv"),
         ):
-            ingestion.data_retrieval("2023-01-01", "2023-01-01", country_code="ES")
+            ingestion.data_retrieval(
+                "2023-01-01", "2023-01-01", country_code="ES")
 
         assert mock_entsoe.called
         assert mock_cds.called
@@ -57,7 +63,8 @@ class TestPipelineIntegration:
 
     @patch("data_pipeline.gdrive_sync.authenticate_gdrive")
     @patch("data_pipeline.gdrive_sync.os.getenv")
-    def test_gdrive_sync_integration(self, mock_getenv, mock_auth, pipeline_dirs):
+    def test_gdrive_sync_integration(
+            self, mock_getenv, mock_auth, pipeline_dirs):
         """Validate Google Drive backup synchronization logic."""
         mock_getenv.side_effect = lambda k: "fake_folder_id" if "DRIVE_FOLDER_ID" in k else None
         mock_service = MagicMock()
@@ -83,13 +90,23 @@ class TestPipelineIntegration:
     def test_cleaning_and_feat_eng(self, pipeline_dirs):
         """Validate cleaning and feature engineering modular flow."""
         times = pd.date_range("2023-01-01", periods=48, freq="h", tz="UTC")
-        df_e = pd.DataFrame({"Unnamed: 0": times, "Load_MW": np.random.uniform(20000, 30000, 48)})
-        df_e.to_csv(pipeline_dirs["raw_energy"] / "energy_test.csv", index=False)
+        df_e = pd.DataFrame(
+            {"Unnamed: 0": times, "Load_MW": np.random.uniform(20000, 30000, 48)})
+        df_e.to_csv(
+            pipeline_dirs["raw_energy"] /
+            "energy_test.csv",
+            index=False)
 
-        df_w = pd.DataFrame(
-            {"valid_time": times, "t2m": 285, "skt": 285, "ssrd": 100, "latitude": 40.4, "longitude": -3.7}
-        )
-        df_w.to_csv(pipeline_dirs["raw_weather"] / "weather_test.csv", index=False)
+        df_w = pd.DataFrame({"valid_time": times,
+                             "t2m": 285,
+                             "skt": 285,
+                             "ssrd": 100,
+                             "latitude": 40.4,
+                             "longitude": -3.7})
+        df_w.to_csv(
+            pipeline_dirs["raw_weather"] /
+            "weather_test.csv",
+            index=False)
 
         with patch.object(DataCleaner, "treat_weather_outliers", side_effect=lambda x: x):
             df_hourly, _ = cleaning(
@@ -99,20 +116,32 @@ class TestPipelineIntegration:
                 output_dir=pipeline_dirs["processed"],
             )
 
-        fe = FeatureEngineer(threshold=0.6, models_dir=pipeline_dirs["models"], frequency="hourly")
+        fe = FeatureEngineer(
+            threshold=0.6,
+            models_dir=pipeline_dirs["models"],
+            frequency="hourly")
         results = fe.run_pipeline(df_hourly, fit=True)
 
         pipeline_dirs["feat_eng_dir"].mkdir(parents=True, exist_ok=True)
         for ds in ["full", "selected", "pca"]:
-            results.get(ds, results["full"]).to_csv(
-                pipeline_dirs["feat_eng_dir"] / f"features_hourly_{ds}.csv", index=False
-            )
+            results.get(
+                ds,
+                results["full"]).to_csv(
+                pipeline_dirs["feat_eng_dir"] /
+                f"features_hourly_{ds}.csv",
+                index=False)
 
     @patch("data_pipeline.modeling.psycopg2.connect")
     @patch("data_pipeline.modeling.RandomForestRegressor")
     @patch("optuna.create_study")
     @patch("joblib.dump")
-    def test_modeling_integration_extension(self, mock_joblib, mock_create_study, mock_rf, mock_db, pipeline_dirs):
+    def test_modeling_integration_extension(
+            self,
+            mock_joblib,
+            mock_create_study,
+            mock_rf,
+            mock_db,
+            pipeline_dirs):
         """Validate modeling integration with multi-split evaluation."""
         mock_db.return_value = MagicMock()
         mock_joblib.return_value = None
@@ -135,7 +164,11 @@ class TestPipelineIntegration:
 
         feat_eng_path = pipeline_dirs["feat_eng_dir"]
         feat_eng_path.mkdir(exist_ok=True, parents=True)
-        times = pd.date_range("2019-01-01", periods=24 * 365 * 5, freq="h", tz="UTC")
+        times = pd.date_range(
+            "2019-01-01",
+            periods=24 * 365 * 5,
+            freq="h",
+            tz="UTC")
         df_mock = pd.DataFrame(
             {
                 "datetime": times,
@@ -145,7 +178,10 @@ class TestPipelineIntegration:
             }
         )
         for ds in ["full", "selected", "pca"]:
-            df_mock.to_csv(feat_eng_path / f"features_hourly_{ds}.csv", index=False)
+            df_mock.to_csv(
+                feat_eng_path /
+                f"features_hourly_{ds}.csv",
+                index=False)
 
         orchestrator = PipelineOrchestrator(db_config={"fake": "db"})
         orchestrator.manager = ModelManager(frequency="hourly")
@@ -162,7 +198,8 @@ class TestPipelineIntegration:
                 fake_lr.fit.side_effect = dynamic_fit_mock
                 fake_lr.predict.side_effect = lambda X: np.zeros(len(X))
                 mock_lr.return_value = fake_lr
-                orchestrator._evaluate_and_save_model(m_type, "hourly", datasets, splits)
+                orchestrator._evaluate_and_save_model(
+                    m_type, "hourly", datasets, splits)
 
         assert mock_joblib.called
         assert mock_db.called

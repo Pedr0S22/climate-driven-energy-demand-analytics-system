@@ -30,7 +30,8 @@ def authenticate_gdrive():
         else:
             if not os.path.exists(creds_path):
                 raise FileNotFoundError("Missing credentials.json!")
-            flow = InstalledAppFlow.from_client_secrets_file(creds_path, SCOPES)
+            flow = InstalledAppFlow.from_client_secrets_file(
+                creds_path, SCOPES)
             creds = flow.run_local_server(port=0)
 
         with open(token_path, "w") as token:
@@ -45,10 +46,12 @@ def upload_file_to_drive(service, file_path, drive_folder_id):
     # Check for duplicates in the specific folder
     query = f"name='{file_name}' and '{drive_folder_id}' in parents and trashed=false"
     results = (
-        service.files()
-        .list(q=query, spaces="drive", fields="files(id, name)", supportsAllDrives=True, includeItemsFromAllDrives=True)
-        .execute()
-    )
+        service.files() .list(
+            q=query,
+            spaces="drive",
+            fields="files(id, name)",
+            supportsAllDrives=True,
+            includeItemsFromAllDrives=True) .execute())
 
     if results.get("files", []):
         logging.info(f"Drive: {file_name} already exists. Skipping.")
@@ -66,7 +69,11 @@ def upload_file_to_drive(service, file_path, drive_folder_id):
 
     media = MediaFileUpload(file_path, mimetype=mime_type, resumable=True)
     logging.info(f"Drive: Uploading {file_name}...")
-    service.files().create(body=file_metadata, media_body=media, fields="id", supportsAllDrives=True).execute()
+    service.files().create(
+        body=file_metadata,
+        media_body=media,
+        fields="id",
+        supportsAllDrives=True).execute()
 
 
 def backup_project_data():
@@ -87,7 +94,8 @@ def backup_project_data():
         for file in os.listdir(raw_energy_dir):
             if file.endswith(".csv"):
                 file_path = os.path.join(raw_energy_dir, file)
-                upload_file_to_drive(service, file_path, energy_drive_folder_id)
+                upload_file_to_drive(
+                    service, file_path, energy_drive_folder_id)
 
     # 2. Backup Weather CSVs
     raw_weather_dir = os.path.join(PROJECT_ROOT, "data", "raw", "weather")
@@ -96,7 +104,8 @@ def backup_project_data():
         for file in os.listdir(raw_weather_dir):
             if file.endswith(".csv"):
                 file_path = os.path.join(raw_weather_dir, file)
-                upload_file_to_drive(service, file_path, weather_drive_folder_id)
+                upload_file_to_drive(
+                    service, file_path, weather_drive_folder_id)
 
     logging.info("--- Backup Complete ---")
 

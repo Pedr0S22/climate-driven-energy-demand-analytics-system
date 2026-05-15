@@ -1,11 +1,64 @@
-from app.ui.components import Sidebar, ToggleSwitch, TopBar
+from app.client.models_service import ModelsService
 from PyQt6 import QtCore, QtGui, QtWidgets
-from PyQt6.QtWidgets import QGraphicsDropShadowEffect
+from PyQt6.QtWidgets import QGraphicsDropShadowEffect, QMessageBox
+from app.ui.components import Sidebar, ToggleSwitch, TopBar
+import logging
+
+logger = logging.getLogger(__name__)
+
+
+class LoadModelsWorker(QtCore.QThread):
+    """Carregar modelos da API em background"""
+    finished = QtCore.pyqtSignal(list, str)  # (models_list, error_message)
+
+    def run(self):
+        service = ModelsService()
+        try:
+            data, status = service.get_all_models()
+            if status == 200:
+                self.finished.emit(data, "")
+            else:
+                error = data.get("detail", f"Error {status}")
+                self.finished.emit([], str(error))
+        except Exception as e:
+            self.finished.emit([], str(e))
+
+
+class ActivateModelWorker(QtCore.QThread):
+    """Ativar um modelo em background"""
+    finished = QtCore.pyqtSignal(object, str)  # (response_data, error_message)
+
+    def __init__(self, model_id):
+        super().__init__()
+        self.model_id = model_id
+
+    def run(self):
+        service = ModelsService()
+        try:
+            data, status = service.activate_model(self.model_id)
+            if status == 200:
+                self.finished.emit(data, "")
+            else:
+                error = data.get("detail", f"Error {status}")
+                self.finished.emit(None, str(error))
+        except Exception as e:
+            self.finished.emit(None, str(e))
 
 
 class ModelRow(QtWidgets.QWidget):
-    def __init__(self, model_type, date, dataset, rmse, mae, r2, is_active=False, parent=None):
+    def __init__(
+            self,
+            model_type,
+            date,
+            dataset,
+            rmse,
+            mae,
+            r2,
+            is_active=False,
+            model_id=None,
+            parent=None):
         super().__init__(parent)
+        self.model_id = model_id  # Guarda o ID do modelo para operações de ativação
         self.setFixedHeight(60)
         layout = QtWidgets.QHBoxLayout(self)
         layout.setContentsMargins(20, 0, 20, 0)
@@ -27,7 +80,8 @@ class ModelRow(QtWidgets.QWidget):
         toggle_layout = QtWidgets.QHBoxLayout(toggle_container)
         toggle_layout.setContentsMargins(0, 0, 0, 0)
         self.toggle = ToggleSwitch(active=is_active)
-        toggle_layout.addWidget(self.toggle, 0, QtCore.Qt.AlignmentFlag.AlignCenter)
+        toggle_layout.addWidget(
+            self.toggle, 0, QtCore.Qt.AlignmentFlag.AlignCenter)
         layout.addWidget(toggle_container)
 
     def add_label(self, text, width, font, layout):
@@ -63,18 +117,25 @@ class ModelFrame(QtWidgets.QFrame):
         header_layout.setContentsMargins(20, 0, 20, 0)
         header_layout.setSpacing(10)
 
-        header_font = QtGui.QFont("Tw Cen MT Condensed", 18, QtGui.QFont.Weight.Bold)
+        header_font = QtGui.QFont(
+            "Tw Cen MT Condensed", 18, QtGui.QFont.Weight.Bold)
 
-        headers = ["Model Type", "Creation Date", "Dataset", "RMSE", "MAE", "R2", "Active"]
+        headers = [
+            "Model Type",
+            "Creation Date",
+            "Dataset",
+            "RMSE",
+            "MAE",
+            "R2",
+            "Active"]
         widths = [140, 180, 120, 80, 80, 80, 100]
 
         for h_text, w in zip(headers, widths, strict=False):
             lbl = QtWidgets.QLabel(h_text)
             lbl.setFont(header_font)
             lbl.setFixedWidth(w)
-            lbl.setAlignment(
-                QtCore.Qt.AlignmentFlag.AlignCenter if h_text == "Active" else QtCore.Qt.AlignmentFlag.AlignLeft
-            )
+            lbl.setAlignment(QtCore.Qt.AlignmentFlag.AlignCenter if h_text ==
+                             "Active" else QtCore.Qt.AlignmentFlag.AlignLeft)
             lbl.setStyleSheet("color: black; border: none;")
             header_layout.addWidget(lbl)
 
@@ -82,21 +143,43 @@ class ModelFrame(QtWidgets.QFrame):
 
         # Rows Container
         self.rows_container = QtWidgets.QWidget()
-        self.rows_container.setStyleSheet("border: none; background: transparent;")
+        self.rows_container.setStyleSheet(
+            "border: none; background: transparent;")
         self.rows_layout = QtWidgets.QVBoxLayout(self.rows_container)
         self.rows_layout.setContentsMargins(0, 0, 0, 0)
         self.rows_layout.setSpacing(5)
         self.main_layout.addWidget(self.rows_container)
         self.main_layout.addStretch()
 
-    def add_row(self, model_type, date, dataset, rmse, mae, r2, is_active=False):
-        row = ModelRow(model_type, date, dataset, rmse, mae, r2, is_active)
+    def add_row(
+            self,
+            model_type,
+            date,
+            dataset,
+            rmse,
+            mae,
+            r2,
+            is_active=False,
+            model_id=None):
+        row = ModelRow(
+            model_type,
+            date,
+            dataset,
+            rmse,
+            mae,
+            r2,
+            is_active,
+            model_id)
         row.setStyleSheet("border: none; border-bottom: 1px solid #CCCCCC;")
         self.rows_layout.addWidget(row)
         self.rows.append(row)
 
         # Connect toggle signal to ensure only one is active
-        row.toggle.clicked.connect(lambda state, r=row: self._handle_toggle(r, state))
+        row.toggle.clicked.connect(
+            lambda state,
+            r=row: self._handle_toggle(
+                r,
+                state))
 
     def _handle_toggle(self, clicked_row, state):
         if state:
@@ -108,12 +191,29 @@ class ModelFrame(QtWidgets.QFrame):
             # Force at least one to be active
             clicked_row.toggle.set_active(True)
 
+    def clear_all_rows(self):
+        """Remove todas as linhas do frame"""
+        for row in self.rows:
+            self.rows_layout.removeWidget(row)
+            row.deleteLater()
+        self.rows.clear()
+
+    def get_active_model_id(self) -> int | None:
+        """Retorna o ID do modelo atualmente selecionado (toggle ativo)"""
+        for row in self.rows:
+            if row.toggle.active:
+                return row.model_id
+        return None
+
 
 class Ui_ModelManagementWindow:
     def setupUi(self, MainWindow):
         MainWindow.setObjectName("ModelManagementWindow")
         MainWindow.resize(1446, 1029)
         MainWindow.setStyleSheet("background-color: #F3F3F3;")
+
+        # Guarda referência ao MainWindow para usar em callbacks
+        self.MainWindow = MainWindow
 
         self.centralwidget = QtWidgets.QWidget(parent=MainWindow)
         self.main_layout = QtWidgets.QVBoxLayout(self.centralwidget)
@@ -122,7 +222,8 @@ class Ui_ModelManagementWindow:
 
         # Main Outer Container
         self.container = QtWidgets.QFrame(parent=self.centralwidget)
-        self.container.setStyleSheet("background-color: #CCCCCC; border-radius: 5px; border: none;")
+        self.container.setStyleSheet(
+            "background-color: #CCCCCC; border-radius: 5px; border: none;")
         self.container_layout = QtWidgets.QVBoxLayout(self.container)
         self.container_layout.setContentsMargins(0, 0, 0, 0)
         self.container_layout.setSpacing(0)
@@ -151,18 +252,19 @@ class Ui_ModelManagementWindow:
 
         self.home_btn = self.sidebar.add_menu_item("Home", active=False)
         self.sidebar.add_menu_header("Predictions:")
-        self.daily_btn = self.sidebar.add_menu_item("daily", active=False, indent=True, header_parent="Predictions:")
-        self.hourly_btn = self.sidebar.add_menu_item("hourly", active=False, indent=True, header_parent="Predictions:")
+        self.daily_btn = self.sidebar.add_menu_item(
+            "daily", active=False, indent=True, header_parent="Predictions:")
+        self.hourly_btn = self.sidebar.add_menu_item(
+            "hourly", active=False, indent=True, header_parent="Predictions:")
 
         self.sidebar.add_menu_header("Scenario Simulation:")
         self.sim_daily_btn = self.sidebar.add_menu_item(
-            "daily", active=False, indent=True, header_parent="Scenario Simulation:"
-        )
+            "daily", active=False, indent=True, header_parent="Scenario Simulation:")
         self.sim_hourly_btn = self.sidebar.add_menu_item(
-            "hourly", active=False, indent=True, header_parent="Scenario Simulation:"
-        )
+            "hourly", active=False, indent=True, header_parent="Scenario Simulation:")
 
-        self.model_btn = self.sidebar.add_menu_item("Model Management", active=True)
+        self.model_btn = self.sidebar.add_menu_item(
+            "Model Management", active=True)
 
         self.sidebar.layout.addStretch()
         self.sidebar.setVisible(False)
@@ -171,7 +273,8 @@ class Ui_ModelManagementWindow:
         # --- CONTENT AREA ---
         self.scroll_area = QtWidgets.QScrollArea(parent=self.container)
         self.scroll_area.setWidgetResizable(True)
-        self.scroll_area.setStyleSheet("border: none; background: transparent;")
+        self.scroll_area.setStyleSheet(
+            "border: none; background: transparent;")
         self.scroll_content = QtWidgets.QWidget()
         self.scroll_content.setStyleSheet("background: transparent;")
         self.content_layout = QtWidgets.QVBoxLayout(self.scroll_content)
@@ -182,27 +285,24 @@ class Ui_ModelManagementWindow:
         self.tables_centering_layout = QtWidgets.QVBoxLayout()
         self.tables_centering_layout.setSpacing(40)
 
-        # HOURLY MODEL SECTION
-        self.hourly_section = self.create_centered_section("Hourly Model", "hourly_frame")
+        # HOURLY MODEL SECTION (inicialmente vazia - dados carregados da API)
+        self.hourly_section = self.create_centered_section(
+            "Hourly Model", "hourly_frame")
         self.tables_centering_layout.addLayout(self.hourly_section)
 
-        # Add sample data to hourly_frame (only one active)
-        self.hourly_frame.add_row("RandomForest", "2026-01-24 14:30", "full", "3.52", "2.10", "0.98", is_active=True)
-        self.hourly_frame.add_row("LinearReg", "2025-10-10 09:15", "pca", "4.05", "2.54", "0.95", is_active=False)
-        self.hourly_frame.add_row(
-            "RandomForest", "2026-02-24 11:00", "selected", "5.21", "3.02", "0.90", is_active=False
-        )
-
-        # DAILY MODEL SECTION
-        self.daily_section = self.create_centered_section("Daily Model", "daily_frame")
+        # DAILY MODEL SECTION (inicialmente vazia - dados carregados da API)
+        self.daily_section = self.create_centered_section(
+            "Daily Model", "daily_frame")
         self.tables_centering_layout.addLayout(self.daily_section)
 
-        # Add sample data to daily_frame (only one active)
-        self.daily_frame.add_row("RandomForest", "2026-01-24 15:45", "full", "150.22", "100.51", "0.99", is_active=True)
-        self.daily_frame.add_row("LinearReg", "2025-10-10 10:30", "pca", "180.54", "120.32", "0.97", is_active=False)
-        self.daily_frame.add_row(
-            "RandomForest", "2026-02-24 12:15", "selected", "210.88", "150.04", "0.92", is_active=False
-        )
+        # Mensagem de placeholder enquanto os dados não são carregados
+        self.placeholder_label = QtWidgets.QLabel(
+            "Click 'Load Models' to fetch data from the server...")
+        self.placeholder_label.setFont(QtGui.QFont("Tw Cen MT", 18))
+        self.placeholder_label.setStyleSheet("color: #666666;")
+        self.placeholder_label.setAlignment(
+            QtCore.Qt.AlignmentFlag.AlignCenter)
+        self.tables_centering_layout.addWidget(self.placeholder_label)
 
         self.content_layout.addLayout(self.tables_centering_layout)
 
@@ -210,10 +310,14 @@ class Ui_ModelManagementWindow:
         self.buttons_layout = QtWidgets.QHBoxLayout()
         self.buttons_layout.addStretch()
 
-        self.reset_btn = QtWidgets.QPushButton("Reset")
-        self.reset_btn.setFixedSize(180, 60)
-        self.reset_btn.setFont(QtGui.QFont("Tw Cen MT", 24, QtGui.QFont.Weight.Bold))
-        self.reset_btn.setStyleSheet("""
+        self.load_btn = QtWidgets.QPushButton("Load Models")
+        self.load_btn.setFixedSize(220, 60)
+        self.load_btn.setFont(
+            QtGui.QFont(
+                "Tw Cen MT",
+                24,
+                QtGui.QFont.Weight.Bold))
+        self.load_btn.setStyleSheet("""
             QPushButton {
                 background-color: #800002;
                 border: 3px solid black;
@@ -223,12 +327,19 @@ class Ui_ModelManagementWindow:
             QPushButton:hover {
                 background-color: #A00002;
             }
+            QPushButton:disabled {
+                background-color: #666666;
+            }
         """)
-        self.buttons_layout.addWidget(self.reset_btn)
+        self.buttons_layout.addWidget(self.load_btn)
 
         self.save_btn = QtWidgets.QPushButton("Save changes")
         self.save_btn.setFixedSize(280, 60)
-        self.save_btn.setFont(QtGui.QFont("Tw Cen MT", 24, QtGui.QFont.Weight.Bold))
+        self.save_btn.setFont(
+            QtGui.QFont(
+                "Tw Cen MT",
+                24,
+                QtGui.QFont.Weight.Bold))
         self.save_btn.setStyleSheet("""
             QPushButton {
                 background-color: #000180;
@@ -238,6 +349,9 @@ class Ui_ModelManagementWindow:
             }
             QPushButton:hover {
                 background-color: #0001A0;
+            }
+            QPushButton:disabled {
+                background-color: #666666;
             }
         """)
         self.buttons_layout.addWidget(self.save_btn)
@@ -255,11 +369,19 @@ class Ui_ModelManagementWindow:
         MainWindow.setCentralWidget(self.centralwidget)
         self.menu_btn.clicked.connect(self.toggle_sidebar)
 
+        # --- CONEXÕES DOS BOTÕES ---
+        self.load_btn.clicked.connect(self.load_models)
+        self.save_btn.clicked.connect(self.save_changes)
+
     def create_centered_section(self, title, frame_attr_name):
         section_layout = QtWidgets.QVBoxLayout()
 
         title_lbl = QtWidgets.QLabel(title)
-        title_lbl.setFont(QtGui.QFont("Tw Cen MT Condensed", 36, QtGui.QFont.Weight.Bold))
+        title_lbl.setFont(
+            QtGui.QFont(
+                "Tw Cen MT Condensed",
+                36,
+                QtGui.QFont.Weight.Bold))
         title_lbl.setStyleSheet("color: black;")
 
         # Center title
@@ -283,3 +405,199 @@ class Ui_ModelManagementWindow:
 
     def toggle_sidebar(self):
         self.sidebar.setVisible(not self.sidebar.isVisible())
+
+    def load_models(self):
+        """Carrega a lista de modelos a partir da API e popula as tabelas"""
+        self.load_btn.setEnabled(False)
+        self.save_btn.setEnabled(False)
+        self.load_btn.setText("Loading...")
+
+        # Esconde o placeholder se existir
+        if hasattr(self, 'placeholder_label'):
+            self.placeholder_label.setVisible(False)
+
+        self.load_worker = LoadModelsWorker()
+        self.load_worker.finished.connect(self._on_models_loaded)
+        self.load_worker.finished.connect(self.load_worker.deleteLater)
+        self.load_worker.start()
+
+    def _on_models_loaded(self, models, error):
+        """Callback executado quando os modelos são carregados da API"""
+        self.load_btn.setEnabled(True)
+        self.save_btn.setEnabled(True)
+        self.load_btn.setText("Load Models")
+
+        if error:
+            QMessageBox.warning(
+                self.MainWindow,
+                "Error",
+                f"Failed to load models:\n{error}")
+            return
+
+        if not models:
+            QMessageBox.information(
+                self.MainWindow,
+                "Info",
+                "No models found on the server.")
+            return
+
+        # Limpa as tabelas existentes
+        self.hourly_frame.clear_all_rows()
+        self.daily_frame.clear_all_rows()
+
+        # Separa modelos por tipo
+        daily_models = [m for m in models if m.get(
+            "model_pred_type") == "daily"]
+        hourly_models = [m for m in models if m.get(
+            "model_pred_type") == "hourly"]
+
+        # Popula a tabela de modelos Daily
+        for model in daily_models:
+            creation_date = model.get("model_creation_date", "")
+            # Formata a data para mostrar só YYYY-MM-DD HH:MM
+            if creation_date:
+                try:
+                    # Tenta parse e formatar a data
+                    from datetime import datetime
+                    dt = datetime.fromisoformat(
+                        creation_date.replace("Z", "+00:00"))
+                    creation_date = dt.strftime("%Y-%m-%d %H:%M")
+                except (ValueError, AttributeError):
+                    creation_date = creation_date[:16] if len(
+                        creation_date) >= 16 else creation_date
+
+            self.daily_frame.add_row(
+                model_type=model.get("model_type", "Unknown"),
+                date=creation_date,
+                dataset=model.get("dataset_selected", "N/A"),
+                rmse=f"{model.get('rmse', 0):.2f}" if model.get('rmse') is not None else "N/A",
+                mae=f"{model.get('mae', 0):.2f}" if model.get('mae') is not None else "N/A",
+                r2=f"{model.get('r2', 0):.4f}" if model.get('r2') is not None else "N/A",
+                is_active=model.get("is_active", False),
+                model_id=model.get("model_name_id")
+            )
+
+        # Popula a tabela de modelos Hourly
+        for model in hourly_models:
+            creation_date = model.get("model_creation_date", "")
+            if creation_date:
+                try:
+                    from datetime import datetime
+                    dt = datetime.fromisoformat(
+                        creation_date.replace("Z", "+00:00"))
+                    creation_date = dt.strftime("%Y-%m-%d %H:%M")
+                except (ValueError, AttributeError):
+                    creation_date = creation_date[:16] if len(
+                        creation_date) >= 16 else creation_date
+
+            self.hourly_frame.add_row(
+                model_type=model.get("model_type", "Unknown"),
+                date=creation_date,
+                dataset=model.get("dataset_selected", "N/A"),
+                rmse=f"{model.get('rmse', 0):.2f}" if model.get('rmse') is not None else "N/A",
+                mae=f"{model.get('mae', 0):.2f}" if model.get('mae') is not None else "N/A",
+                r2=f"{model.get('r2', 0):.4f}" if model.get('r2') is not None else "N/A",
+                is_active=model.get("is_active", False),
+                model_id=model.get("model_name_id")
+            )
+
+        logger.info(
+            f"Loaded {len(daily_models)} daily and {len(hourly_models)} hourly models from API")
+
+    def save_changes(self):
+        """Ativa o modelo selecionado em cada secção (daily e/ou hourly)"""
+        # Verifica quais modelos estão com toggle ativo em cada frame
+        daily_active_id = self.daily_frame.get_active_model_id()
+        hourly_active_id = self.hourly_frame.get_active_model_id()
+
+        models_to_activate = []
+        if daily_active_id is not None:
+            models_to_activate.append(("daily", daily_active_id))
+        if hourly_active_id is not None:
+            models_to_activate.append(("hourly", hourly_active_id))
+
+        if not models_to_activate:
+            QMessageBox.information(
+                self.MainWindow, "Info", "Please select at least one model to activate.\n"
+                "Use the toggle switches to select an active model for Daily and/or Hourly predictions.")
+            return
+
+        # Confirmação do utilizador
+        msg = "This will activate the following models:\n\n"
+        for freq, mid in models_to_activate:
+            msg += f"  • {freq.capitalize()} Model (ID: {mid})\n"
+        msg += "\nDo you want to continue?"
+
+        reply = QMessageBox.question(
+            self.MainWindow,
+            "Confirm Activation",
+            msg,
+            QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No,
+            QMessageBox.StandardButton.No
+        )
+
+        if reply != QMessageBox.StandardButton.Yes:
+            return
+
+        # Desativa botões durante a operação
+        self.load_btn.setEnabled(False)
+        self.save_btn.setEnabled(False)
+        self.save_btn.setText("Saving...")
+
+        # Ativa cada modelo sequencialmente
+        self._pending_activations = models_to_activate
+        self._activation_errors = []
+        self._activate_next_model()
+
+    def _activate_next_model(self):
+        if not self._pending_activations:
+            self._on_all_activations_complete()
+            return
+
+        freq, model_id = self._pending_activations.pop(0)
+        worker = ActivateModelWorker(model_id)  # worker local, não self
+        worker.finished.connect(
+            lambda data,
+            error,
+            f=freq,
+            mid=model_id: self._on_activation_complete(
+                f,
+                mid,
+                data,
+                error))
+        worker.finished.connect(worker.deleteLater)
+        worker.start()
+
+    def _on_activation_complete(self, frequency, model_id, data, error):
+        """Callback quando um modelo é ativado"""
+        if error:
+            self._activation_errors.append(
+                f"{frequency.capitalize()} Model (ID {model_id}): {error}")
+        else:
+            logger.info(
+                f"{frequency.capitalize()} model {model_id} activated successfully")
+
+        # Continua para o próximo modelo
+        self._activate_next_model()
+
+    def _on_all_activations_complete(self):
+        """Callback final após todas as ativações"""
+        self.load_btn.setEnabled(True)
+        self.save_btn.setEnabled(True)
+        self.save_btn.setText("Save changes")
+
+        if self._activation_errors:
+            error_msg = "Some activations failed:\n\n" + \
+                "\n".join(self._activation_errors)
+            QMessageBox.warning(
+                self.MainWindow,
+                "Activation Errors",
+                error_msg)
+        else:
+            QMessageBox.information(
+                self.MainWindow,
+                "Success",
+                "All selected models have been activated successfully!")
+
+        # Recarrega os modelos para mostrar o estado atualizado
+        self.load_models()

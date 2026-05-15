@@ -6,32 +6,36 @@ BASE_PATH = os.path.join(os.path.dirname(__file__), "..", "resources")
 
 
 class DatePicker(QtWidgets.QDateEdit):
-    def __init__(self, parent=None, initial_date=QtCore.QDate(2026, 4, 25)):
+    def __init__(self, parent=None, initial_date=None, show_icon=True):
         super().__init__(parent)
-        self.setFixedSize(310, 65)
+
+        if initial_date is None:
+            initial_date = QtCore.QDate.currentDate().addDays(1)
+
+        self.setFixedSize(392, 58)
         self.setCalendarPopup(True)
 
-        # Force English locale for full month names
-        self.setLocale(QtCore.QLocale(QtCore.QLocale.Language.English, QtCore.QLocale.Country.UnitedStates))
-
+        # Set format to match mockup (dd/MM/yyyy)
+        self.setDisplayFormat("dd/MM/yyyy")
         self.setDate(initial_date)
-        self.setDisplayFormat("MMMM dd yyyy")
         self.setCursor(QtGui.QCursor(QtCore.Qt.CursorShape.PointingHandCursor))
 
-        # Disable keyboard editing
+        # Style the internal line edit
         self.lineEdit().setReadOnly(True)
         self.lineEdit().setFocusPolicy(QtCore.Qt.FocusPolicy.NoFocus)
+        self.lineEdit().setAlignment(QtCore.Qt.AlignmentFlag.AlignLeft |
+                                     QtCore.Qt.AlignmentFlag.AlignVCenter)
 
         # Custom Calendar Widget
         self.calendar = QtWidgets.QCalendarWidget()
-        self.calendar.setLocale(self.locale())
         self.calendar.setGridVisible(False)
-        self.calendar.setVerticalHeaderFormat(QtWidgets.QCalendarWidget.VerticalHeaderFormat.NoVerticalHeader)
+        self.calendar.setVerticalHeaderFormat(
+            QtWidgets.QCalendarWidget.VerticalHeaderFormat.NoVerticalHeader)
         self.calendar.setMinimumWidth(400)
 
         self.calendar.setStyleSheet("""
-            QCalendarWidget QWidget { 
-                background-color: white; 
+            QCalendarWidget QWidget {
+                background-color: white;
                 color: black;
                 font-family: 'Tw Cen MT';
             }
@@ -67,39 +71,58 @@ class DatePicker(QtWidgets.QDateEdit):
 
         self.setCalendarWidget(self.calendar)
 
-        # Main styling
-        self.setStyleSheet("""
-            QDateEdit {
+        # Restored side-box styling
+        padding_left = 65 if show_icon else 20
+        self.setStyleSheet(f"""
+            QDateEdit {{
                 background-color: #EAEAEF;
-                border: 3px solid black;
-                border-radius: 30px;
-                padding-left: 65px;
-            }
-            QDateEdit QLineEdit {
-                color: black !important;
+                border: 4px solid black;
+                border-radius: 8px;
+                color: black;
                 font-family: 'Tw Cen MT Condensed';
-                font-size: 26px;
-                border: none;
+                font-size: 28px;
+                padding-left: {padding_left}px;
+            }}
+            QDateEdit QLineEdit {{
+                color: black;
                 background: transparent;
-            }
-            QDateEdit::drop-down {
+                border: none;
+            }}
+            QDateEdit::drop-down {{
                 subcontrol-origin: padding;
                 subcontrol-position: top right;
-                width: 310px;
-                border: none;
-            }
+                width: 50px;
+                background-color: #CCCCCC;
+                border-left: 1px solid #626060;
+                border-top-right-radius: 4px;
+                border-bottom-right-radius: 4px;
+            }}
+            QDateEdit::down-arrow {{
+                image: none;
+                border-left: 10px solid transparent;
+                border-right: 10px solid transparent;
+                border-top: 12px solid black;
+                margin-top: 2px;
+            }}
         """)
 
         # Overlay Icon
         self.cal_icon = QtWidgets.QLabel(self)
         self.cal_icon.setGeometry(20, 15, 35, 35)
-        icon_path = os.path.join(BASE_PATH, "calendar.png")
-        if os.path.exists(icon_path):
-            pix = QtGui.QPixmap(icon_path).scaled(
-                35, 35, QtCore.Qt.AspectRatioMode.KeepAspectRatio, QtCore.Qt.TransformationMode.SmoothTransformation
-            )
-            self.cal_icon.setPixmap(pix)
+        if show_icon:
+            icon_path = os.path.join(BASE_PATH, "calendar.png")
+            if os.path.exists(icon_path):
+                pix = QtGui.QPixmap(icon_path).scaled(
+                    35,
+                    35,
+                    QtCore.Qt.AspectRatioMode.KeepAspectRatio,
+                    QtCore.Qt.TransformationMode.SmoothTransformation)
+                self.cal_icon.setPixmap(pix)
+            else:
+                self.cal_icon.setStyleSheet(
+                    "background-color: #888; border-radius: 5px;")
         else:
-            self.cal_icon.setStyleSheet("background-color: #888; border-radius: 5px;")
+            self.cal_icon.hide()
 
-        self.cal_icon.setAttribute(QtCore.Qt.WidgetAttribute.WA_TransparentForMouseEvents)
+        self.cal_icon.setAttribute(
+            QtCore.Qt.WidgetAttribute.WA_TransparentForMouseEvents)

@@ -9,7 +9,11 @@ from data_pipeline.real_time_pipeline import run_pipeline, scheduler
 @patch("data_pipeline.real_time_pipeline.cleaning")
 @patch("data_pipeline.real_time_pipeline.run_realtime_engineering")
 @patch("data_pipeline.real_time_pipeline.load_dotenv")
-def test_run_pipeline_orchestration(mock_load_dotenv, mock_run_eng, mock_cleaning, mock_retrieval):
+def test_run_pipeline_orchestration(
+        mock_load_dotenv,
+        mock_run_eng,
+        mock_cleaning,
+        mock_retrieval):
     """Verify that run_pipeline calls the expected sequence of steps."""
     run_pipeline()
 
@@ -21,7 +25,8 @@ def test_run_pipeline_orchestration(mock_load_dotenv, mock_run_eng, mock_cleanin
 def test_scheduler_trigger_calculation():
     """Verify that scheduler correctly identifies XX:01 and XX:31 targets."""
     # This is tricky because scheduler is a continuous loop.
-    # We can mock datetime.now() and time.sleep() to verify the wait calculation.
+    # We can mock datetime.now() and time.sleep() to verify the wait
+    # calculation.
 
     with patch("data_pipeline.real_time_pipeline.datetime") as mock_dt:
         with patch("data_pipeline.real_time_pipeline.time.sleep") as mock_sleep:

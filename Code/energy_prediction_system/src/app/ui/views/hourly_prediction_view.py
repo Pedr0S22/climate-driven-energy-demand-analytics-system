@@ -17,13 +17,16 @@ class Ui_HourlyPredictionAdminWindow:
 
         # Central Container
         self.container = QtWidgets.QFrame(parent=self.centralwidget)
-        self.container.setStyleSheet("background-color: #CCCCCC; border-radius: 5px;")
+        self.container.setStyleSheet(
+            "background-color: #CCCCCC; border-radius: 5px;")
         self.container_layout = QtWidgets.QVBoxLayout(self.container)
         self.container_layout.setContentsMargins(0, 0, 0, 0)
         self.container_layout.setSpacing(0)
 
         # 1. TOP BAR
-        self.top_bar = TopBar(parent=self.container, title="Hourly Demand Prediction")
+        self.top_bar = TopBar(
+            parent=self.container,
+            title="Hourly Demand Prediction")
         self.container_layout.addWidget(self.top_bar)
 
         self.logout_btn = self.top_bar.logout_btn
@@ -40,19 +43,21 @@ class Ui_HourlyPredictionAdminWindow:
         self.home_btn = self.sidebar.add_menu_item("Home", active=False)
 
         self.sidebar.add_menu_header("Predictions:")
-        self.daily_btn = self.sidebar.add_menu_item("daily", active=False, indent=True, header_parent="Predictions:")
-        self.hourly_btn = self.sidebar.add_menu_item("hourly", active=True, indent=True, header_parent="Predictions:")
+        self.daily_btn = self.sidebar.add_menu_item(
+            "daily", active=False, indent=True, header_parent="Predictions:")
+        self.hourly_btn = self.sidebar.add_menu_item(
+            "hourly", active=True, indent=True, header_parent="Predictions:")
 
         self.sidebar.add_menu_header("Scenario Simulation:")
         self.sim_daily_btn = self.sidebar.add_menu_item(
-            "daily", active=False, indent=True, header_parent="Scenario Simulation:"
-        )
+            "daily", active=False, indent=True, header_parent="Scenario Simulation:")
         self.sim_hourly_btn = self.sidebar.add_menu_item(
-            "hourly", active=False, indent=True, header_parent="Scenario Simulation:"
-        )
+            "hourly", active=False, indent=True, header_parent="Scenario Simulation:")
 
-        self.model_btn = self.sidebar.add_menu_item("Model Management", active=False)
-        # To hide for normal users, you can call self.model_btn.parent().setVisible(False)
+        self.model_btn = self.sidebar.add_menu_item(
+            "Model Management", active=False)
+        # To hide for normal users, you can call
+        # self.model_btn.parent().setVisible(False)
 
         self.sidebar.layout.addStretch()
         self.sidebar.setVisible(False)
@@ -61,7 +66,8 @@ class Ui_HourlyPredictionAdminWindow:
         # --- CONTENT AREA ---
         self.scroll_area = QtWidgets.QScrollArea(parent=self.container)
         self.scroll_area.setWidgetResizable(True)
-        self.scroll_area.setStyleSheet("border: none; background: transparent;")
+        self.scroll_area.setStyleSheet(
+            "border: none; background: transparent;")
         self.scroll_content = QtWidgets.QWidget()
         self.scroll_content.setStyleSheet("background: transparent;")
         self.content_layout = QtWidgets.QVBoxLayout(self.scroll_content)
@@ -73,7 +79,11 @@ class Ui_HourlyPredictionAdminWindow:
         self.drivers_section.setSpacing(20)
 
         self.drivers_title = QtWidgets.QLabel("Key Prediction Drivers")
-        self.drivers_title.setFont(QtGui.QFont("Tw Cen MT Condensed", 42, QtGui.QFont.Weight.Bold))
+        self.drivers_title.setFont(
+            QtGui.QFont(
+                "Tw Cen MT Condensed",
+                42,
+                QtGui.QFont.Weight.Bold))
         self.drivers_title.setAlignment(QtCore.Qt.AlignmentFlag.AlignCenter)
         self.drivers_title.setStyleSheet("color: black;")
         self.drivers_section.addWidget(self.drivers_title)
@@ -104,19 +114,28 @@ class Ui_HourlyPredictionAdminWindow:
 
         # Titles Row (Row 0)
         self.params_title_ext = QtWidgets.QLabel("Parameters")
-        self.params_title_ext.setFont(QtGui.QFont("Tw Cen MT Condensed", 36, QtGui.QFont.Weight.Bold))
+        self.params_title_ext.setFont(
+            QtGui.QFont(
+                "Tw Cen MT Condensed",
+                36,
+                QtGui.QFont.Weight.Bold))
         self.params_title_ext.setStyleSheet("color: black;")
         self.dashboard_grid.addWidget(self.params_title_ext, 0, 0)
 
         self.proj_title = QtWidgets.QLabel("Energy Demand Projection")
-        self.proj_title.setFont(QtGui.QFont("Tw Cen MT Condensed", 36, QtGui.QFont.Weight.Bold))
+        self.proj_title.setFont(
+            QtGui.QFont(
+                "Tw Cen MT Condensed",
+                36,
+                QtGui.QFont.Weight.Bold))
         self.proj_title.setStyleSheet("color: black;")
         self.dashboard_grid.addWidget(self.proj_title, 0, 1)
 
         # Widgets Row (Row 1)
         self.params_widget = PredictionParams(mode="hourly")
         self.params_widget.title.setVisible(False)
-        self.dashboard_grid.addWidget(self.params_widget, 1, 0, QtCore.Qt.AlignmentFlag.AlignTop)
+        self.dashboard_grid.addWidget(
+            self.params_widget, 1, 0, QtCore.Qt.AlignmentFlag.AlignTop)
 
         self.plot_widget = PlotWidget()
         self.dashboard_grid.addWidget(self.plot_widget, 1, 1)

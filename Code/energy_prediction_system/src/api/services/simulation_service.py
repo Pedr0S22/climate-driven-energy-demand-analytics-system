@@ -884,17 +884,22 @@ class SimulationService:
     def get_active_model(db: Session, frequency: str) -> Model | None:
         """Obtém o modelo ativo para uma frequência (normalizada)"""
         normalized_freq = frequency.strip().lower()
-        model = db.query(Model).filter(Model.model_pred_type == normalized_freq, Model.is_active).first()
+        model = db.query(Model).filter(
+            Model.model_pred_type == normalized_freq,
+            Model.is_active).first()
         return model
 
     @staticmethod
-    def get_template(frequency: str, template_name: str, dataset_type: str = "full") -> dict[str, Any]:
+    def get_template(frequency: str, template_name: str,
+                     dataset_type: str = "full") -> dict[str, Any]:
         """
         Obtém o template para uma condição climática, filtrado pelo tipo de dataset.
         """
         template_key = f"{frequency}_{template_name}"
         if template_key not in BASE_TEMPLATES:
-            raise ValueError(f"Template '{template_key}' não encontrado. " f"Opções: {sorted(BASE_TEMPLATES.keys())}")
+            raise ValueError(
+                f"Template '{template_key}' não encontrado. "
+                f"Opções: {sorted(BASE_TEMPLATES.keys())}")
 
         full_features = BASE_TEMPLATES[template_key].copy()
 
@@ -925,11 +930,13 @@ class SimulationService:
             if feature in PHYSICAL_LIMITS:
                 min_val, max_val = PHYSICAL_LIMITS[feature]
                 if value < min_val or value > max_val:
-                    errors.append(f"'{feature}' deve estar entre {min_val} e {max_val}, recebeu {value}")
+                    errors.append(
+                        f"'{feature}' deve estar entre {min_val} e {max_val}, recebeu {value}")
         return errors
 
     @staticmethod
-    def apply_overrides(base_features: dict[str, float], overrides: dict[str, float]) -> dict[str, float]:
+    def apply_overrides(
+            base_features: dict[str, float], overrides: dict[str, float]) -> dict[str, float]:
         """Aplica overrides ao template base."""
         features = base_features.copy()
         if overrides:
@@ -949,14 +956,16 @@ class SimulationService:
     ) -> dict[str, Any]:
         active_model = SimulationService.get_active_model(db, frequency)
         if not active_model:
-            raise ValueError(f"Nenhum modelo ativo encontrado para {frequency}. Ative um modelo primeiro.")
+            raise ValueError(
+                f"Nenhum modelo ativo encontrado para {frequency}. Ative um modelo primeiro.")
 
         frequency = active_model.model_pred_type
         dataset_type = active_model.dataset_selected
 
         # 1. Obter template (sempre Full se for PCA)
         template_dataset = "full" if dataset_type == "pca" else dataset_type
-        features = SimulationService.get_template(frequency, template_name, template_dataset)
+        features = SimulationService.get_template(
+            frequency, template_name, template_dataset)
 
         # 2. Validar e aplicar overrides (clima)
         if overrides:
@@ -986,7 +995,8 @@ class SimulationService:
             else ["t2m", "day_of_week"]
         )
 
-        logger.info(f"Simulação: {template_name}/{frequency}/{dataset_type} -> {predicted_mw:.1f} MW")
+        logger.info(
+            f"Simulação: {template_name}/{frequency}/{dataset_type} -> {predicted_mw:.1f} MW")
 
         return {
             "predicted_mw": predicted_mw,

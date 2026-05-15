@@ -18,7 +18,8 @@ class Ui_LoginWindow:
 
         # Central Container
         self.container = QtWidgets.QFrame(parent=self.centralwidget)
-        self.container.setStyleSheet("background-color: #CCCCCC; border-radius: 5px;")
+        self.container.setStyleSheet(
+            "background-color: #CCCCCC; border-radius: 5px;")
         self.container_layout = QtWidgets.QVBoxLayout(self.container)
         self.container_layout.setContentsMargins(0, 0, 0, 0)
         self.container_layout.setSpacing(0)
@@ -88,7 +89,8 @@ class Ui_LoginWindow:
 
         # Forgot Password
         self.forgot_btn = QtWidgets.QPushButton("I forgot my password")
-        self.forgot_btn.setCursor(QtGui.QCursor(QtCore.Qt.CursorShape.PointingHandCursor))
+        self.forgot_btn.setCursor(QtGui.QCursor(
+            QtCore.Qt.CursorShape.PointingHandCursor))
         self.forgot_btn.setStyleSheet("""
             QPushButton {
                 background: transparent;
@@ -135,9 +137,11 @@ class Ui_LoginWindow:
         self.content_layout.addLayout(self.btn_row)
 
         # Register Link
-        self.register_link = QtWidgets.QPushButton("Don't have an account? Register here.")
+        self.register_link = QtWidgets.QPushButton(
+            "Don't have an account? Register here.")
         self.register_link.setFont(QtGui.QFont("Tw Cen MT", 14))
-        self.register_link.setCursor(QtGui.QCursor(QtCore.Qt.CursorShape.PointingHandCursor))
+        self.register_link.setCursor(QtGui.QCursor(
+            QtCore.Qt.CursorShape.PointingHandCursor))
         self.register_link.setStyleSheet("""
             QPushButton {
                 background: transparent;

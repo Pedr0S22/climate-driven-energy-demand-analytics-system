@@ -17,24 +17,32 @@ class ErrorCard(QtWidgets.QFrame):
         self.layout.setAlignment(QtCore.Qt.AlignmentFlag.AlignCenter)
         self.layout.setSpacing(20)
 
-        # Warning Icon (Yellow Triangle) - Using a QLabel with stylized text/drawing
-        self.icon_label = QtWidgets.QLabel("⚠")  # Standard warning sign emoji/char
+        # Warning Icon (Yellow Triangle) - Using a QLabel with stylized
+        # text/drawing
+        # Standard warning sign emoji/char
+        self.icon_label = QtWidgets.QLabel("⚠")
         font_icon = QtGui.QFont("Arial", 80)
         self.icon_label.setFont(font_icon)
-        self.icon_label.setStyleSheet("color: #FFD700; border: none;")  # Gold/Yellow
+        self.icon_label.setStyleSheet(
+            "color: #FFD700; border: none;")  # Gold/Yellow
         self.icon_label.setAlignment(QtCore.Qt.AlignmentFlag.AlignCenter)
         self.layout.addWidget(self.icon_label)
 
         # Error Message
         self.msg_label = QtWidgets.QLabel(message)
-        self.msg_label.setFont(QtGui.QFont("Tw Cen MT Condensed", 28, QtGui.QFont.Weight.Bold))
+        self.msg_label.setFont(
+            QtGui.QFont(
+                "Tw Cen MT Condensed",
+                28,
+                QtGui.QFont.Weight.Bold))
         self.msg_label.setStyleSheet("color: black; border: none;")
         self.msg_label.setAlignment(QtCore.Qt.AlignmentFlag.AlignCenter)
         self.msg_label.setWordWrap(True)
         self.layout.addWidget(self.msg_label)
 
         # Retry Hint
-        self.hint_label = QtWidgets.QLabel("Please verify your connection and try again.")
+        self.hint_label = QtWidgets.QLabel(
+            "Please verify your connection and try again.")
         self.hint_label.setFont(QtGui.QFont("Tw Cen MT Condensed", 18))
         self.hint_label.setStyleSheet("color: #555555; border: none;")
         self.hint_label.setAlignment(QtCore.Qt.AlignmentFlag.AlignCenter)

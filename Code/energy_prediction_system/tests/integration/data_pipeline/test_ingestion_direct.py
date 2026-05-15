@@ -27,10 +27,8 @@ def test_fetch_copernicus_data_success_path(tmp_path, monkeypatch):
 
     # Surgically mock os.path functions within the ingestion module only
     original_abspath = os.path.abspath
-    monkeypatch.setattr(
-        "data_pipeline.ingestion.os.path.abspath",
-        lambda x: str(tmp_path) if "ingestion.py" in str(x) or ".." in str(x) else original_abspath(x),
-    )
+    monkeypatch.setattr("data_pipeline.ingestion.os.path.abspath", lambda x: str(
+        tmp_path) if "ingestion.py" in str(x) or ".." in str(x) else original_abspath(x), )
 
     with patch("cdsapi.Client") as mock_cds:
         mock_client = MagicMock()
@@ -71,7 +69,8 @@ def test_fetch_copernicus_data_success_path(tmp_path, monkeypatch):
                 40.4,
                 -3.7,
             ]
-            zip_file.writestr("test_weather.csv", ",".join(cols) + "\n" + ",".join(map(str, data)))
+            zip_file.writestr("test_weather.csv", ",".join(
+                cols) + "\n" + ",".join(map(str, data)))
 
         def mock_download(path):
             with open(path, "wb") as f:
@@ -99,18 +98,15 @@ def test_fetch_entsoe_data_success_path(tmp_path, monkeypatch, mock_env):
     raw_energy_dir = tmp_path / "data" / "raw" / "energy"
     raw_energy_dir.mkdir(parents=True, exist_ok=True)
 
-    monkeypatch.setattr(
-        "data_pipeline.ingestion.os.path.abspath",
-        lambda x: str(tmp_path) if "ingestion.py" in str(x) or ".." in str(x) else x,
-    )
+    monkeypatch.setattr("data_pipeline.ingestion.os.path.abspath", lambda x: str(
+        tmp_path) if "ingestion.py" in str(x) or ".." in str(x) else x, )
 
     with patch("data_pipeline.ingestion.EntsoePandasClient") as mock_entsoe:
         mock_client = MagicMock()
         mock_entsoe.return_value = mock_client
 
-        df = pd.DataFrame(
-            {"Load_MW": [1000.0]}, index=pd.date_range("2024-01-01", periods=1, freq="h", tz="Europe/Madrid")
-        )
+        df = pd.DataFrame({"Load_MW": [1000.0]}, index=pd.date_range(
+            "2024-01-01", periods=1, freq="h", tz="Europe/Madrid"))
         mock_client.query_load.return_value = df
 
         fetch_entsoe_data("2024-01-01", "2024-01-01")
@@ -123,34 +119,35 @@ def test_fetch_realtime_energy_load_variants(tmp_path, monkeypatch, mock_env):
     raw_energy_dir = tmp_path / "data" / "raw" / "energy"
     raw_energy_dir.mkdir(parents=True, exist_ok=True)
 
-    monkeypatch.setattr(
-        "data_pipeline.ingestion.os.path.abspath",
-        lambda x: str(tmp_path) if "ingestion.py" in str(x) or ".." in str(x) else x,
-    )
+    monkeypatch.setattr("data_pipeline.ingestion.os.path.abspath", lambda x: str(
+        tmp_path) if "ingestion.py" in str(x) or ".." in str(x) else x, )
 
     with patch("data_pipeline.ingestion.EntsoePandasClient") as mock_entsoe:
         mock_client = MagicMock()
         mock_entsoe.return_value = mock_client
 
         # Variant 1: "Actual Load" column
-        df1 = pd.DataFrame(
-            {"Actual Load": [1000.0]}, index=pd.date_range("2024-01-01", periods=1, freq="h", tz="Europe/Madrid")
-        )
+        df1 = pd.DataFrame({"Actual Load": [1000.0]}, index=pd.date_range(
+            "2024-01-01", periods=1, freq="h", tz="Europe/Madrid"))
         mock_client.query_load.return_value = df1
         fetch_realtime_energy_load(days=1)
         assert (raw_energy_dir / "realtime_load.csv").exists()
 
         # Variant 2: Single column without "Actual Load"
-        df2 = pd.DataFrame(
-            {"Some Other Name": [2000.0]}, index=pd.date_range("2024-01-01", periods=1, freq="h", tz="Europe/Madrid")
-        )
+        df2 = pd.DataFrame({"Some Other Name": [2000.0]}, index=pd.date_range(
+            "2024-01-01", periods=1, freq="h", tz="Europe/Madrid"))
         mock_client.query_load.return_value = df2
         fetch_realtime_energy_load(days=1)
 
         # Variant 3: Series
         series = pd.Series(
-            [3000.0], index=pd.date_range("2024-01-01", periods=1, freq="h", tz="Europe/Madrid"), name="Load"
-        )
+            [3000.0],
+            index=pd.date_range(
+                "2024-01-01",
+                periods=1,
+                freq="h",
+                tz="Europe/Madrid"),
+            name="Load")
         mock_client.query_load.return_value = series
         fetch_realtime_energy_load(days=1)
 
@@ -159,10 +156,8 @@ def test_fetch_realtime_weather_success_path(tmp_path, monkeypatch):
     raw_weather_dir = tmp_path / "data" / "raw" / "weather"
     raw_weather_dir.mkdir(parents=True, exist_ok=True)
 
-    monkeypatch.setattr(
-        "data_pipeline.ingestion.os.path.abspath",
-        lambda x: str(tmp_path) if "ingestion.py" in str(x) or ".." in str(x) else x,
-    )
+    monkeypatch.setattr("data_pipeline.ingestion.os.path.abspath", lambda x: str(
+        tmp_path) if "ingestion.py" in str(x) or ".." in str(x) else x, )
 
     with patch("requests.get") as mock_get:
         mock_response = MagicMock()
@@ -200,11 +195,13 @@ def test_ingestion_error_paths(mock_env, monkeypatch):
     monkeypatch.delenv("ENTSOE_API_KEY", raising=False)
     with patch("logging.error") as mock_log:
         fetch_entsoe_data("2024-01-01", "2024-01-01")
-        assert any("ENTSOE_API_KEY not found" in str(call) for call in mock_log.call_args_list)
+        assert any("ENTSOE_API_KEY not found" in str(call)
+                   for call in mock_log.call_args_list)
 
     with patch("logging.error") as mock_log:
         fetch_realtime_energy_load(days=1)
-        assert any("ENTSOE_API_KEY not found" in str(call) for call in mock_log.call_args_list)
+        assert any("ENTSOE_API_KEY not found" in str(call)
+                   for call in mock_log.call_args_list)
 
 
 def test_ingestion_to_cleaning_flow(tmp_path, monkeypatch, mock_env):
@@ -215,14 +212,10 @@ def test_ingestion_to_cleaning_flow(tmp_path, monkeypatch, mock_env):
     processed_dir = project_root / "data" / "processed"
     processed_dir.mkdir(parents=True)
 
-    monkeypatch.setattr(
-        "data_pipeline.ingestion.os.path.abspath",
-        lambda x: str(tmp_path) if "ingestion.py" in str(x) or ".." in str(x) else x,
-    )
-    monkeypatch.setattr(
-        "data_pipeline.cleaning.os.path.abspath",
-        lambda x: str(tmp_path) if "cleaning.py" in str(x) or ".." in str(x) else x,
-    )
+    monkeypatch.setattr("data_pipeline.ingestion.os.path.abspath", lambda x: str(
+        tmp_path) if "ingestion.py" in str(x) or ".." in str(x) else x, )
+    monkeypatch.setattr("data_pipeline.cleaning.os.path.abspath", lambda x: str(
+        tmp_path) if "cleaning.py" in str(x) or ".." in str(x) else x, )
 
     # 1. Mock Ingestion
     with (
@@ -267,18 +260,17 @@ def test_ingestion_to_cleaning_flow(tmp_path, monkeypatch, mock_env):
                 40.4,
                 -3.7,
             ]
-            zip_file.writestr("weather.csv", ",".join(cols) + "\n" + ",".join(map(str, data)))
+            zip_file.writestr("weather.csv", ",".join(
+                cols) + "\n" + ",".join(map(str, data)))
 
-        mock_cds_client.retrieve.return_value.download.side_effect = lambda path: open(path, "wb").write(
-            zip_buffer.getvalue()
-        )
+        mock_cds_client.retrieve.return_value.download.side_effect = lambda path: open(
+            path, "wb").write(zip_buffer.getvalue())
 
         # ENTSO-E Mock
         mock_entsoe_client = MagicMock()
         mock_entsoe.return_value = mock_entsoe_client
-        df_energy = pd.DataFrame(
-            {"Load_MW": [25000.0, 26000.0]}, index=pd.date_range("2024-01-01", periods=2, freq="h", tz="Europe/Madrid")
-        )
+        df_energy = pd.DataFrame({"Load_MW": [25000.0, 26000.0]}, index=pd.date_range(
+            "2024-01-01", periods=2, freq="h", tz="Europe/Madrid"))
         mock_entsoe_client.query_load.return_value = df_energy
 
         # Run Ingestion
@@ -290,8 +282,10 @@ def test_ingestion_to_cleaning_flow(tmp_path, monkeypatch, mock_env):
 
     # Run cleaning pipeline
     cleaning_output = cleaning(
-        energy_dir=str(raw_energy_dir), weather_dir=str(raw_weather_dir), train_data=True, output_dir=str(processed_dir)
-    )
+        energy_dir=str(raw_energy_dir),
+        weather_dir=str(raw_weather_dir),
+        train_data=True,
+        output_dir=str(processed_dir))
 
     # Extract the DataFrame from the tuple.
     # (Assuming the DataFrame you want to test is the first item in the tuple)
@@ -308,10 +302,8 @@ def test_ingestion_to_cleaning_flow(tmp_path, monkeypatch, mock_env):
 
 
 def test_fetch_copernicus_bad_zip_retry(tmp_path, monkeypatch):
-    monkeypatch.setattr(
-        "data_pipeline.ingestion.os.path.abspath",
-        lambda x: str(tmp_path) if "ingestion.py" in str(x) or ".." in str(x) else x,
-    )
+    monkeypatch.setattr("data_pipeline.ingestion.os.path.abspath", lambda x: str(
+        tmp_path) if "ingestion.py" in str(x) or ".." in str(x) else x, )
 
     with patch("cdsapi.Client") as mock_cds:
         mock_client = MagicMock()

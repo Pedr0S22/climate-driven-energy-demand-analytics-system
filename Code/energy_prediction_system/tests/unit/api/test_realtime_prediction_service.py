@@ -35,10 +35,14 @@ def test_autoregressive_loop(mock_exists, mock_read_csv, mock_get_engine):
 
     # Mock Database session
     mock_db = MagicMock()
-    mock_model = Model(model_pred_type="hourly", dataset_selected="full", top2_drivers="t2m, hour")
+    mock_model = Model(
+        model_pred_type="hourly",
+        dataset_selected="full",
+        top2_drivers="t2m, hour")
     mock_db.query().filter().first.return_value = mock_model
 
-    result = PredictionService.get_realtime_prediction(mock_db, "hourly", historical_points=1, predicted_points=2)
+    result = PredictionService.get_realtime_prediction(
+        mock_db, "hourly", historical_points=1, predicted_points=2)
 
     assert result["load_predicted"] == [110.0, 120.0]
 
@@ -80,5 +84,6 @@ def test_inference_engine_singleton_cache(mock_exists, mock_load):
     engine1.load_active_model(model_rec)
     engine1.load_active_model(model_rec)
 
-    # Even if we call load_active_model multiple times, it just overwrites in the dict
+    # Even if we call load_active_model multiple times, it just overwrites in
+    # the dict
     assert len(engine1._models) == 1

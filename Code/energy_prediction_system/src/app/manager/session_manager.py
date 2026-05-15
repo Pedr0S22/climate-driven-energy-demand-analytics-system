@@ -5,7 +5,8 @@ from pathlib import Path
 import keyring
 from dotenv import load_dotenv
 
-# Define o caminho para o ficheiro .env (raiz do projeto energy_prediction_system)
+# Define o caminho para o ficheiro .env (raiz do projeto
+# energy_prediction_system)
 env_path = Path(__file__).resolve().parent.parent.parent.parent / ".env"
 load_dotenv(dotenv_path=env_path)
 
@@ -51,11 +52,13 @@ class SessionManager:
         try:
             keyring.delete_password(cls._SERVICE_NAME, cls._KEY_TOKEN)
         except Exception as e:
-            logger.warning(f"Could clear session because token deletion fail: {e}")
+            logger.warning(
+                f"Could clear session because token deletion fail: {e}")
 
         try:
             keyring.delete_password(cls._SERVICE_NAME, cls._KEY_ROLE)
         except Exception as e:
-            logger.warning(f"Could clear session because role deletion fail: {e}")
+            logger.warning(
+                f"Could clear session because role deletion fail: {e}")
 
         logger.info("Session cleared successfully.")

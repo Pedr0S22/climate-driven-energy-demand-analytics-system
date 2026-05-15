@@ -50,7 +50,12 @@ class Sidebar(QtWidgets.QFrame):
         btn.clicked.connect(lambda: self.toggle_section(text))
         return btn
 
-    def add_menu_item(self, text, active=False, indent=False, header_parent=None):
+    def add_menu_item(
+            self,
+            text,
+            active=False,
+            indent=False,
+            header_parent=None):
         """Adds a navigation item. If header_parent is provided, it belongs to that section."""
         container = QtWidgets.QWidget()
         container.setFixedHeight(50)
@@ -64,7 +69,8 @@ class Sidebar(QtWidgets.QFrame):
         if active:
             indicator.setStyleSheet("background-color: #000180; border: none;")
         else:
-            indicator.setStyleSheet("background-color: transparent; border: none;")
+            indicator.setStyleSheet(
+                "background-color: transparent; border: none;")
         item_layout.addWidget(indicator)
 
         # Button

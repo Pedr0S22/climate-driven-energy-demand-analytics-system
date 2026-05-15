@@ -7,12 +7,15 @@ class PredictionResponse(BaseModel):
     """DTO for prediction results including historical and forecast data."""
 
     status: int = Field(200, description="HTTP Status Code")
-    historical_load: list[float] = Field(..., description="Array of historical load values")
-    load_predicted: list[float] = Field(..., description="Array of predicted load values")
+    historical_load: list[float] = Field(...,
+                                         description="Array of historical load values")
+    load_predicted: list[float] = Field(...,
+                                        description="Array of predicted load values")
     timestamps: list[datetime] = Field(
-        ..., description="Unified array of UTC timestamps for historical and predicted points"
-    )
-    top2_drivers: list[str] = Field(..., description="Top 2 variables driving the prediction")
+        ...,
+        description="Unified array of UTC timestamps for historical and predicted points")
+    top2_drivers: list[str] = Field(...,
+                                    description="Top 2 variables driving the prediction")
 
     model_config = ConfigDict(
         json_schema_extra={

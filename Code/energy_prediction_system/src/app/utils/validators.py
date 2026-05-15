@@ -41,9 +41,8 @@ def validate_login_input(email, password):
         return False, "All fields are required."
 
     # Validate email format and password rules
-    if not is_valid_email(email) or not all(
-        [has_min_max_length(password), has_uppercase(password), has_number(password), has_special_char(password)]
-    ):
+    if not is_valid_email(email) or not all([has_min_max_length(password), has_uppercase(
+            password), has_number(password), has_special_char(password)]):
         return False, "Invalid credentials."
 
     return True, None
@@ -54,7 +53,10 @@ def validate_registration_input(username, email, password, confirm_password):
     Validates Registration form with specific feedback for each rule.
     """
     # Check for empty fields
-    if not all([username.strip(), email.strip(), password.strip(), confirm_password.strip()]):
+    if not all([username.strip(),
+                email.strip(),
+                password.strip(),
+                confirm_password.strip()]):
         return False, "All fields are required."
 
     # Email format

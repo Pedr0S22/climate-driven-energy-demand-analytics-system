@@ -1,7 +1,7 @@
 services:
   # --- CAMADA 0: GATEWAY (TRAEFIK) ---
   traefik:
-    image: traefik:v2.10
+    image: traefik:v2.11
     container_name: energy_gateway
     restart: always
     command:

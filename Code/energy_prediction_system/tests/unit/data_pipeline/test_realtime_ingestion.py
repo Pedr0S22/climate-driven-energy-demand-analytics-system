@@ -13,14 +13,23 @@ def mock_env_vars(monkeypatch):
 @patch("data_pipeline.ingestion.EntsoePandasClient")
 @patch("data_pipeline.ingestion.os.replace")
 @patch("data_pipeline.ingestion.pd.DataFrame.to_csv")
-def test_fetch_realtime_energy_load_success(mock_to_csv, mock_replace, mock_entsoe_client, mock_env_vars):
+def test_fetch_realtime_energy_load_success(
+        mock_to_csv,
+        mock_replace,
+        mock_entsoe_client,
+        mock_env_vars):
     """Verify that fetch_realtime_energy_load correctly handles raw data from ENTSO-E."""
     mock_client_instance = MagicMock()
     mock_entsoe_client.return_value = mock_client_instance
 
     # Mock return data
     data = {"Actual Load": [100.0, 105.0]}
-    df = pd.DataFrame(data, index=pd.date_range("2026-05-13", periods=2, freq="h"))
+    df = pd.DataFrame(
+        data,
+        index=pd.date_range(
+            "2026-05-13",
+            periods=2,
+            freq="h"))
     mock_client_instance.query_load.return_value = df
 
     fetch_realtime_energy_load(days=1)
@@ -67,7 +76,8 @@ def test_fetch_realtime_weather_error_handling(mock_get):
     """Verify fetch_realtime_weather handles API errors (e.g., 500)."""
     mock_response = MagicMock()
     mock_response.status_code = 500
-    mock_response.raise_for_status.side_effect = Exception("Internal Server Error")
+    mock_response.raise_for_status.side_effect = Exception(
+        "Internal Server Error")
     mock_get.return_value = mock_response
 
     # Should not crash, just log error and potentially retry (we mock 1 attempt or just the failure)

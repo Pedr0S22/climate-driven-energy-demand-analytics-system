@@ -18,7 +18,8 @@ class Ui_RegisterWindow:
 
         # Central Container
         self.container = QtWidgets.QFrame(parent=self.centralwidget)
-        self.container.setStyleSheet("background-color: #CCCCCC; border-radius: 5px;")
+        self.container.setStyleSheet(
+            "background-color: #CCCCCC; border-radius: 5px;")
         self.container_layout = QtWidgets.QVBoxLayout(self.container)
         self.container_layout.setContentsMargins(0, 0, 0, 0)
         self.container_layout.setSpacing(0)
@@ -99,7 +100,8 @@ class Ui_RegisterWindow:
         self.conf_pass_label = QtWidgets.QLabel("Confirm Password")
         self.conf_pass_label.setFont(label_font)
         self.conf_pass_label.setStyleSheet(label_style)
-        self.conf_pass_input = StyledInput(placeholder="confirm password", is_password=True)
+        self.conf_pass_input = StyledInput(
+            placeholder="confirm password", is_password=True)
         self.conf_pass_input.setFixedWidth(500)
         self.forms_container.addWidget(self.conf_pass_label)
         self.forms_container.addWidget(self.conf_pass_input)
@@ -136,9 +138,11 @@ class Ui_RegisterWindow:
         self.content_layout.addLayout(self.btn_row)
 
         # Login Link
-        self.login_link = QtWidgets.QPushButton("Already have an account? Login here.")
+        self.login_link = QtWidgets.QPushButton(
+            "Already have an account? Login here.")
         self.login_link.setFont(QtGui.QFont("Tw Cen MT", 14))
-        self.login_link.setCursor(QtGui.QCursor(QtCore.Qt.CursorShape.PointingHandCursor))
+        self.login_link.setCursor(QtGui.QCursor(
+            QtCore.Qt.CursorShape.PointingHandCursor))
         self.login_link.setStyleSheet("""
             QPushButton {
                 background: transparent;

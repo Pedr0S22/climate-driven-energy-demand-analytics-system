@@ -11,7 +11,12 @@ def cleaner():
 def test_convert_era5_units_skips_open_meteo(cleaner):
     """Verify that conversion is skipped for Open-Meteo data (has wind_speed_10m)."""
     # Open-Meteo style data (already in Celsius/hPa/mm)
-    data = {"t2m": [15.0], "sp": [1013.0], "tp": [0.1], "wind_speed_10m": [2.0], "wind_direction_10m": [180]}
+    data = {
+        "t2m": [15.0],
+        "sp": [1013.0],
+        "tp": [0.1],
+        "wind_speed_10m": [2.0],
+        "wind_direction_10m": [180]}
     df = pd.DataFrame(data)
 
     df_clean = cleaner.convert_era5_units(df)
@@ -62,7 +67,15 @@ def test_timestamp_alignment(cleaner):
     """Ensure mismatched data is discarded and only synchronized entries are kept."""
     # This is better tested in the 'cleaning' function which joins energy and weather,
     # but we can test the internal _align_weather_time too.
-    data = {"datetime": ["2026-05-13T00:00", "2026-05-13T00:15", "2026-05-13T00:45"], "t2m": [15.0, 15.1, 15.3]}
+    data = {
+        "datetime": [
+            "2026-05-13T00:00",
+            "2026-05-13T00:15",
+            "2026-05-13T00:45"],
+        "t2m": [
+            15.0,
+            15.1,
+            15.3]}
     df = pd.DataFrame(data)
     df["datetime"] = pd.to_datetime(df["datetime"], utc=True)
 
@@ -70,4 +83,5 @@ def test_timestamp_alignment(cleaner):
 
     # Should have 4 rows (00:00, 00:15, 00:30, 00:45)
     assert len(df_aligned) == 4
-    assert pd.isna(df_aligned.loc[2, "t2m"])  # 00:30 should be NaN before imputation
+    # 00:30 should be NaN before imputation
+    assert pd.isna(df_aligned.loc[2, "t2m"])

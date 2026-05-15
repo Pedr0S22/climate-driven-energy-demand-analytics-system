@@ -14,16 +14,24 @@ logger = logging.getLogger(__name__)
 
 class PredictionService:
     @staticmethod
-    def get_realtime_prediction(db: Session, frequency: str, historical_points: int, predicted_points: int) -> dict:
+    def get_realtime_prediction(
+            db: Session,
+            frequency: str,
+            historical_points: int,
+            predicted_points: int) -> dict:
         """
         Gera uma predição autoregressiva baseada nos dados real-time mais recentes.
         """
         # 1. Obter Modelo Ativo da DB
-        active_model = db.query(Model).filter(and_(Model.model_pred_type == frequency, Model.is_active)).first()
+        active_model = db.query(Model).filter(
+            and_(
+                Model.model_pred_type == frequency,
+                Model.is_active)).first()
 
         if not active_model:
             logger.error(f"Nenhum modelo ativo encontrado para {frequency}")
-            raise ValueError(f"Nenhum modelo ativo encontrado para a frequência '{frequency}'")
+            raise ValueError(
+                f"Nenhum modelo ativo encontrado para a frequência '{frequency}'")
 
         # 2. Carregar Dados Engineered Real-time
         app_root = Path(__file__).resolve().parent.parent.parent.parent
@@ -43,10 +51,14 @@ class PredictionService:
 
         if not data_path.exists():
             data_path = (
-                app_root / "data" / "processed" / "feat-engineering" / f"realtime_{frequency}_{ds_type_to_load}.csv"
-            )
+                app_root /
+                "data" /
+                "processed" /
+                "feat-engineering" /
+                f"realtime_{frequency}_{ds_type_to_load}.csv")
             if not data_path.exists():
-                raise FileNotFoundError(f"Dados real-time para {frequency} não disponíveis.")
+                raise FileNotFoundError(
+                    f"Dados real-time para {frequency} não disponíveis.")
 
         df = pd.read_csv(data_path)
         df["datetime"] = pd.to_datetime(df["datetime"], utc=True)
@@ -67,12 +79,15 @@ class PredictionService:
         predictions = []
         prediction_timestamps = []
         last_time = last_row["datetime"]
-        delta = timedelta(days=1) if frequency == "daily" else timedelta(hours=1)
+        delta = timedelta(
+            days=1) if frequency == "daily" else timedelta(
+            hours=1)
         engine = get_inference_engine()
 
         # 5. Loop Autoregressivo
         for i in range(predicted_points):
-            # FIX: Remove metadata and target from features before prediction to match scaler/model expected input
+            # FIX: Remove metadata and target from features before prediction
+            # to match scaler/model expected input
             predict_features = current_features.copy()
             predict_features.pop("datetime", None)
             predict_features.pop("Load_MW", None)
@@ -110,6 +125,9 @@ class PredictionService:
             "status": 200,
             "historical_load": historical_load,
             "load_predicted": predictions,
-            "timestamps": [t.isoformat() for t in (historical_timestamps + prediction_timestamps)],
+            "timestamps": [
+                t.isoformat() for t in (
+                    historical_timestamps +
+                    prediction_timestamps)],
             "top2_drivers": active_model.top2_drivers.split(", "),
         }

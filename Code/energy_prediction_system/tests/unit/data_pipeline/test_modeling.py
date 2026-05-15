@@ -45,14 +45,21 @@ class TestStatisticalEvaluator:
 
     @patch("data_pipeline.modeling.f_oneway")
     @patch.object(StatisticalEvaluator, "test_normality")
-    def test_select_best_dataset_anova_diff_win_rmse(self, mock_normality, mock_anova):
+    def test_select_best_dataset_anova_diff_win_rmse(
+            self, mock_normality, mock_anova):
         """Verify dataset selection using ANOVA and RMSE."""
         mock_normality.return_value = True
         mock_anova.return_value = (10.5, 0.02)
 
         results = {
-            "Dataset_A": {"rmse": [10.0] * 3, "r2": [0.5] * 3, "mae": [4.0] * 3},
-            "Dataset_B": {"rmse": [5.0] * 3, "r2": [0.8] * 3, "mae": [2.0] * 3},
+            "Dataset_A": {
+                "rmse": [10.0] * 3,
+                "r2": [0.5] * 3,
+                "mae": [4.0] * 3},
+            "Dataset_B": {
+                "rmse": [5.0] * 3,
+                "r2": [0.8] * 3,
+                "mae": [2.0] * 3},
         }
 
         best_ds, metrics = StatisticalEvaluator.select_best_dataset(results)
@@ -64,14 +71,21 @@ class TestStatisticalEvaluator:
 
     @patch("data_pipeline.modeling.friedmanchisquare")
     @patch.object(StatisticalEvaluator, "test_normality")
-    def test_select_best_dataset_friedman_no_diff_win_r2(self, mock_normality, mock_friedman):
+    def test_select_best_dataset_friedman_no_diff_win_r2(
+            self, mock_normality, mock_friedman):
         """Verify dataset selection using Friedman and R2."""
         mock_normality.return_value = False
         mock_friedman.return_value = (2.1, 0.15)
 
         results = {
-            "Dataset_A": {"rmse": [5.0] * 3, "r2": [0.9] * 3, "mae": [2.0] * 3},
-            "Dataset_B": {"rmse": [5.0] * 3, "r2": [0.8] * 3, "mae": [2.0] * 3},
+            "Dataset_A": {
+                "rmse": [5.0] * 3,
+                "r2": [0.9] * 3,
+                "mae": [2.0] * 3},
+            "Dataset_B": {
+                "rmse": [5.0] * 3,
+                "r2": [0.8] * 3,
+                "mae": [2.0] * 3},
         }
 
         best_ds, metrics = StatisticalEvaluator.select_best_dataset(results)
@@ -89,8 +103,14 @@ class TestStatisticalEvaluator:
         mock_anova.return_value = (5.0, 0.01)
 
         results = {
-            "Dataset_A": {"rmse": [5.0] * 3, "r2": [0.9] * 3, "mae": [3.0] * 3},
-            "Dataset_B": {"rmse": [5.0] * 3, "r2": [0.9] * 3, "mae": [1.0] * 3},
+            "Dataset_A": {
+                "rmse": [5.0] * 3,
+                "r2": [0.9] * 3,
+                "mae": [3.0] * 3},
+            "Dataset_B": {
+                "rmse": [5.0] * 3,
+                "r2": [0.9] * 3,
+                "mae": [1.0] * 3},
         }
 
         best_ds, metrics = StatisticalEvaluator.select_best_dataset(results)
@@ -100,17 +120,27 @@ class TestStatisticalEvaluator:
 
     @patch("data_pipeline.modeling.f_oneway")
     @patch.object(StatisticalEvaluator, "test_normality")
-    def test_select_best_strategy_anova_win_rmse(self, mock_normality, mock_anova):
+    def test_select_best_strategy_anova_win_rmse(
+            self, mock_normality, mock_anova):
         """Verify strategy selection using ANOVA and RMSE."""
         mock_normality.return_value = True
         mock_anova.return_value = (12.5, 0.01)
 
         strategy_results = {
-            "expanding": {"metrics": {"rmse": [10.0] * 3, "r2": [0.5] * 3, "mae": [4.0] * 3}},
-            "fixed_rolling": {"metrics": {"rmse": [5.0] * 3, "r2": [0.8] * 3, "mae": [2.0] * 3}},
+            "expanding": {
+                "metrics": {
+                    "rmse": [10.0] * 3,
+                    "r2": [0.5] * 3,
+                    "mae": [4.0] * 3}},
+            "fixed_rolling": {
+                "metrics": {
+                    "rmse": [5.0] * 3,
+                    "r2": [0.8] * 3,
+                    "mae": [2.0] * 3}},
         }
 
-        best_strat = StatisticalEvaluator.select_best_strategy(strategy_results)
+        best_strat = StatisticalEvaluator.select_best_strategy(
+            strategy_results)
 
         mock_normality.assert_called_once()
         mock_anova.assert_called_once()
@@ -118,17 +148,27 @@ class TestStatisticalEvaluator:
 
     @patch("data_pipeline.modeling.kruskal")
     @patch.object(StatisticalEvaluator, "test_normality")
-    def test_select_best_strategy_kruskal_win_r2(self, mock_normality, mock_kruskal):
+    def test_select_best_strategy_kruskal_win_r2(
+            self, mock_normality, mock_kruskal):
         """Verify strategy selection using Kruskal-Wallis and R2."""
         mock_normality.return_value = False
         mock_kruskal.return_value = (3.0, 0.1)
 
         strategy_results = {
-            "expanding": {"metrics": {"rmse": [5.0] * 3, "r2": [0.8] * 3, "mae": [2.0] * 3}},
-            "nested": {"metrics": {"rmse": [5.0] * 3, "r2": [0.9] * 3, "mae": [2.0] * 3}},
+            "expanding": {
+                "metrics": {
+                    "rmse": [5.0] * 3,
+                    "r2": [0.8] * 3,
+                    "mae": [2.0] * 3}},
+            "nested": {
+                "metrics": {
+                    "rmse": [5.0] * 3,
+                    "r2": [0.9] * 3,
+                    "mae": [2.0] * 3}},
         }
 
-        best_strat = StatisticalEvaluator.select_best_strategy(strategy_results)
+        best_strat = StatisticalEvaluator.select_best_strategy(
+            strategy_results)
 
         mock_normality.assert_called_once()
         mock_kruskal.assert_called_once()
@@ -142,11 +182,20 @@ class TestStatisticalEvaluator:
         mock_anova.return_value = (1.5, 0.4)
 
         strategy_results = {
-            "expanding": {"metrics": {"rmse": [5.0] * 3, "r2": [0.9] * 3, "mae": [1.0] * 3}},
-            "fixed_rolling": {"metrics": {"rmse": [5.0] * 3, "r2": [0.9] * 3, "mae": [3.0] * 3}},
+            "expanding": {
+                "metrics": {
+                    "rmse": [5.0] * 3,
+                    "r2": [0.9] * 3,
+                    "mae": [1.0] * 3}},
+            "fixed_rolling": {
+                "metrics": {
+                    "rmse": [5.0] * 3,
+                    "r2": [0.9] * 3,
+                    "mae": [3.0] * 3}},
         }
 
-        best_strat = StatisticalEvaluator.select_best_strategy(strategy_results)
+        best_strat = StatisticalEvaluator.select_best_strategy(
+            strategy_results)
 
         assert best_strat == "expanding"
 
@@ -183,7 +232,8 @@ class TestModelManager:
     def test_load_all_datasets(self, mock_exists, mock_read_csv):
         """Verify loading of all available datasets."""
         mock_exists.return_value = True
-        mock_read_csv.return_value = pd.DataFrame({"datetime": ["2020-01-01"], "val": [1]})
+        mock_read_csv.return_value = pd.DataFrame(
+            {"datetime": ["2020-01-01"], "val": [1]})
 
         manager = ModelManager()
         datasets = manager.load_all_datasets()
@@ -191,7 +241,8 @@ class TestModelManager:
         assert "full" in datasets
         assert "selected" in datasets
         assert "pca" in datasets
-        assert pd.api.types.is_datetime64_any_dtype(datasets["full"]["datetime"])
+        assert pd.api.types.is_datetime64_any_dtype(
+            datasets["full"]["datetime"])
 
     def test_generate_splits_fixed_rolling_gap(self, dummy_df):
         """Verify temporal gap in fixed rolling splits."""
@@ -216,10 +267,13 @@ class TestModelManager:
         primeiro_split_treino_idx = splits[0][0]
         ultimo_split_treino_idx = splits[-1][0]
 
-        start_date_primeiro = dummy_df.iloc[primeiro_split_treino_idx]["datetime"].min()
-        start_date_ultimo = dummy_df.iloc[ultimo_split_treino_idx]["datetime"].min()
+        start_date_primeiro = dummy_df.iloc[primeiro_split_treino_idx]["datetime"].min(
+        )
+        start_date_ultimo = dummy_df.iloc[ultimo_split_treino_idx]["datetime"].min(
+        )
 
-        assert start_date_primeiro == start_date_ultimo == dummy_df["datetime"].min()
+        assert start_date_primeiro == start_date_ultimo == dummy_df["datetime"].min(
+        )
 
     @patch.object(Path, "glob")
     def test_get_next_version(self, mock_glob):
@@ -239,7 +293,8 @@ class TestModelManager:
     def test_train_baseline(self):
         """Verify baseline model training and driver extraction."""
         manager = ModelManager()
-        X_train = pd.DataFrame({"A": [1, 2, 3], "B": [4, 5, 6], "C": [7, 8, 9]})
+        X_train = pd.DataFrame(
+            {"A": [1, 2, 3], "B": [4, 5, 6], "C": [7, 8, 9]})
         y_train = pd.Series([10, 20, 30])
 
         model, drivers = manager.train_baseline(X_train, y_train)
@@ -272,7 +327,8 @@ class TestModelManager:
         )
         y_train = pd.Series(range(10))
 
-        model, drivers = manager.train_flexible(X_train, y_train, strategy="nested")
+        model, drivers = manager.train_flexible(
+            X_train, y_train, strategy="nested")
 
         assert len(drivers) == 2
         assert "Feature_C" in drivers
@@ -319,7 +375,8 @@ class TestDatabaseManager:
         """Verify handling of missing database configuration."""
         db_manager = DatabaseManager(None)
 
-        db_manager.save_model_metrics("LR", "daily", "path", "pca", ["A"], 1.0, 1.0, 1.0)
+        db_manager.save_model_metrics(
+            "LR", "daily", "path", "pca", ["A"], 1.0, 1.0, 1.0)
 
         mock_connect.assert_not_called()
 
@@ -333,22 +390,35 @@ class TestDatabaseManager:
 
         db_manager = DatabaseManager({"dbname": "test_db"})
 
-        db_manager.save_model_metrics("LR", "daily", "path", "pca", "ApenasUmDriver", 1.0, 1.0, 1.0)
+        db_manager.save_model_metrics(
+            "LR",
+            "daily",
+            "path",
+            "pca",
+            "ApenasUmDriver",
+            1.0,
+            1.0,
+            1.0)
 
         args_passed_to_execute = mock_cursor.execute.call_args[0][1]
         assert args_passed_to_execute[4] == "ApenasUmDriver"
 
     @patch("builtins.print")
     @patch("data_pipeline.modeling.psycopg2.connect")
-    def test_save_model_metrics_exception_handling(self, mock_connect, mock_print):
+    def test_save_model_metrics_exception_handling(
+            self, mock_connect, mock_print):
         """Verify database exception logging."""
-        mock_connect.side_effect = Exception("Erro fictício de Timeout do Servidor")
+        mock_connect.side_effect = Exception(
+            "Erro fictício de Timeout do Servidor")
 
         db_manager = DatabaseManager({"dbname": "test_db"})
 
-        db_manager.save_model_metrics("LR", "daily", "path", "pca", ["A", "B"], 1.0, 1.0, 1.0)
+        db_manager.save_model_metrics(
+            "LR", "daily", "path", "pca", [
+                "A", "B"], 1.0, 1.0, 1.0)
 
-        mock_print.assert_called_once_with("Erro ao guardar na base de dados: Erro fictício de Timeout do Servidor")
+        mock_print.assert_called_once_with(
+            "Erro ao guardar na base de dados: Erro fictício de Timeout do Servidor")
 
 
 class TestPipelineOrchestrator:
@@ -358,7 +428,11 @@ class TestPipelineOrchestrator:
         """Verify logic for selecting best individual fold."""
         orchestrator = PipelineOrchestrator()
 
-        metrics = {"rmse": [10.0, 5.0, 5.0, 5.0], "r2": [0.1, 0.8, 0.9, 0.9], "mae": [5.0, 3.0, 3.0, 1.0]}
+        metrics = {
+            "rmse": [
+                10.0, 5.0, 5.0, 5.0], "r2": [
+                0.1, 0.8, 0.9, 0.9], "mae": [
+                5.0, 3.0, 3.0, 1.0]}
 
         melhor_idx = orchestrator._find_best_fold_index(metrics)
 
@@ -369,7 +443,8 @@ class TestPipelineOrchestrator:
         orchestrator = PipelineOrchestrator()
 
         orchestrator.manager = MagicMock()
-        orchestrator.manager.generate_splits.return_value = [("treino1", "teste1"), ("treino2", "teste2")]
+        orchestrator.manager.generate_splits.return_value = [
+            ("treino1", "teste1"), ("treino2", "teste2")]
 
         datasets = {"full": pd.DataFrame(), "pca": pd.DataFrame()}
 
@@ -380,7 +455,8 @@ class TestPipelineOrchestrator:
         assert "nested" in splits_by_strategy
 
         assert "full" in splits_by_strategy["expanding"]
-        assert splits_by_strategy["expanding"]["pca"] == [("treino1", "teste1"), ("treino2", "teste2")]
+        assert splits_by_strategy["expanding"]["pca"] == [
+            ("treino1", "teste1"), ("treino2", "teste2")]
 
     @patch("data_pipeline.modeling.PipelineOrchestrator._precalculate_splits")
     def test_run_strategy_loops(self, mock_precalc):
@@ -391,20 +467,24 @@ class TestPipelineOrchestrator:
 
         mock_model = MagicMock()
         mock_model.predict.return_value = np.array([10, 20])
-        orchestrator.manager.train_baseline.return_value = (mock_model, ["DriverA", "DriverB"])
+        orchestrator.manager.train_baseline.return_value = (
+            mock_model, ["DriverA", "DriverB"])
 
         orchestrator.evaluator.select_best_dataset = MagicMock(
             return_value=("full", {"rmse": 2.0, "r2": 0.9, "mae": 1.5})
         )
 
-        df = pd.DataFrame({"Load_MW": [10, 20, 30, 40], "Feature": [1, 2, 3, 4]})
+        df = pd.DataFrame(
+            {"Load_MW": [10, 20, 30, 40], "Feature": [1, 2, 3, 4]})
         datasets = {"full": df}
 
         splits_by_strategy = {"fixed_rolling": {"full": [([0, 1], [2, 3])]}}
 
         resultado = orchestrator._run_strategy_loops(
-            model_type="baseline", strategy="fixed_rolling", datasets=datasets, splits_by_strategy=splits_by_strategy
-        )
+            model_type="baseline",
+            strategy="fixed_rolling",
+            datasets=datasets,
+            splits_by_strategy=splits_by_strategy)
 
         assert resultado["dataset"] == "full"
         assert "metrics" in resultado
@@ -437,9 +517,14 @@ class TestPipelineOrchestrator:
 
         orchestrator.evaluator.select_best_strategy.return_value = "expanding"
 
-        orchestrator._evaluate_and_save_model(model_type="baseline", freq="hourly", datasets={}, splits_by_strategy={})
+        orchestrator._evaluate_and_save_model(
+            model_type="baseline",
+            freq="hourly",
+            datasets={},
+            splits_by_strategy={})
 
-        mock_joblib_dump.assert_called_once_with("modelo_bom", "caminho/falso/LR_v1.joblib")
+        mock_joblib_dump.assert_called_once_with(
+            "modelo_bom", "caminho/falso/LR_v1.joblib")
 
         orchestrator.db_manager.save_model_metrics.assert_called_once()
         args_chamados = orchestrator.db_manager.save_model_metrics.call_args[1]
@@ -470,7 +555,8 @@ class TestPipelineOrchestrator:
         orchestrator._evaluate_and_save_model = MagicMock()
 
         mock_manager_instance = MagicMock()
-        mock_manager_instance.load_all_datasets.return_value = {"full": "dataset_falso"}
+        mock_manager_instance.load_all_datasets.return_value = {
+            "full": "dataset_falso"}
         mock_model_manager_class.return_value = mock_manager_instance
 
         orchestrator.run()

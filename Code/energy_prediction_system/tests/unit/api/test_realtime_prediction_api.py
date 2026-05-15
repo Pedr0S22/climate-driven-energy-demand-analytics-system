@@ -34,8 +34,9 @@ def test_get_hourly_prediction_api(mock_get_prediction):
     }
 
     response = client.get(
-        "/api/predictions/hourly?historical_points=3&predicted_points=2", headers={"Authorization": "Bearer fake_token"}
-    )
+        "/api/predictions/hourly?historical_points=3&predicted_points=2",
+        headers={
+            "Authorization": "Bearer fake_token"})
 
     assert response.status_code == 200
     data = response.json()
@@ -52,15 +53,28 @@ def test_get_daily_prediction_api(mock_get_prediction):
 
     mock_get_prediction.return_value = {
         "status": 200,
-        "historical_load": [1000.0, 1010.0, 1020.0],
-        "load_predicted": [1030.0, 1040.0],
-        "timestamps": ["2026-05-11", "2026-05-12", "2026-05-13", "2026-05-14", "2026-05-15"],
-        "top2_drivers": ["t2m", "day_of_week"],
+        "historical_load": [
+            1000.0,
+            1010.0,
+            1020.0],
+        "load_predicted": [
+            1030.0,
+            1040.0],
+        "timestamps": [
+            "2026-05-11",
+            "2026-05-12",
+            "2026-05-13",
+            "2026-05-14",
+            "2026-05-15"],
+        "top2_drivers": [
+            "t2m",
+            "day_of_week"],
     }
 
     response = client.get(
-        "/api/predictions/daily?historical_points=3&predicted_points=2", headers={"Authorization": "Bearer fake_token"}
-    )
+        "/api/predictions/daily?historical_points=3&predicted_points=2",
+        headers={
+            "Authorization": "Bearer fake_token"})
 
     assert response.status_code == 200
     data = response.json()

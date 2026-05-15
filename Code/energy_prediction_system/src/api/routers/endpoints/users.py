@@ -19,7 +19,9 @@ logger = logging.getLogger(__name__)
 
 
 @router.get("/me", response_model=UserResponse)
-def get_me(current_user: User = Depends(get_current_user), db: Session = Depends(get_db)):
+def get_me(
+        current_user: User = Depends(get_current_user),
+        db: Session = Depends(get_db)):
     role = auth_service.get_user_role(db, current_user.id)
     return {
         "id": current_user.id,
@@ -47,12 +49,15 @@ def register(user_in: UserCreate, db: Session = Depends(get_db)):
 
 
 @router.post("/login", response_model=Token)
-async def login(db: Session = Depends(get_db), form_data: OAuth2PasswordRequestForm = Depends()):
+async def login(db: Session = Depends(get_db),
+                form_data: OAuth2PasswordRequestForm = Depends()):
     """
     OAuth2 compatible login, normalized to use 'username' as 'email'.
     Works with Swagger 'Authorize' and standard form-data login.
     """
-    login_data = UserLogin(email=form_data.username, password=form_data.password)
+    login_data = UserLogin(
+        email=form_data.username,
+        password=form_data.password)
 
     user = auth_service.authenticate_user(db, login_data)
     role = auth_service.get_user_role(db, user.id)

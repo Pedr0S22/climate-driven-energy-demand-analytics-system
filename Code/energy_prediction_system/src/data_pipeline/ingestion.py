@@ -25,7 +25,8 @@ def fetch_copernicus_data(start_date: str, end_date: str):
     if pd.Timestamp(start_date) > pd.Timestamp(end_date):
         raise ValueError("start_date cannot be strictly after end_date.")
 
-    logging.info(f"Fetching Copernicus ERA5-Land timeseries data from {start_date} to {end_date}...")
+    logging.info(
+        f"Fetching Copernicus ERA5-Land timeseries data from {start_date} to {end_date}...")
     SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
     PROJECT_ROOT = os.path.abspath(os.path.join(SCRIPT_DIR, "..", ".."))
 
@@ -35,8 +36,12 @@ def fetch_copernicus_data(start_date: str, end_date: str):
     dataset = "reanalysis-era5-land-timeseries"
 
     # Define paths for both the final CSV and the temporary ZIP
-    output_csv_path = os.path.join(raw_weather_dir, f"era5_timeseries_{start_date}_to_{end_date}.csv")
-    temp_zip_path = os.path.join(raw_weather_dir, f"era5_timeseries_{start_date}_to_{end_date}.zip")
+    output_csv_path = os.path.join(
+        raw_weather_dir,
+        f"era5_timeseries_{start_date}_to_{end_date}.csv")
+    temp_zip_path = os.path.join(
+        raw_weather_dir,
+        f"era5_timeseries_{start_date}_to_{end_date}.zip")
 
     if os.path.exists(output_csv_path):
         logging.info(f"Skipping: File already exists: {output_csv_path}")
@@ -65,7 +70,8 @@ def fetch_copernicus_data(start_date: str, end_date: str):
 
     for attempt in range(MAX_RETRIES):
         try:
-            logging.info(f"Downloading Copernicus data (saving as ZIP)... [Attempt {attempt + 1}/{MAX_RETRIES}]")
+            logging.info(
+                f"Downloading Copernicus data (saving as ZIP)... [Attempt {attempt + 1}/{MAX_RETRIES}]")
             # Download to the temporary ZIP path instead of directly to CSV
             client.retrieve(dataset, request).download(temp_zip_path)
 
@@ -77,19 +83,23 @@ def fetch_copernicus_data(start_date: str, end_date: str):
 
                 # Rename the extracted file to match your desired output name
                 if extracted_file_names:
-                    extracted_file_path = os.path.join(raw_weather_dir, extracted_file_names[0])
+                    extracted_file_path = os.path.join(
+                        raw_weather_dir, extracted_file_names[0])
                     if extracted_file_path != output_csv_path:
-                        os.replace(extracted_file_path, output_csv_path)  # os.replace safely overwrites
+                        # os.replace safely overwrites
+                        os.replace(extracted_file_path, output_csv_path)
 
             # Clean up the temporary zip file
             if os.path.exists(temp_zip_path):
                 os.remove(temp_zip_path)
-            logging.info(f"Success: Saved and extracted Copernicus data to {output_csv_path}")
+            logging.info(
+                f"Success: Saved and extracted Copernicus data to {output_csv_path}")
             break
 
         # Catch specifically if the file isn't a ZIP
         except zipfile.BadZipFile:
-            logging.error("The downloaded file is not a valid ZIP archive. It might be an API error message.")
+            logging.error(
+                "The downloaded file is not a valid ZIP archive. It might be an API error message.")
             with open(temp_zip_path, errors="ignore") as f:
                 logging.error(f"Server Response snippet: {f.read()[:500]}")
 
@@ -110,17 +120,23 @@ def fetch_copernicus_data(start_date: str, end_date: str):
                 logging.error("Max retries reached for Copernicus data fetch.")
 
 
-def fetch_entsoe_data(start_date: str, end_date: str, country_code: str = "ES"):
+def fetch_entsoe_data(
+        start_date: str,
+        end_date: str,
+        country_code: str = "ES"):
     if pd.Timestamp(start_date) > pd.Timestamp(end_date):
         raise ValueError("start_date cannot be strictly after end_date.")
 
-    logging.info(f"Fetching ENTSO-E load data for {country_code} from {start_date} to {end_date}...")
+    logging.info(
+        f"Fetching ENTSO-E load data for {country_code} from {start_date} to {end_date}...")
     SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
     PROJECT_ROOT = os.path.abspath(os.path.join(SCRIPT_DIR, "..", ".."))
 
     raw_energy_dir = os.path.join(PROJECT_ROOT, "data", "raw", "energy")
     os.makedirs(raw_energy_dir, exist_ok=True)
-    output_path = os.path.join(raw_energy_dir, f"entsoe_{country_code}_load_{start_date}_to_{end_date}.csv")
+    output_path = os.path.join(
+        raw_energy_dir,
+        f"entsoe_{country_code}_load_{start_date}_to_{end_date}.csv")
 
     if os.path.exists(output_path):
         logging.info(f"Skipping: File already exists: {output_path}")
@@ -136,10 +152,12 @@ def fetch_entsoe_data(start_date: str, end_date: str, country_code: str = "ES"):
 
     for attempt in range(MAX_RETRIES):
         try:
-            logging.info(f"Querying ENTSO-E API... [Attempt {attempt + 1}/{MAX_RETRIES}]")
+            logging.info(
+                f"Querying ENTSO-E API... [Attempt {attempt + 1}/{MAX_RETRIES}]")
             client = EntsoePandasClient(api_key=api_key)
             start = pd.Timestamp(start_date, tz="Europe/Madrid")
-            end = pd.Timestamp(end_date, tz="Europe/Madrid") + pd.Timedelta(days=1)
+            end = pd.Timestamp(end_date,
+                               tz="Europe/Madrid") + pd.Timedelta(days=1)
 
             load_data = client.query_load(country_code, start=start, end=end)
             load_data.to_csv(output_path, header=["Load_MW"])
@@ -162,7 +180,8 @@ def fetch_realtime_energy_load(days: int = 7, country_code: str = "ES"):
     Saves to data/raw/energy/realtime_load.csv.
     Uses the same approach as historical ingestion (Europe/Madrid timezone, day boundaries).
     """
-    logging.info(f"Fetching real-time ENTSO-E load data for {country_code} (last {days} days)...")
+    logging.info(
+        f"Fetching real-time ENTSO-E load data for {country_code} (last {days} days)...")
     SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
     PROJECT_ROOT = os.path.abspath(os.path.join(SCRIPT_DIR, "..", ".."))
 
@@ -185,17 +204,20 @@ def fetch_realtime_energy_load(days: int = 7, country_code: str = "ES"):
 
     for attempt in range(MAX_RETRIES):
         try:
-            logging.info(f"Querying ENTSO-E API... [Attempt {attempt + 1}/{MAX_RETRIES}]")
+            logging.info(
+                f"Querying ENTSO-E API... [Attempt {attempt + 1}/{MAX_RETRIES}]")
             client = EntsoePandasClient(api_key=api_key)
 
             # Querying with Madrid timestamps to match training data retrieval
-            load_data = client.query_load(country_code, start=start_date_dt, end=end_date_dt)
+            load_data = client.query_load(
+                country_code, start=start_date_dt, end=end_date_dt)
 
             if isinstance(load_data, pd.Series):
                 load_data = load_data.to_frame(name="Load_MW")
             elif isinstance(load_data, pd.DataFrame):
                 if "Actual Load" in load_data.columns:
-                    load_data = load_data[["Actual Load"]].rename(columns={"Actual Load": "Load_MW"})
+                    load_data = load_data[["Actual Load"]].rename(
+                        columns={"Actual Load": "Load_MW"})
                 else:
                     load_data.columns = ["Load_MW"]
 
@@ -204,26 +226,34 @@ def fetch_realtime_energy_load(days: int = 7, country_code: str = "ES"):
             load_data.to_csv(tmp_path)
             os.replace(tmp_path, output_path)
 
-            logging.info(f"Success: Saved real-time ENTSO-E data to {output_path}")
+            logging.info(
+                f"Success: Saved real-time ENTSO-E data to {output_path}")
             break
 
         except Exception:
-            logging.error("Failed to fetch real-time ENTSO-E data.", exc_info=True)
+            logging.error(
+                "Failed to fetch real-time ENTSO-E data.",
+                exc_info=True)
             if attempt < MAX_RETRIES - 1:
                 sleep_time = 2**attempt
                 logging.warning(f"Retrying in {sleep_time} seconds...")
                 time.sleep(sleep_time)
             else:
-                logging.error("Max retries reached for real-time ENTSO-E data fetch.")
+                logging.error(
+                    "Max retries reached for real-time ENTSO-E data fetch.")
 
 
-def fetch_realtime_weather(days: int = 7, lat: float = 40.4, lon: float = -3.7):
+def fetch_realtime_weather(
+        days: int = 7,
+        lat: float = 40.4,
+        lon: float = -3.7):
     """
     Fetches the latest weather data from Open-Meteo for the last N days.
     Saves to data/raw/weather/realtime_weather.csv.
     Variables are mapped to match ERA5 schema names.
     """
-    logging.info(f"Fetching real-time weather data from Open-Meteo (last {days} days)...")
+    logging.info(
+        f"Fetching real-time weather data from Open-Meteo (last {days} days)...")
     SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
     PROJECT_ROOT = os.path.abspath(os.path.join(SCRIPT_DIR, "..", ".."))
 
@@ -245,7 +275,8 @@ def fetch_realtime_weather(days: int = 7, lat: float = 40.4, lon: float = -3.7):
 
     for attempt in range(MAX_RETRIES):
         try:
-            logging.info(f"Querying Open-Meteo API... [Attempt {attempt + 1}/{MAX_RETRIES}]")
+            logging.info(
+                f"Querying Open-Meteo API... [Attempt {attempt + 1}/{MAX_RETRIES}]")
             response = requests.get(open_meteo_url, params=params, timeout=30)
             response.raise_for_status()
             data = response.json()
@@ -276,11 +307,14 @@ def fetch_realtime_weather(days: int = 7, lat: float = 40.4, lon: float = -3.7):
             om_df.to_csv(tmp_path, index=False)
             os.replace(tmp_path, output_path)
 
-            logging.info(f"Success: Saved real-time weather data to {output_path}")
+            logging.info(
+                f"Success: Saved real-time weather data to {output_path}")
             break
 
         except Exception:
-            logging.error("Failed to fetch real-time weather data.", exc_info=True)
+            logging.error(
+                "Failed to fetch real-time weather data.",
+                exc_info=True)
             if attempt < MAX_RETRIES - 1:
                 sleep_time = 2**attempt
                 logging.warning(f"Retrying in {sleep_time} seconds...")
@@ -316,4 +350,5 @@ if __name__ == "__main__":
     data_retrieval(start_date, end_date, country_code="ES")
     end_time = time.time()
     elapsed_time = end_time - start_time
-    logging.info(f"Total execution time of Ingestion Module: {elapsed_time:.2f} seconds")
+    logging.info(
+        f"Total execution time of Ingestion Module: {elapsed_time:.2f} seconds")

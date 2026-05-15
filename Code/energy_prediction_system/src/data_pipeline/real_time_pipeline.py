@@ -18,7 +18,8 @@ except ImportError:
         from data_pipeline.feature_engineering import run_realtime_engineering
         from data_pipeline.ingestion import realtime_data_retrieval
     except ImportError:
-        # Fallback to absolute imports without src. for standalone folder execution
+        # Fallback to absolute imports without src. for standalone folder
+        # execution
         from cleaning import cleaning
         from feature_engineering import run_realtime_engineering
         from ingestion import realtime_data_retrieval
@@ -52,10 +53,12 @@ def run_pipeline():
     try:
         days = int(days_str)
     except ValueError:
-        logger.warning(f"Invalid REAL_TIME_DAYS: '{days_str}'. Defaulting to 30.")
+        logger.warning(
+            f"Invalid REAL_TIME_DAYS: '{days_str}'. Defaulting to 30.")
         days = 30
 
-    logger.info(f"Starting Real-Time Pipeline Cycle (Target window: {days} days)")
+    logger.info(
+        f"Starting Real-Time Pipeline Cycle (Target window: {days} days)")
 
     try:
         # 2. Ingestion
@@ -67,7 +70,10 @@ def run_pipeline():
         raw_energy_dir = project_root / "data" / "raw" / "energy"
         raw_weather_dir = project_root / "data" / "raw" / "weather"
 
-        cleaning(energy_dir=raw_energy_dir, weather_dir=raw_weather_dir, train_data=False)
+        cleaning(
+            energy_dir=raw_energy_dir,
+            weather_dir=raw_weather_dir,
+            train_data=False)
 
         # 4. Feature Engineering
         logger.info("[Step 3] Real-Time Data Feature Engineering")
@@ -75,7 +81,8 @@ def run_pipeline():
         run_realtime_engineering(freq="daily")
 
         total_time = time.time() - start_time
-        logger.info(f"Real-Time Pipeline cycle completed successfully in {total_time:.2f} seconds.")
+        logger.info(
+            f"Real-Time Pipeline cycle completed successfully in {total_time:.2f} seconds.")
 
     except Exception as e:
         logger.error(f"Real-Time Pipeline cycle failed: {e}", exc_info=True)
@@ -85,7 +92,8 @@ def scheduler():
     """
     Continuous loop that triggers the pipeline at XX:01 and XX:31.
     """
-    logger.info("Scheduler started. Monitoring for trigger times (XX:01 and XX:31)...")
+    logger.info(
+        "Scheduler started. Monitoring for trigger times (XX:01 and XX:31)...")
 
     while True:
         now = datetime.now()
@@ -108,8 +116,8 @@ def scheduler():
 
         wait_seconds = (next_run - now).total_seconds()
         logger.info(
-            f"Next scheduled run at {next_run.strftime('%H:%M:%S')}." + f"Sleeping for {wait_seconds/60:.2f} minutes."
-        )
+            f"Next scheduled run at {next_run.strftime('%H:%M:%S')}." +
+            f"Sleeping for {wait_seconds/60:.2f} minutes.")
 
         time.sleep(wait_seconds)
 
