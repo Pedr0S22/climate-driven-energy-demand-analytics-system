@@ -35,6 +35,10 @@ class ToggleSwitch(QtWidgets.QWidget):
         self.update()
         self.clicked.emit(self._active)
 
+    @property
+    def active(self):
+        return self._active
+
     def is_active(self):
         return self._active
 

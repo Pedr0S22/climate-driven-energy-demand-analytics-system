@@ -555,8 +555,9 @@ class Ui_ModelManagementWindow:
             return
 
         freq, model_id = self._pending_activations.pop(0)
-        worker = ActivateModelWorker(model_id)  # worker local, não self
-        worker.finished.connect(
+        self.activate_worker = ActivateModelWorker(
+            model_id)  # ← self.activate_worker
+        self.activate_worker.finished.connect(
             lambda data,
             error,
             f=freq,
@@ -565,8 +566,8 @@ class Ui_ModelManagementWindow:
                 mid,
                 data,
                 error))
-        worker.finished.connect(worker.deleteLater)
-        worker.start()
+        self.activate_worker.finished.connect(self.activate_worker.deleteLater)
+        self.activate_worker.start()
 
     def _on_activation_complete(self, frequency, model_id, data, error):
         """Callback quando um modelo é ativado"""
