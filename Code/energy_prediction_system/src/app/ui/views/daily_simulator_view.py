@@ -85,7 +85,7 @@ class Ui_DailySimulatorWindow:
         # ROW 0, COLUMN 0: Template Selector
         # ---------------------------------------------------------
         self.template_vbox = QtWidgets.QVBoxLayout()
-        self.template_vbox.setSpacing(5)
+        self.template_vbox.setSpacing(10)
         self.template_label = QtWidgets.QLabel("Template")
         self.template_label.setFont(QtGui.QFont("Tw Cen MT Condensed", 28, QtGui.QFont.Weight.Bold))
         self.template_label.setStyleSheet("color: black;")
@@ -103,7 +103,7 @@ class Ui_DailySimulatorWindow:
         # ROW 0, COLUMN 1: Date Selector
         # ---------------------------------------------------------
         self.date_vbox = QtWidgets.QVBoxLayout()
-        self.date_vbox.setSpacing(15)
+        self.date_vbox.setSpacing(10)
         self.date_label = QtWidgets.QLabel("Date")
         self.date_label.setFont(QtGui.QFont("Tw Cen MT Condensed", 28, QtGui.QFont.Weight.Bold))
         self.date_label.setStyleSheet("color: black;")

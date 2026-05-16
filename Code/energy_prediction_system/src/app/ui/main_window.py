@@ -608,15 +608,20 @@ class MainWindow(QMainWindow):
         day_of_week = date.dayOfWeek() - 1
 
         LABEL_TO_KEY = {
-            "2m Air Temperature": "t2m",
-            "Surface Pressure": "sp",
-            "Total Precipitation": "tp",
-            "10 m Wind Zonal Velocity": "u10",
-            "10 m Meridional Velocity": "v10",
+            "2m Air Temperature (ºC)": "t2m",
+            "Surface Pressure (hPa)": "sp",
+            "Total Precipitation (mm)": "tp",
+            "10 m Wind Zonal Velocity (m/s)": "u10",
+            "10 m Meridional Velocity (m/s)": "v10",
         }
 
         overrides = {}
         for label, inp in ui.param_inputs.items():
+            if not inp.hasAcceptableInput():
+                min_v, max_v = ui.param_ranges[label]
+                QMessageBox.warning(self, "Invalid Input", f"Value for '{label}' must be between {min_v} and {max_v}.")
+                return
+
             val = inp.text().strip()
             if val:
                 try:
@@ -666,15 +671,20 @@ class MainWindow(QMainWindow):
         hour = time.hour()
 
         LABEL_TO_KEY = {
-            "2m Air Temperature": "t2m",
-            "Surface Pressure": "sp",
-            "Total Precipitation": "tp",
-            "10 m Wind Zonal Velocity": "u10",
-            "10 m Meridional Velocity": "v10",
+            "2m Air Temperature (ºC)": "t2m",
+            "Surface Pressure (hPa)": "sp",
+            "Total Precipitation (mm)": "tp",
+            "10 m Wind Zonal Velocity (m/s)": "u10",
+            "10 m Meridional Velocity (m/s)": "v10",
         }
 
         overrides = {}
         for label, inp in ui.param_inputs.items():
+            if not inp.hasAcceptableInput():
+                min_v, max_v = ui.param_ranges[label]
+                QMessageBox.warning(self, "Invalid Input", f"Value for '{label}' must be between {min_v} and {max_v}.")
+                return
+
             val = inp.text().strip()
             if val:
                 try:

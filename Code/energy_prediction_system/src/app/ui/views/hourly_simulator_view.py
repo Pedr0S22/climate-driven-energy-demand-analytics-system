@@ -92,7 +92,7 @@ class Ui_HourlySimulatorWindow:
 
         # Template Selector
         self.template_vbox = QtWidgets.QVBoxLayout()
-        self.template_vbox.setSpacing(5)
+        self.template_vbox.setSpacing(10)
         self.template_label = QtWidgets.QLabel("Template")
         self.template_label.setFont(QtGui.QFont("Tw Cen MT Condensed", 28, QtGui.QFont.Weight.Bold))
         self.template_label.setStyleSheet("color: black;")
@@ -105,7 +105,7 @@ class Ui_HourlySimulatorWindow:
 
         # Date Selector
         self.date_vbox = QtWidgets.QVBoxLayout()
-        self.date_vbox.setSpacing(5)
+        self.date_vbox.setSpacing(10)
         self.date_label = QtWidgets.QLabel("Date")
         self.date_label.setFont(QtGui.QFont("Tw Cen MT Condensed", 28, QtGui.QFont.Weight.Bold))
         self.date_label.setStyleSheet("color: black;")
@@ -119,7 +119,7 @@ class Ui_HourlySimulatorWindow:
 
         # Hour Selector
         self.hour_vbox = QtWidgets.QVBoxLayout()
-        self.hour_vbox.setSpacing(5)
+        self.hour_vbox.setSpacing(10)
         self.hour_label = QtWidgets.QLabel("Hour")
         self.hour_label.setFont(QtGui.QFont("Tw Cen MT Condensed", 28, QtGui.QFont.Weight.Bold))
         self.hour_label.setStyleSheet("color: black;")
@@ -146,7 +146,7 @@ class Ui_HourlySimulatorWindow:
 
         # Parameters Column (Column 0)
         self.params_vbox = QtWidgets.QVBoxLayout()
-        self.params_vbox.setSpacing(15)
+        self.params_vbox.setSpacing(10)
 
         self.params_header = QtWidgets.QLabel("Overwrite parameters")
         self.params_header.setFont(QtGui.QFont("Tw Cen MT Condensed", 28, QtGui.QFont.Weight.Bold))
@@ -183,7 +183,7 @@ class Ui_HourlySimulatorWindow:
 
         for label_text, default_val in parameters:
             row_layout = QtWidgets.QHBoxLayout()
-            row_layout.setSpacing(60)  # Tight distance between label and input
+            row_layout.setSpacing(10)  # Tight distance between label and input
 
             lbl = QtWidgets.QLabel(label_text)
             lbl.setFont(QtGui.QFont("Tw Cen MT Condensed", 28))
@@ -354,19 +354,19 @@ class Ui_HourlySimulatorWindow:
             selected_hour = "Unknown Hour"
 
         # Get variables, falling back to placeholders if empty
-        temp_input = self.param_inputs["2m Air Temperature"]
+        temp_input = self.param_inputs["2m Air Temperature (ºC)"]
         temp_val = temp_input.text() if temp_input.text() else temp_input.placeholderText()
 
-        sp_input = self.param_inputs["Surface Pressure"]
+        sp_input = self.param_inputs["Surface Pressure (hPa)"]
         sp_val = sp_input.text() if sp_input.text() else sp_input.placeholderText()
 
-        tp_input = self.param_inputs["Total Precipitation"]
+        tp_input = self.param_inputs["Total Precipitation (mm)"]
         tp_val = tp_input.text() if tp_input.text() else tp_input.placeholderText()
 
-        u10_input = self.param_inputs["10 m Wind Zonal Velocity"]
+        u10_input = self.param_inputs["10 m Wind Zonal Velocity (m/s)"]
         u10_val = u10_input.text() if u10_input.text() else u10_input.placeholderText()
 
-        v10_input = self.param_inputs["10 m Meridional Velocity"]
+        v10_input = self.param_inputs["10 m Meridional Velocity (m/s)"]
         v10_val = v10_input.text() if v10_input.text() else v10_input.placeholderText()
 
         print("--- HOURLY SIMULATION TRIGGERED ---")
@@ -409,7 +409,7 @@ class Ui_HourlySimulatorWindow:
                 margin-top: 2px;
             }
             QComboBox QAbstractItemView {
-                background-color: #EAEAEF;
+                background-color: #828282;
                 border: 1px solid black;
                 selection-background-color: #000180;
                 selection-color: white;
