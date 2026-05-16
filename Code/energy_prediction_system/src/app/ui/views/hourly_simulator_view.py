@@ -65,16 +65,34 @@ class Ui_HourlySimulatorWindow:
         self.scroll_area.setStyleSheet("border: none; background: transparent;")
         self.scroll_content = QtWidgets.QWidget()
         self.scroll_content.setStyleSheet("background: transparent;")
+
+        # Main Layout for Scroll Area
         self.content_layout = QtWidgets.QVBoxLayout(self.scroll_content)
         self.content_layout.setContentsMargins(40, 20, 40, 20)
-        self.content_layout.setSpacing(30)
 
-        # 2. SELECTORS SECTION (Template, Date, Hour)
+        # --- 1. TOP STRETCH FOR VERTICAL CENTERING ---
+        self.content_layout.addStretch()
+
+        # --- 2. HORIZONTAL LAYOUT FOR HORIZONTAL CENTERING ---
+        self.center_h_layout = QtWidgets.QHBoxLayout()
+        self.center_h_layout.addStretch()  # LEFT STRETCH
+
+        # --- 3. INNER CONTENT LAYOUT ---
+        self.inner_content_layout = QtWidgets.QVBoxLayout()
+        self.inner_content_layout.setSpacing(60)  # Large gap between Selectors and Simulator sections
+
+        # ---------------------------------------------------------
+        # ROW 1: SELECTORS SECTION (Template, Date, Hour)
+        # ---------------------------------------------------------
         self.selectors_layout = QtWidgets.QHBoxLayout()
-        self.selectors_layout.setSpacing(30)
+        self.selectors_layout.setSpacing(40)  # Space between the 3 boxes
+
+        # Add a left stretch to perfectly center the 3 items over the columns below
+        self.selectors_layout.addStretch()
 
         # Template Selector
         self.template_vbox = QtWidgets.QVBoxLayout()
+        self.template_vbox.setSpacing(5)
         self.template_label = QtWidgets.QLabel("Template")
         self.template_label.setFont(QtGui.QFont("Tw Cen MT Condensed", 28, QtGui.QFont.Weight.Bold))
         self.template_label.setStyleSheet("color: black;")
@@ -87,6 +105,7 @@ class Ui_HourlySimulatorWindow:
 
         # Date Selector
         self.date_vbox = QtWidgets.QVBoxLayout()
+        self.date_vbox.setSpacing(5)
         self.date_label = QtWidgets.QLabel("Date")
         self.date_label.setFont(QtGui.QFont("Tw Cen MT Condensed", 28, QtGui.QFont.Weight.Bold))
         self.date_label.setStyleSheet("color: black;")
@@ -94,11 +113,13 @@ class Ui_HourlySimulatorWindow:
         self.date_vbox.addWidget(self.date_label)
 
         self.date_picker = DatePicker(parent=self.scroll_content, show_icon=False)
+        self.date_picker.setFixedSize(260, 58)  # Made shorter horizontally
         self.date_vbox.addWidget(self.date_picker)
         self.selectors_layout.addLayout(self.date_vbox)
 
         # Hour Selector
         self.hour_vbox = QtWidgets.QVBoxLayout()
+        self.hour_vbox.setSpacing(5)
         self.hour_label = QtWidgets.QLabel("Hour")
         self.hour_label.setFont(QtGui.QFont("Tw Cen MT Condensed", 28, QtGui.QFont.Weight.Bold))
         self.hour_label.setStyleSheet("color: black;")
@@ -106,17 +127,24 @@ class Ui_HourlySimulatorWindow:
         self.hour_vbox.addWidget(self.hour_label)
 
         self.time_picker = TimePicker(parent=self.scroll_content, initial_hour=12)
+        self.time_picker.setFixedSize(260, 58)  # Made shorter horizontally
         self.hour_vbox.addWidget(self.time_picker)
         self.selectors_layout.addLayout(self.hour_vbox)
 
-        self.content_layout.addLayout(self.selectors_layout)
+        # Add a right stretch to finish centering the 3 items
+        self.selectors_layout.addStretch()
 
-        # 3. MAIN SIMULATOR SECTION
+        # Add the selectors to the inner vertical layout
+        self.inner_content_layout.addLayout(self.selectors_layout)
+
+        # ---------------------------------------------------------
+        # ROW 2: MAIN SIMULATOR SECTION (2 Columns)
+        # ---------------------------------------------------------
         self.main_grid = QtWidgets.QGridLayout()
         self.main_grid.setColumnStretch(1, 1)
-        self.main_grid.setSpacing(20)
+        self.main_grid.setHorizontalSpacing(120)  # Distance between columns
 
-        # Parameters Column
+        # Parameters Column (Column 0)
         self.params_vbox = QtWidgets.QVBoxLayout()
         self.params_vbox.setSpacing(15)
 
@@ -136,29 +164,31 @@ class Ui_HourlySimulatorWindow:
 
         # Real Limits from PHYSICAL_LIMITS
         self.param_ranges = {
-            "2m Air Temperature": (-40.0, 55.0),
-            "Surface Pressure": (800.0, 1100.0),
-            "Total Precipitation": (0.0, 55.0),
-            "10 m Wind Zonal Velocity": (-69.4, 69.4),
-            "10 m Meridional Velocity": (-69.4, 69.4),
+            "2m Air Temperature (ºC)": (-40.0, 55.0),
+            "Surface Pressure (hPa)": (800.0, 1100.0),
+            "Total Precipitation (mm)": (0.0, 55.0),
+            "10 m Wind Zonal Velocity (m/s)": (-69.4, 69.4),
+            "10 m Meridional Velocity (m/s)": (-69.4, 69.4),
         }
 
         # Parameter Inputs
         self.param_inputs = {}
         parameters = [
-            ("2m Air Temperature", "14.78"),
-            ("Surface Pressure", "941.93"),
-            ("Total Precipitation", "0.00"),
-            ("10 m Wind Zonal Velocity", "-0.50"),
-            ("10 m Meridional Velocity", "-0.80"),
+            ("2m Air Temperature (ºC)", "14.78"),
+            ("Surface Pressure (hPa)", "941.93"),
+            ("Total Precipitation (mm)", "0.00"),
+            ("10 m Wind Zonal Velocity (m/s)", "-0.50"),
+            ("10 m Meridional Velocity (m/s)", "-0.80"),
         ]
 
         for label_text, default_val in parameters:
             row_layout = QtWidgets.QHBoxLayout()
+            row_layout.setSpacing(60)  # Tight distance between label and input
+
             lbl = QtWidgets.QLabel(label_text)
             lbl.setFont(QtGui.QFont("Tw Cen MT Condensed", 28))
             lbl.setStyleSheet("color: black;")
-            lbl.setFixedWidth(400)
+            lbl.setFixedWidth(350)  # Prevents invisible spacing issues
 
             inp = StyledInput(placeholder=default_val)
             inp.setText(default_val)
@@ -176,12 +206,14 @@ class Ui_HourlySimulatorWindow:
 
             row_layout.addWidget(lbl)
             row_layout.addWidget(inp)
+            row_layout.addStretch()  # Push inputs to the left to keep them tidy
+
             self.params_vbox.addLayout(row_layout)
             self.param_inputs[label_text] = inp
 
         self.main_grid.addLayout(self.params_vbox, 0, 0, QtCore.Qt.AlignmentFlag.AlignTop)
 
-        # Projection Column
+        # Projection Column (Column 1)
         self.projection_vbox = QtWidgets.QVBoxLayout()
         self.projection_vbox.setSpacing(20)
 
@@ -192,24 +224,24 @@ class Ui_HourlySimulatorWindow:
         self.projection_vbox.addWidget(self.proj_title)
 
         self.proj_display = QtWidgets.QFrame()
-        self.proj_display.setFixedSize(543, 185)
+        self.proj_display.setFixedSize(350, 150)
         self.proj_display.setStyleSheet("""
             QFrame {
                 background-color: #CAF6FF;
                 border: 4px solid black;
-                border-radius: 0px;
+                border-radius: 12px; /* Smooth rounded corners */
             }
         """)
         self.proj_display_layout = QtWidgets.QVBoxLayout(self.proj_display)
         self.proj_value = QtWidgets.QLabel("---,--")
-        self.proj_value.setFont(QtGui.QFont("Tw Cen MT Condensed", 74, QtGui.QFont.Weight.Bold))
+        self.proj_value.setFont(QtGui.QFont("Tw Cen MT Condensed", 50, QtGui.QFont.Weight.Bold))
         self.proj_value.setStyleSheet("color: black; border: none;")
         self.proj_value.setAlignment(QtCore.Qt.AlignmentFlag.AlignCenter)
         self.proj_display_layout.addWidget(self.proj_value)
 
         self.projection_vbox.addWidget(self.proj_display, alignment=QtCore.Qt.AlignmentFlag.AlignCenter)
 
-        # Buttons - Moved up and resized to be proportional to inputs
+        # Buttons
         self.buttons_vbox = QtWidgets.QVBoxLayout()
         self.buttons_vbox.setSpacing(15)
         self.buttons_vbox.setContentsMargins(0, 10, 0, 0)
@@ -250,9 +282,18 @@ class Ui_HourlySimulatorWindow:
         self.buttons_vbox.addStretch()
 
         self.projection_vbox.addLayout(self.buttons_vbox)
-        self.main_grid.addLayout(self.projection_vbox, 0, 1)
+        self.main_grid.addLayout(self.projection_vbox, 0, 1, QtCore.Qt.AlignmentFlag.AlignTop)
 
-        self.content_layout.addLayout(self.main_grid)
+        self.inner_content_layout.addLayout(self.main_grid)
+
+        # --- 4. FINISH THE SPACER SANDWICH ---
+        self.center_h_layout.addLayout(self.inner_content_layout)
+        self.center_h_layout.addStretch()  # RIGHT STRETCH
+
+        self.content_layout.addLayout(self.center_h_layout)
+
+        # --- 5. BOTTOM STRETCH FOR VERTICAL CENTERING ---
+        self.content_layout.addStretch()
 
         # Final setup
         self.scroll_area.setWidget(self.scroll_content)
@@ -262,9 +303,11 @@ class Ui_HourlySimulatorWindow:
 
         HourlySimulatorWindow.setCentralWidget(self.centralwidget)
 
+        # Connections
         self.menu_btn.clicked.connect(self.toggle_sidebar)
         self.template_combo.currentTextChanged.connect(self.update_params_from_template)
         self.reset_btn.clicked.connect(self.reset_defaults)
+        self.save_btn.clicked.connect(self.run_simulation)  # Connected!
 
     def toggle_sidebar(self):
         self.sidebar.setVisible(not self.sidebar.isVisible())
@@ -272,34 +315,73 @@ class Ui_HourlySimulatorWindow:
     def update_params_from_template(self, template_name):
         if template_name in self.template_defaults:
             defs = self.template_defaults[template_name]
-            # Update values and placeholders
-            self.param_inputs["2m Air Temperature"].setText(defs["t2m"])
-            self.param_inputs["2m Air Temperature"].setPlaceholderText(defs["t2m"])
 
-            self.param_inputs["Surface Pressure"].setText(defs["sp"])
-            self.param_inputs["Surface Pressure"].setPlaceholderText(defs["sp"])
+            self.param_inputs["2m Air Temperature (ºC)"].setText(defs["t2m"])
+            self.param_inputs["2m Air Temperature (ºC)"].setPlaceholderText(defs["t2m"])
 
-            self.param_inputs["Total Precipitation"].setText(defs["tp"])
-            self.param_inputs["Total Precipitation"].setPlaceholderText(defs["tp"])
+            self.param_inputs["Surface Pressure (hPa)"].setText(defs["sp"])
+            self.param_inputs["Surface Pressure (hPa)"].setPlaceholderText(defs["sp"])
 
-            self.param_inputs["10 m Wind Zonal Velocity"].setText(defs["u10"])
-            self.param_inputs["10 m Wind Zonal Velocity"].setPlaceholderText(defs["u10"])
+            self.param_inputs["Total Precipitation (mm)"].setText(defs["tp"])
+            self.param_inputs["Total Precipitation (mm)"].setPlaceholderText(defs["tp"])
 
-            self.param_inputs["10 m Meridional Velocity"].setText(defs["v10"])
-            self.param_inputs["10 m Meridional Velocity"].setPlaceholderText(defs["v10"])
+            self.param_inputs["10 m Wind Zonal Velocity (m/s)"].setText(defs["u10"])
+            self.param_inputs["10 m Wind Zonal Velocity (m/s)"].setPlaceholderText(defs["u10"])
+
+            self.param_inputs["10 m Meridional Velocity (m/s)"].setText(defs["v10"])
+            self.param_inputs["10 m Meridional Velocity (m/s)"].setPlaceholderText(defs["v10"])
 
     def reset_defaults(self):
         """Resets inputs to current template defaults."""
         self.update_params_from_template(self.template_combo.currentText())
         tomorrow = QtCore.QDate.currentDate().addDays(1)
         self.date_picker.setDate(tomorrow)
-        # Reset time to 12h
         self.time_picker.setTime(QtCore.QTime(12, 0))
+
+    def run_simulation(self):
+        """Gathers all inputs and runs the simulation."""
+
+        selected_template = self.template_combo.currentText()
+
+        try:
+            selected_date = self.date_picker.date().toString("dd/MM/yyyy")
+        except AttributeError:
+            selected_date = "Unknown Date"
+
+        try:
+            selected_hour = self.time_picker.time().toString("HH:mm")
+        except AttributeError:
+            selected_hour = "Unknown Hour"
+
+        # Get variables, falling back to placeholders if empty
+        temp_input = self.param_inputs["2m Air Temperature"]
+        temp_val = temp_input.text() if temp_input.text() else temp_input.placeholderText()
+
+        sp_input = self.param_inputs["Surface Pressure"]
+        sp_val = sp_input.text() if sp_input.text() else sp_input.placeholderText()
+
+        tp_input = self.param_inputs["Total Precipitation"]
+        tp_val = tp_input.text() if tp_input.text() else tp_input.placeholderText()
+
+        u10_input = self.param_inputs["10 m Wind Zonal Velocity"]
+        u10_val = u10_input.text() if u10_input.text() else u10_input.placeholderText()
+
+        v10_input = self.param_inputs["10 m Meridional Velocity"]
+        v10_val = v10_input.text() if v10_input.text() else v10_input.placeholderText()
+
+        print("--- HOURLY SIMULATION TRIGGERED ---")
+        print(f"Date: {selected_date} | Hour: {selected_hour} | Template: {selected_template}")
+        print(f"Temp: {temp_val}, Pressure: {sp_val}, Precip: {tp_val}")
+        print(f"Wind Zonal: {u10_val}, Wind Meridional: {v10_val}")
+
+        # Update Display
+        mock_prediction = "1,884.20"
+        self.proj_value.setText(mock_prediction)
 
     def create_custom_combo(self, items):
         combo = QtWidgets.QComboBox()
         combo.addItems(items)
-        combo.setFixedSize(392, 58)
+        combo.setFixedSize(260, 58)  # Changed width to perfectly match Date & Hour boxes
         combo.setStyleSheet("""
             QComboBox {
                 background-color: #EAEAEF;

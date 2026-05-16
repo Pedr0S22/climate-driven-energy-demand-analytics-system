@@ -76,15 +76,14 @@ class Ui_DailySimulatorWindow:
         self.center_h_layout = QtWidgets.QHBoxLayout()
         self.center_h_layout.addStretch()  # LEFT STRETCH
 
-        # --- 3. INNER CONTENT LAYOUT ---
-        self.inner_content_layout = QtWidgets.QVBoxLayout()
-        self.inner_content_layout.setSpacing(30)
+        # --- 3. UNIFIED MASTER GRID ---
+        self.main_grid = QtWidgets.QGridLayout()
+        self.main_grid.setHorizontalSpacing(120)  # Gap between the Left and Right columns
+        self.main_grid.setVerticalSpacing(40)  # Gap between the Selectors (Row 0) and Inputs (Row 1)
 
-        # 2. SELECTORS SECTION (Template & Date)
-        self.selectors_layout = QtWidgets.QHBoxLayout()
-        self.selectors_layout.setSpacing(100)
-
-        # Template Selector
+        # ---------------------------------------------------------
+        # ROW 0, COLUMN 0: Template Selector
+        # ---------------------------------------------------------
         self.template_vbox = QtWidgets.QVBoxLayout()
         self.template_vbox.setSpacing(5)
         self.template_label = QtWidgets.QLabel("Template")
@@ -95,9 +94,14 @@ class Ui_DailySimulatorWindow:
 
         self.template_combo = self.create_custom_combo(["Average", "Heatwave", "Storm", "Rainy"])
         self.template_vbox.addWidget(self.template_combo)
-        self.selectors_layout.addLayout(self.template_vbox)
 
-        # Date Selector
+        self.main_grid.addLayout(
+            self.template_vbox, 0, 0, QtCore.Qt.AlignmentFlag.AlignHCenter | QtCore.Qt.AlignmentFlag.AlignBottom
+        )
+
+        # ---------------------------------------------------------
+        # ROW 0, COLUMN 1: Date Selector
+        # ---------------------------------------------------------
         self.date_vbox = QtWidgets.QVBoxLayout()
         self.date_vbox.setSpacing(15)
         self.date_label = QtWidgets.QLabel("Date")
@@ -108,17 +112,14 @@ class Ui_DailySimulatorWindow:
 
         self.date_picker = DatePicker(parent=self.scroll_content, show_icon=False)
         self.date_vbox.addWidget(self.date_picker)
-        self.selectors_layout.addLayout(self.date_vbox)
 
-        # Add selectors to inner layout
-        self.inner_content_layout.addLayout(self.selectors_layout)
+        self.main_grid.addLayout(
+            self.date_vbox, 0, 1, QtCore.Qt.AlignmentFlag.AlignHCenter | QtCore.Qt.AlignmentFlag.AlignBottom
+        )
 
-        # 3. MAIN SIMULATOR SECTION
-        self.main_grid = QtWidgets.QGridLayout()
-        self.main_grid.setColumnStretch(1, 1)
-        self.main_grid.setSpacing(100)
-
-        # Parameters Column
+        # ---------------------------------------------------------
+        # ROW 1, COLUMN 0: Parameters Column
+        # ---------------------------------------------------------
         self.params_vbox = QtWidgets.QVBoxLayout()
         self.params_vbox.setSpacing(15)
 
@@ -138,31 +139,31 @@ class Ui_DailySimulatorWindow:
 
         # Real Limits from PHYSICAL_LIMITS
         self.param_ranges = {
-            "2m Air Temperature": (-40.0, 55.0),
-            "Surface Pressure": (800.0, 1100.0),
-            "Total Precipitation": (0.0, 55.0),
-            "10 m Wind Zonal Velocity": (-69.4, 69.4),
-            "10 m Meridional Velocity": (-69.4, 69.4),
+            "2m Air Temperature (ºC)": (-40.0, 55.0),
+            "Surface Pressure (hPa)": (800.0, 1100.0),
+            "Total Precipitation (mm)": (0.0, 55.0),
+            "10 m Wind Zonal Velocity (m/s)": (-69.4, 69.4),
+            "10 m Meridional Velocity (m/s)": (-69.4, 69.4),
         }
 
         # Parameter Inputs
         self.param_inputs = {}
         parameters = [
-            ("2m Air Temperature", "13.78"),
-            ("Surface Pressure", "938.67"),
-            ("Total Precipitation", "0.00"),
-            ("10 m Wind Zonal Velocity", "0.46"),
-            ("10 m Meridional Velocity", "0.37"),
+            ("2m Air Temperature (ºC)", "13.78"),
+            ("Surface Pressure (hPa)", "938.67"),
+            ("Total Precipitation (mm)", "0.00"),
+            ("10 m Wind Zonal Velocity (m/s)", "0.46"),
+            ("10 m Meridional Velocity (m/s)", "0.37"),
         ]
 
         for label_text, default_val in parameters:
             row_layout = QtWidgets.QHBoxLayout()
-            row_layout.setSpacing(15)  # Distance between label and input
+            row_layout.setSpacing(60)  # Distance between label and input
 
             lbl = QtWidgets.QLabel(label_text)
             lbl.setFont(QtGui.QFont("Tw Cen MT Condensed", 28))
             lbl.setStyleSheet("color: black;")
-            lbl.setFixedWidth(300)  # Reduced fixed width
+            lbl.setFixedWidth(350)  # Reduced fixed width to tighten spacing
 
             inp = StyledInput(placeholder=default_val)
             inp.setText(default_val)
@@ -180,14 +181,18 @@ class Ui_DailySimulatorWindow:
 
             row_layout.addWidget(lbl)
             row_layout.addWidget(inp)
-            row_layout.addStretch()  # Push inputs to the left side to keep them together
+            row_layout.addStretch()  # Push inputs to the left side to keep them tightly together
 
             self.params_vbox.addLayout(row_layout)
             self.param_inputs[label_text] = inp
 
-        self.main_grid.addLayout(self.params_vbox, 0, 0, QtCore.Qt.AlignmentFlag.AlignTop)
+        self.main_grid.addLayout(
+            self.params_vbox, 1, 0, QtCore.Qt.AlignmentFlag.AlignHCenter | QtCore.Qt.AlignmentFlag.AlignTop
+        )
 
-        # Projection Column
+        # ---------------------------------------------------------
+        # ROW 1, COLUMN 1: Projection Column
+        # ---------------------------------------------------------
         self.projection_vbox = QtWidgets.QVBoxLayout()
         self.projection_vbox.setSpacing(20)
 
@@ -256,13 +261,12 @@ class Ui_DailySimulatorWindow:
         self.buttons_vbox.addStretch()
 
         self.projection_vbox.addLayout(self.buttons_vbox)
-        self.main_grid.addLayout(self.projection_vbox, 0, 1)
-
-        # Add main grid to inner layout
-        self.inner_content_layout.addLayout(self.main_grid)
+        self.main_grid.addLayout(
+            self.projection_vbox, 1, 1, QtCore.Qt.AlignmentFlag.AlignHCenter | QtCore.Qt.AlignmentFlag.AlignTop
+        )
 
         # --- 4. FINISH THE SPACER SANDWICH ---
-        self.center_h_layout.addLayout(self.inner_content_layout)
+        self.center_h_layout.addLayout(self.main_grid)
         self.center_h_layout.addStretch()  # RIGHT STRETCH
 
         self.content_layout.addLayout(self.center_h_layout)
@@ -288,20 +292,21 @@ class Ui_DailySimulatorWindow:
     def update_params_from_template(self, template_name):
         if template_name in self.template_defaults:
             defs = self.template_defaults[template_name]
-            self.param_inputs["2m Air Temperature"].setText(defs["t2m"])
-            self.param_inputs["2m Air Temperature"].setPlaceholderText(defs["t2m"])
 
-            self.param_inputs["Surface Pressure"].setText(defs["sp"])
-            self.param_inputs["Surface Pressure"].setPlaceholderText(defs["sp"])
+            self.param_inputs["2m Air Temperature (ºC)"].setText(defs["t2m"])
+            self.param_inputs["2m Air Temperature (ºC)"].setPlaceholderText(defs["t2m"])
 
-            self.param_inputs["Total Precipitation"].setText(defs["tp"])
-            self.param_inputs["Total Precipitation"].setPlaceholderText(defs["tp"])
+            self.param_inputs["Surface Pressure (hPa)"].setText(defs["sp"])
+            self.param_inputs["Surface Pressure (hPa)"].setPlaceholderText(defs["sp"])
 
-            self.param_inputs["10 m Wind Zonal Velocity"].setText(defs["u10"])
-            self.param_inputs["10 m Wind Zonal Velocity"].setPlaceholderText(defs["u10"])
+            self.param_inputs["Total Precipitation (mm)"].setText(defs["tp"])
+            self.param_inputs["Total Precipitation (mm)"].setPlaceholderText(defs["tp"])
 
-            self.param_inputs["10 m Meridional Velocity"].setText(defs["v10"])
-            self.param_inputs["10 m Meridional Velocity"].setPlaceholderText(defs["v10"])
+            self.param_inputs["10 m Wind Zonal Velocity (m/s)"].setText(defs["u10"])
+            self.param_inputs["10 m Wind Zonal Velocity (m/s)"].setPlaceholderText(defs["u10"])
+
+            self.param_inputs["10 m Meridional Velocity (m/s)"].setText(defs["v10"])
+            self.param_inputs["10 m Meridional Velocity (m/s)"].setPlaceholderText(defs["v10"])
 
     def reset_defaults(self):
         """Resets inputs to current template defaults."""
