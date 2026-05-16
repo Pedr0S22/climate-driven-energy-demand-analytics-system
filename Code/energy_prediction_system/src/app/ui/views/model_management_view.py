@@ -3,6 +3,7 @@ from PyQt6 import QtCore, QtGui, QtWidgets
 from PyQt6.QtWidgets import QGraphicsDropShadowEffect, QMessageBox
 from app.ui.components import Sidebar, ToggleSwitch, TopBar
 import logging
+from app.manager.session_manager import SessionManager
 
 logger = logging.getLogger(__name__)
 
@@ -500,20 +501,31 @@ class Ui_ModelManagementWindow:
                 is_active=model.get("is_active", False),
                 model_id=model.get("model_name_id")
             )
+        self._originally_active = {"daily": None, "hourly": None}
+        for model in models:
+            if model.get("is_active"):
+                self._originally_active[model["model_pred_type"]
+                                        ] = model["model_name_id"]
 
         logger.info(
             f"Loaded {len(daily_models)} daily and {len(hourly_models)} hourly models from API")
 
     def save_changes(self):
+        if SessionManager.get_role() != "admin":
+            QMessageBox.warning(self.MainWindow, "Access Denied",
+                                "Only administrators can activate models.")
+            return
         """Ativa o modelo selecionado em cada secção (daily e/ou hourly)"""
         # Verifica quais modelos estão com toggle ativo em cada frame
         daily_active_id = self.daily_frame.get_active_model_id()
         hourly_active_id = self.hourly_frame.get_active_model_id()
 
         models_to_activate = []
-        if daily_active_id is not None:
+        if daily_active_id is not None and daily_active_id != self._originally_active.get(
+                "daily"):
             models_to_activate.append(("daily", daily_active_id))
-        if hourly_active_id is not None:
+        if hourly_active_id is not None and hourly_active_id != self._originally_active.get(
+                "hourly"):
             models_to_activate.append(("hourly", hourly_active_id))
 
         if not models_to_activate:

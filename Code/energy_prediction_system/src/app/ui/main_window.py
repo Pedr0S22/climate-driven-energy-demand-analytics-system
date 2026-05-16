@@ -275,8 +275,7 @@ class MainWindow(QMainWindow):
 
         # Na Daily Pred Admin
         self.ui_daily_pred.logout_btn.clicked.connect(self.handle_logout)
-        self.ui_daily_pred.home_btn.clicked.connect(
-            lambda: self.stack.setCurrentIndex(2))
+        self.ui_daily_pred.home_btn.clicked.connect(self.go_home)
         self.ui_daily_pred.daily_btn.clicked.connect(
             lambda: self.stack.setCurrentIndex(3))
         self.ui_daily_pred.hourly_btn.clicked.connect(
@@ -290,8 +289,7 @@ class MainWindow(QMainWindow):
 
         # Na Hourly Pred Admin
         self.ui_hourly_pred.logout_btn.clicked.connect(self.handle_logout)
-        self.ui_hourly_pred.home_btn.clicked.connect(
-            lambda: self.stack.setCurrentIndex(2))
+        self.ui_hourly_pred.home_btn.clicked.connect(self.go_home)
         self.ui_hourly_pred.daily_btn.clicked.connect(
             lambda: self.stack.setCurrentIndex(3))
         self.ui_hourly_pred.hourly_btn.clicked.connect(
@@ -305,8 +303,7 @@ class MainWindow(QMainWindow):
 
         # Na Daily Simulation
         self.ui_daily_sim.logout_btn.clicked.connect(self.handle_logout)
-        self.ui_daily_sim.home_btn.clicked.connect(
-            lambda: self.stack.setCurrentIndex(2))
+        self.ui_hourly_sim.home_btn.clicked.connect(self.go_home)
         self.ui_daily_sim.daily_btn.clicked.connect(
             lambda: self.stack.setCurrentIndex(3))
         self.ui_daily_sim.hourly_btn.clicked.connect(
@@ -321,8 +318,7 @@ class MainWindow(QMainWindow):
 
         # Na Hourly Simulation
         self.ui_hourly_sim.logout_btn.clicked.connect(self.handle_logout)
-        self.ui_hourly_sim.home_btn.clicked.connect(
-            lambda: self.stack.setCurrentIndex(2))
+        self.ui_hourly_sim.home_btn.clicked.connect(self.go_home)
         self.ui_hourly_sim.daily_btn.clicked.connect(
             lambda: self.stack.setCurrentIndex(3))
         self.ui_hourly_sim.hourly_btn.clicked.connect(
@@ -337,8 +333,7 @@ class MainWindow(QMainWindow):
 
         # Na Model Management
         self.ui_model_mgmt.logout_btn.clicked.connect(self.handle_logout)
-        self.ui_model_mgmt.home_btn.clicked.connect(
-            lambda: self.stack.setCurrentIndex(2))
+        self.ui_model_mgmt.home_btn.clicked.connect(self.go_home)
         self.ui_model_mgmt.daily_btn.clicked.connect(
             lambda: self.stack.setCurrentIndex(3))
         self.ui_model_mgmt.hourly_btn.clicked.connect(
@@ -352,12 +347,25 @@ class MainWindow(QMainWindow):
 
         # User Homepage
         self.ui_user_homepage.logout_btn.clicked.connect(self.handle_logout)
-        self.ui_user_homepage.home_btn.clicked.connect(
-            lambda: self.stack.setCurrentIndex(2))
+        self.ui_user_homepage.home_btn.clicked.connect(self.go_home)
         self.ui_user_homepage.daily_btn.clicked.connect(
             lambda: self.stack.setCurrentIndex(3))
         self.ui_user_homepage.hourly_btn.clicked.connect(
             lambda: self.stack.setCurrentIndex(4))
+        self.ui_user_homepage.sim_daily_btn.clicked.connect(
+            lambda: self.stack.setCurrentIndex(7))
+        self.ui_user_homepage.sim_hourly_btn.clicked.connect(
+            lambda: self.stack.setCurrentIndex(8))
+
+        # Dashboard buttons (botões grandes)
+        self.ui_user_homepage.daily_button.clicked.connect(
+            lambda: self.stack.setCurrentIndex(3))
+        self.ui_user_homepage.hourly_button.clicked.connect(
+            lambda: self.stack.setCurrentIndex(4))
+        self.ui_user_homepage.sim_daily_button.clicked.connect(
+            lambda: self.stack.setCurrentIndex(7))
+        self.ui_user_homepage.sim_hourly_button.clicked.connect(
+            lambda: self.stack.setCurrentIndex(8))
 
         # Botões com Validação
         self.ui_login.login_button.clicked.connect(self.handle_login)
@@ -488,7 +496,7 @@ class MainWindow(QMainWindow):
 
     def _on_page_changed(self, index):
         """Trigger quando muda de página"""
-        if index == 5:  # Model Management page
+        if index == 5 and SessionManager.get_role() == "admin":  # Model Management page
             self.ui_model_mgmt.load_models()
 
     def handle_daily_simulation(self):
@@ -612,3 +620,10 @@ class MainWindow(QMainWindow):
     def handle_hourly_reset(self):
         """Reseta os campos da simulação horária"""
         self.ui_hourly_sim.reset_defaults()
+
+    def go_home(self):
+        role = SessionManager.get_role()
+        if role == "admin":
+            self.stack.setCurrentIndex(2)
+        else:
+            self.stack.setCurrentIndex(6)

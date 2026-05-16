@@ -1,7 +1,3 @@
-# tests/unit/app/test_models_service.py
-"""
-Testes unitários para ModelsService e seus Workers.
-"""
 from unittest.mock import patch
 
 import pytest
@@ -11,6 +7,7 @@ from app.ui.views.model_management_view import (
     ActivateModelWorker,
     LoadModelsWorker,
 )
+from app.client.models_service import PredictionService
 
 
 @pytest.fixture
@@ -394,3 +391,118 @@ class TestActivateModelWorker:
             data, error = blocker.args
             assert data is None
             assert error == "Timeout Error"
+
+
+@pytest.fixture
+def prediction_service():
+    return PredictionService()
+
+
+class TestPredictionServiceDaily:
+    """Testes para get_daily_prediction()"""
+
+    def test_get_daily_success(self, prediction_service):
+        expected = {
+            "status": 200,
+            "historical_load": [610000, 615000, 620000],
+            "load_predicted": [625000, 630000, 635000],
+            "timestamps": ["2026-05-12T00:00:00Z", "2026-05-13T00:00:00Z"],
+            "top2_drivers": ["t2m", "L1_Load"],
+        }
+        with patch.object(prediction_service.client, "get") as mock_get:
+            mock_get.return_value.status_code = 200
+            mock_get.return_value.json.return_value = expected
+
+            data, status = prediction_service.get_daily_prediction(3, 3)
+
+            assert status == 200
+            assert data["status"] == 200
+            assert len(data["historical_load"]) == 3
+            assert len(data["load_predicted"]) == 3
+
+    def test_get_daily_with_default_params(self, prediction_service):
+        """Testa que os parâmetros default são enviados"""
+        with patch.object(prediction_service.client, "get") as mock_get:
+            mock_get.return_value.status_code = 200
+            mock_get.return_value.json.return_value = {}
+
+            prediction_service.get_daily_prediction()
+
+            call_kwargs = mock_get.call_args[1]
+            assert call_kwargs["params"] == {
+                "historical_points": 3, "predicted_points": 7}
+
+    def test_get_daily_with_custom_params(self, prediction_service):
+        """Testa que parâmetros customizados são enviados"""
+        with patch.object(prediction_service.client, "get") as mock_get:
+            mock_get.return_value.status_code = 200
+            mock_get.return_value.json.return_value = {}
+
+            prediction_service.get_daily_prediction(
+                historical_points=5, predicted_points=14)
+
+            call_kwargs = mock_get.call_args[1]
+            assert call_kwargs["params"] == {
+                "historical_points": 5, "predicted_points": 14}
+
+    def test_get_daily_server_error(self, prediction_service):
+        with patch.object(prediction_service.client, "get") as mock_get:
+            mock_get.return_value.status_code = 500
+            mock_get.return_value.json.return_value = {
+                "detail": "Server error"}
+
+            data, status = prediction_service.get_daily_prediction()
+
+            assert status == 500
+
+    def test_get_daily_connection_error(self, prediction_service):
+        with patch.object(prediction_service.client, "get") as mock_get:
+            mock_get.side_effect = Exception("Timeout")
+
+            data, status = prediction_service.get_daily_prediction()
+
+            assert status == 500
+            assert "Unable to reach the server" in data["detail"]
+
+
+class TestPredictionServiceHourly:
+    """Testes para get_hourly_prediction()"""
+
+    def test_get_hourly_success(self, prediction_service):
+        expected = {
+            "status": 200,
+            "historical_load": [28000, 28500, 29000],
+            "load_predicted": [29500, 30000],
+            "timestamps": ["2026-05-12T10:00:00Z", "2026-05-12T11:00:00Z"],
+            "top2_drivers": ["hour", "t2m"],
+        }
+        with patch.object(prediction_service.client, "get") as mock_get:
+            mock_get.return_value.status_code = 200
+            mock_get.return_value.json.return_value = expected
+
+            data, status = prediction_service.get_hourly_prediction(3, 2)
+
+            assert status == 200
+            assert len(data["historical_load"]) == 3
+            assert len(data["load_predicted"]) == 2
+
+    def test_get_hourly_with_default_params(self, prediction_service):
+        """Testa que os parâmetros default são enviados"""
+        with patch.object(prediction_service.client, "get") as mock_get:
+            mock_get.return_value.status_code = 200
+            mock_get.return_value.json.return_value = {}
+
+            prediction_service.get_hourly_prediction()
+
+            call_kwargs = mock_get.call_args[1]
+            assert call_kwargs["params"] == {
+                "historical_points": 3, "predicted_points": 12}
+
+    def test_get_hourly_server_error(self, prediction_service):
+        with patch.object(prediction_service.client, "get") as mock_get:
+            mock_get.return_value.status_code = 500
+            mock_get.return_value.json.return_value = {"detail": "Error"}
+
+            data, status = prediction_service.get_hourly_prediction()
+
+            assert status == 500
