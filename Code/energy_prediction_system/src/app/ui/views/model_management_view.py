@@ -50,7 +50,9 @@ class ActivateModelWorker(QtCore.QThread):
 
 
 class ModelRow(QtWidgets.QWidget):
-    def __init__(self, model_type, date, dataset, rmse, mae, r2, is_active=False, model_id=None, parent=None):
+    def __init__(
+        self, model_type, model_id_str, date, dataset, rmse, mae, r2, is_active=False, model_id=None, parent=None
+    ):
         super().__init__(parent)
         self.model_id = model_id  # Guarda o ID do modelo para operações de ativação
         self.setFixedHeight(60)
@@ -61,12 +63,13 @@ class ModelRow(QtWidgets.QWidget):
         font = QtGui.QFont("Tw Cen MT", 16)
 
         # Consistent widths matching the header
-        self.add_label(model_type, 140, font, layout)
-        self.add_label(date, 180, font, layout)
-        self.add_label(dataset, 120, font, layout)
-        self.add_label(rmse, 80, font, layout)
-        self.add_label(mae, 80, font, layout)
-        self.add_label(r2, 80, font, layout)
+        self.add_label(model_type, 160, font, layout)
+        self.add_label(model_id_str, 100, font, layout)
+        self.add_label(date, 130, font, layout)
+        self.add_label(dataset, 150, font, layout)
+        self.add_label(rmse, 120, font, layout)
+        self.add_label(mae, 120, font, layout)
+        self.add_label(r2, 120, font, layout)
 
         # Toggle Switch Container (Fixed width 100 to match header)
         toggle_container = QtWidgets.QWidget()
@@ -81,6 +84,7 @@ class ModelRow(QtWidgets.QWidget):
         lbl = QtWidgets.QLabel(text)
         lbl.setFont(font)
         lbl.setFixedWidth(width)
+        lbl.setAlignment(QtCore.Qt.AlignmentFlag.AlignCenter)
         lbl.setStyleSheet("color: black;")
         layout.addWidget(lbl)
 
@@ -89,10 +93,10 @@ class ModelFrame(QtWidgets.QFrame):
     def __init__(self, title, parent=None):
         super().__init__(parent)
         self.rows = []  # List to track rows for exclusive selection
-        self.setFixedWidth(850)  # Fixed width for the table
+        self.setFixedWidth(1100)  # Increased width for better spacing
         self.setStyleSheet("""
             QFrame {
-                background-color: #EAEAEF;
+                background-color: #EAEAEA;
                 border: 3px solid black;
                 border-radius: 10px;
             }
@@ -112,16 +116,14 @@ class ModelFrame(QtWidgets.QFrame):
 
         header_font = QtGui.QFont("Tw Cen MT Condensed", 18, QtGui.QFont.Weight.Bold)
 
-        headers = ["Model Type", "Creation Date", "Dataset", "RMSE", "MAE", "R2", "Active"]
-        widths = [140, 180, 120, 80, 80, 80, 100]
+        headers = ["Model Type", "Model ID", "Date", "Dataset", "RMSE", "MAE", "R2", "Active"]
+        widths = [160, 100, 130, 150, 120, 120, 120, 100]
 
         for h_text, w in zip(headers, widths, strict=False):
             lbl = QtWidgets.QLabel(h_text)
             lbl.setFont(header_font)
             lbl.setFixedWidth(w)
-            lbl.setAlignment(
-                QtCore.Qt.AlignmentFlag.AlignCenter if h_text == "Active" else QtCore.Qt.AlignmentFlag.AlignLeft
-            )
+            lbl.setAlignment(QtCore.Qt.AlignmentFlag.AlignCenter)  # <-- Centers all headers
             lbl.setStyleSheet("color: black; border: none;")
             header_layout.addWidget(lbl)
 
@@ -136,8 +138,8 @@ class ModelFrame(QtWidgets.QFrame):
         self.main_layout.addWidget(self.rows_container)
         self.main_layout.addStretch()
 
-    def add_row(self, model_type, date, dataset, rmse, mae, r2, is_active=False, model_id=None):
-        row = ModelRow(model_type, date, dataset, rmse, mae, r2, is_active, model_id)
+    def add_row(self, model_type, model_id_str, date, dataset, rmse, mae, r2, is_active=False, model_id=None):
+        row = ModelRow(model_type, model_id_str, date, dataset, rmse, mae, r2, is_active, model_id)
         row.setStyleSheet("border: none; border-bottom: 1px solid #CCCCCC;")
         self.rows_layout.addWidget(row)
         self.rows.append(row)
@@ -326,7 +328,7 @@ class Ui_ModelManagementWindow:
         section_layout = QtWidgets.QVBoxLayout()
 
         title_lbl = QtWidgets.QLabel(title)
-        title_lbl.setFont(QtGui.QFont("Tw Cen MT Condensed", 36, QtGui.QFont.Weight.Bold))
+        title_lbl.setFont(QtGui.QFont("Tw Cen MT Condensed", 28, QtGui.QFont.Weight.Bold))
         title_lbl.setStyleSheet("color: black;")
 
         # Center title
@@ -351,6 +353,38 @@ class Ui_ModelManagementWindow:
     def toggle_sidebar(self):
         self.sidebar.setVisible(not self.sidebar.isVisible())
 
+    def _show_styled_message(self, title, text, icon=QMessageBox.Icon.Information):
+        """Displays a custom-styled message box."""
+        msg_box = QMessageBox(self.MainWindow)
+        msg_box.setWindowTitle(title)
+        msg_box.setText(text)
+        msg_box.setIcon(icon)
+        msg_box.setStandardButtons(QMessageBox.StandardButton.Ok)
+        msg_box.setStyleSheet("""
+            QMessageBox {
+                background-color: #F3F3F3;
+                border: 2px solid black;
+            }
+            QLabel {
+                color: black;
+                font-family: 'Tw Cen MT';
+                font-size: 16px;
+            }
+            QPushButton {
+                background-color: #000180;
+                color: white;
+                border-radius: 5px;
+                padding: 6px 20px;
+                font-family: 'Tw Cen MT';
+                font-weight: bold;
+                min-width: 80px;
+            }
+            QPushButton:hover {
+                background-color: #0000AA;
+            }
+        """)
+        msg_box.exec()
+
     def load_models(self):
         """Carrega a lista de modelos a partir da API e popula as tabelas"""
         self.load_btn.setEnabled(False)
@@ -373,11 +407,11 @@ class Ui_ModelManagementWindow:
         self.load_btn.setText("Load Models")
 
         if error:
-            QMessageBox.warning(self.MainWindow, "Error", f"Failed to load models:\n{error}")
+            self._show_styled_message("Error", f"Failed to load models:\n{error}", QMessageBox.Icon.Warning)
             return
 
         if not models:
-            QMessageBox.information(self.MainWindow, "Info", "No models found on the server.")
+            self._show_styled_message("Info", "No models found on the server.", QMessageBox.Icon.Information)
             return
 
         # Limpa as tabelas existentes
@@ -391,19 +425,19 @@ class Ui_ModelManagementWindow:
         # Popula a tabela de modelos Daily
         for model in daily_models:
             creation_date = model.get("model_creation_date", "")
-            # Formata a data para mostrar só YYYY-MM-DD HH:MM
+            # Formata a data para mostrar só YYYY/MM/DD
             if creation_date:
                 try:
-                    # Tenta parse e formatar a data
                     from datetime import datetime
 
                     dt = datetime.fromisoformat(creation_date.replace("Z", "+00:00"))
-                    creation_date = dt.strftime("%Y-%m-%d %H:%M")
+                    creation_date = dt.strftime("%Y-%m-%d")
                 except (ValueError, AttributeError):
-                    creation_date = creation_date[:16] if len(creation_date) >= 16 else creation_date
+                    creation_date = creation_date[:10]
 
             self.daily_frame.add_row(
                 model_type=model.get("model_type", "Unknown"),
+                model_id_str=str(model.get("model_name_id", "N/A")),
                 date=creation_date,
                 dataset=model.get("dataset_selected", "N/A"),
                 rmse=f"{model.get('rmse', 0):.2f}" if model.get("rmse") is not None else "N/A",
@@ -416,17 +450,19 @@ class Ui_ModelManagementWindow:
         # Popula a tabela de modelos Hourly
         for model in hourly_models:
             creation_date = model.get("model_creation_date", "")
+
             if creation_date:
                 try:
                     from datetime import datetime
 
                     dt = datetime.fromisoformat(creation_date.replace("Z", "+00:00"))
-                    creation_date = dt.strftime("%Y-%m-%d %H:%M")
+                    creation_date = dt.strftime("%Y-%m-%d")
                 except (ValueError, AttributeError):
-                    creation_date = creation_date[:16] if len(creation_date) >= 16 else creation_date
+                    creation_date = creation_date[:10]
 
             self.hourly_frame.add_row(
                 model_type=model.get("model_type", "Unknown"),
+                model_id_str=str(model.get("model_name_id", "N/A")),
                 date=creation_date,
                 dataset=model.get("dataset_selected", "N/A"),
                 rmse=f"{model.get('rmse', 0):.2f}" if model.get("rmse") is not None else "N/A",
@@ -444,7 +480,9 @@ class Ui_ModelManagementWindow:
 
     def save_changes(self):
         if SessionManager.get_role() != "admin":
-            QMessageBox.warning(self.MainWindow, "Access Denied", "Only administrators can activate models.")
+            self._show_styled_message(
+                "Access Denied", "Only administrators can activate models.", QMessageBox.Icon.Warning
+            )
             return
         """Ativa o modelo selecionado em cada secção (daily e/ou hourly)"""
         # Verifica quais modelos estão com toggle ativo em cada frame
@@ -458,11 +496,11 @@ class Ui_ModelManagementWindow:
             models_to_activate.append(("hourly", hourly_active_id))
 
         if not models_to_activate:
-            QMessageBox.information(
-                self.MainWindow,
+            self._show_styled_message(
                 "Info",
                 "Please select at least one model to activate.\n"
                 "Use the toggle switches to select an active model for Daily and/or Hourly predictions.",
+                QMessageBox.Icon.Information,
             )
             return
 
@@ -472,13 +510,37 @@ class Ui_ModelManagementWindow:
             msg += f"  • {freq.capitalize()} Model (ID: {mid})\n"
         msg += "\nDo you want to continue?"
 
-        reply = QMessageBox.question(
-            self.MainWindow,
-            "Confirm Activation",
-            msg,
-            QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No,
-            QMessageBox.StandardButton.No,
-        )
+        msg_box = QMessageBox(self.MainWindow)
+        msg_box.setWindowTitle("Confirm Activation")
+        msg_box.setText(msg)
+        msg_box.setStandardButtons(QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No)
+        msg_box.setDefaultButton(QMessageBox.StandardButton.No)
+        msg_box.setIcon(QMessageBox.Icon.Question)
+        msg_box.setStyleSheet("""
+            QMessageBox {
+                background-color: #F3F3F3;
+                border: 2px solid black;
+            }
+            QLabel {
+                color: black;
+                font-family: 'Tw Cen MT';
+                font-size: 16px;
+            }
+            QPushButton {
+                background-color: #000180;
+                color: white;
+                border-radius: 5px;
+                padding: 6px 20px;
+                font-family: 'Tw Cen MT';
+                font-weight: bold;
+                min-width: 80px;
+            }
+            QPushButton:hover {
+                background-color: #0000AA;
+            }
+        """)
+
+        reply = msg_box.exec()
 
         if reply != QMessageBox.StandardButton.Yes:
             return
@@ -524,9 +586,11 @@ class Ui_ModelManagementWindow:
 
         if self._activation_errors:
             error_msg = "Some activations failed:\n\n" + "\n".join(self._activation_errors)
-            QMessageBox.warning(self.MainWindow, "Activation Errors", error_msg)
+            self._show_styled_message("Activation Errors", error_msg, QMessageBox.Icon.Warning)
         else:
-            QMessageBox.information(self.MainWindow, "Success", "All selected models have been activated successfully!")
+            self._show_styled_message(
+                "Success", "All selected models have been activated successfully!", QMessageBox.Icon.Information
+            )
 
         # Recarrega os modelos para mostrar o estado atualizado
         self.load_models()

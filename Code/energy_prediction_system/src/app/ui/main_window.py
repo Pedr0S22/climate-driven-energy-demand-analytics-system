@@ -260,6 +260,23 @@ class MainWindow(QMainWindow):
         self.stack.setCurrentIndex(0)  # Iniciar na Home por agora para testes
         self.stack.currentChanged.connect(self._on_page_changed)
 
+        # --- SIDEBAR STATE SYNCHRONIZATION ---
+        # Group all sidebar instances to share accordion states
+
+        self.all_sidebars = [
+            self.ui_admin.sidebar,
+            self.ui_daily_pred.sidebar,
+            self.ui_hourly_pred.sidebar,
+            self.ui_model_mgmt.sidebar,
+            self.ui_user_homepage.sidebar,
+            self.ui_daily_sim.sidebar,
+            self.ui_hourly_sim.sidebar,
+        ]
+
+        # Connect each sidebar to the sync function
+        for sidebar in self.all_sidebars:
+            sidebar.section_toggled.connect(self._sync_sidebar_accordions)
+
         # --- LIGAÇÕES ---
 
         # No Login: Ir para Registo
@@ -543,12 +560,14 @@ class MainWindow(QMainWindow):
         is_admin = SessionManager.get_role() == "admin"
         self.ui_daily_sim.model_btn.parent().setVisible(is_admin)
         self._update_all_sidebars()
+        self.handle_daily_simulation()
 
     def handle_nav_to_sim_hourly(self):
         self.stack.setCurrentIndex(8)
         is_admin = SessionManager.get_role() == "admin"
         self.ui_hourly_sim.model_btn.parent().setVisible(is_admin)
         self._update_all_sidebars()
+        self.handle_hourly_simulation()
 
     def handle_daily_prediction(self):
         hist = self.ui_daily_pred.params_widget.before_input.value()
@@ -720,3 +739,8 @@ class MainWindow(QMainWindow):
             if isinstance(error_msg, list):
                 error_msg = error_msg[0].get("msg", str(error_msg))
             QMessageBox.warning(self, "Simulation Error", str(error_msg))
+
+    def _sync_sidebar_accordions(self, section_name, is_visible):
+        """Forces all sidebars to mimic the open/close state of the section just clicked."""
+        for sidebar in self.all_sidebars:
+            sidebar.sync_section_state(section_name, is_visible)

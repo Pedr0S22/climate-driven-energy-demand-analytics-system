@@ -42,7 +42,7 @@ class Ui_MainWindow:
 
         self.home_btn = self.sidebar.add_menu_header("Home", is_toggle=False, active=True)
 
-        self.sidebar.add_menu_header("Predictions")
+        self.sidebar.add_menu_header("Predictions:")
         self.daily_btn = self.sidebar.add_menu_item("daily", active=False, indent=True, header_parent="Predictions:")
         self.hourly_btn = self.sidebar.add_menu_item("hourly", active=False, indent=True, header_parent="Predictions:")
 

@@ -177,6 +177,7 @@ class Ui_DailySimulatorWindow:
             min_val, max_val = self.param_ranges[label_text]
             validator = QtGui.QDoubleValidator(min_val, max_val, 2)
             validator.setNotation(QtGui.QDoubleValidator.Notation.StandardNotation)
+            validator.setLocale(QtCore.QLocale.c())  # Force dot as decimal separator
             inp.setValidator(validator)
 
             row_layout.addWidget(lbl)

@@ -202,6 +202,7 @@ class Ui_HourlySimulatorWindow:
             min_val, max_val = self.param_ranges[label_text]
             validator = QtGui.QDoubleValidator(min_val, max_val, 2)
             validator.setNotation(QtGui.QDoubleValidator.Notation.StandardNotation)
+            validator.setLocale(QtCore.QLocale.c())
             inp.setValidator(validator)
 
             row_layout.addWidget(lbl)
@@ -375,7 +376,7 @@ class Ui_HourlySimulatorWindow:
         print(f"Wind Zonal: {u10_val}, Wind Meridional: {v10_val}")
 
         # Update Display
-        mock_prediction = "1,884.20"
+        mock_prediction = "---,--"
         self.proj_value.setText(mock_prediction)
 
     def create_custom_combo(self, items):
