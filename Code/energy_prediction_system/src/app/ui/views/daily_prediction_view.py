@@ -39,7 +39,7 @@ class Ui_DailyPredictionAdminWindow:
         self.sidebar = Sidebar(parent=self.container)
         self.sidebar.setFixedWidth(280)
 
-        self.home_btn = self.sidebar.add_menu_item("Home", active=False)
+        self.home_btn = self.sidebar.add_menu_header("Home", is_toggle=False, active=False)
 
         self.sidebar.add_menu_header("Predictions:")
         self.daily_btn = self.sidebar.add_menu_item("daily", active=True, indent=True, header_parent="Predictions:")
@@ -53,7 +53,7 @@ class Ui_DailyPredictionAdminWindow:
             "hourly", active=False, indent=True, header_parent="Scenario Simulation:"
         )
 
-        self.model_btn = self.sidebar.add_menu_item("Model Management", active=False)
+        self.model_btn = self.sidebar.add_menu_header("Model Management", is_toggle=False, active=False)
 
         self.sidebar.layout.addStretch()
         self.sidebar.setVisible(False)

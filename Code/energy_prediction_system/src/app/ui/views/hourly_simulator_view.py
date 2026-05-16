@@ -1,14 +1,13 @@
-from PyQt6 import QtCore, QtGui, QtWidgets
-from app.ui.components import Sidebar, StyledInput, TopBar, DatePicker
+from app.ui.components import DatePicker, Sidebar, StyledInput, TopBar
 from app.ui.components.time_picker import TimePicker
+from PyQt6 import QtCore, QtGui, QtWidgets
 
 
 class Ui_HourlySimulatorWindow:
     def setupUi(self, HourlySimulatorWindow):
         HourlySimulatorWindow.setObjectName("HourlySimulatorWindow")
         HourlySimulatorWindow.resize(1446, 1029)
-        HourlySimulatorWindow.setStyleSheet(
-            "background-color: rgb(243, 243, 243);")
+        HourlySimulatorWindow.setStyleSheet("background-color: rgb(243, 243, 243);")
 
         self.centralwidget = QtWidgets.QWidget(parent=HourlySimulatorWindow)
         self.centralwidget.setObjectName("centralwidget")
@@ -19,16 +18,13 @@ class Ui_HourlySimulatorWindow:
 
         # Central Container
         self.container = QtWidgets.QFrame(parent=self.centralwidget)
-        self.container.setStyleSheet(
-            "background-color: #CCCCCC; border-radius: 5px;")
+        self.container.setStyleSheet("background-color: #CCCCCC; border-radius: 5px;")
         self.container_layout = QtWidgets.QVBoxLayout(self.container)
         self.container_layout.setContentsMargins(0, 0, 0, 0)
         self.container_layout.setSpacing(0)
 
         # 1. TOP BAR
-        self.top_bar = TopBar(
-            parent=self.container,
-            title="Hourly Scenario Simulator")
+        self.top_bar = TopBar(parent=self.container, title="Hourly Scenario Simulator")
         self.container_layout.addWidget(self.top_bar)
 
         # Connections
@@ -43,22 +39,21 @@ class Ui_HourlySimulatorWindow:
         self.sidebar = Sidebar(parent=self.container)
         self.sidebar.setFixedWidth(280)
 
-        self.home_btn = self.sidebar.add_menu_item("Home", active=False)
+        self.home_btn = self.sidebar.add_menu_header("Home", is_toggle=False, active=False)
 
         self.sidebar.add_menu_header("Predictions:")
-        self.daily_btn = self.sidebar.add_menu_item(
-            "daily", active=False, indent=True, header_parent="Predictions:")
-        self.hourly_btn = self.sidebar.add_menu_item(
-            "hourly", active=False, indent=True, header_parent="Predictions:")
+        self.daily_btn = self.sidebar.add_menu_item("daily", active=False, indent=True, header_parent="Predictions:")
+        self.hourly_btn = self.sidebar.add_menu_item("hourly", active=False, indent=True, header_parent="Predictions:")
 
         self.sidebar.add_menu_header("Scenario Simulation:")
         self.sim_daily_btn = self.sidebar.add_menu_item(
-            "daily", active=False, indent=True, header_parent="Scenario Simulation:")
+            "daily", active=False, indent=True, header_parent="Scenario Simulation:"
+        )
         self.sim_hourly_btn = self.sidebar.add_menu_item(
-            "hourly", active=True, indent=True, header_parent="Scenario Simulation:")
+            "hourly", active=True, indent=True, header_parent="Scenario Simulation:"
+        )
 
-        self.model_btn = self.sidebar.add_menu_item(
-            "Model Management", active=False)
+        self.model_btn = self.sidebar.add_menu_header("Model Management", is_toggle=False, active=False)
 
         self.sidebar.layout.addStretch()
         self.sidebar.setVisible(False)
@@ -67,8 +62,7 @@ class Ui_HourlySimulatorWindow:
         # --- CONTENT AREA ---
         self.scroll_area = QtWidgets.QScrollArea(parent=self.container)
         self.scroll_area.setWidgetResizable(True)
-        self.scroll_area.setStyleSheet(
-            "border: none; background: transparent;")
+        self.scroll_area.setStyleSheet("border: none; background: transparent;")
         self.scroll_content = QtWidgets.QWidget()
         self.scroll_content.setStyleSheet("background: transparent;")
         self.content_layout = QtWidgets.QVBoxLayout(self.scroll_content)
@@ -87,8 +81,7 @@ class Ui_HourlySimulatorWindow:
         self.template_label.setAlignment(QtCore.Qt.AlignmentFlag.AlignCenter)
         self.template_vbox.addWidget(self.template_label)
 
-        self.template_combo = self.create_custom_combo(
-            ["Average", "Heatwave", "Storm", "Rainy"])
+        self.template_combo = self.create_custom_combo(["Average", "Heatwave", "Storm", "Rainy"])
         self.template_vbox.addWidget(self.template_combo)
         self.selectors_layout.addLayout(self.template_vbox)
 
@@ -100,8 +93,7 @@ class Ui_HourlySimulatorWindow:
         self.date_label.setAlignment(QtCore.Qt.AlignmentFlag.AlignCenter)
         self.date_vbox.addWidget(self.date_label)
 
-        self.date_picker = DatePicker(
-            parent=self.scroll_content, show_icon=False)
+        self.date_picker = DatePicker(parent=self.scroll_content, show_icon=False)
         self.date_vbox.addWidget(self.date_picker)
         self.selectors_layout.addLayout(self.date_vbox)
 
@@ -113,8 +105,7 @@ class Ui_HourlySimulatorWindow:
         self.hour_label.setAlignment(QtCore.Qt.AlignmentFlag.AlignCenter)
         self.hour_vbox.addWidget(self.hour_label)
 
-        self.time_picker = TimePicker(
-            parent=self.scroll_content, initial_hour=12)
+        self.time_picker = TimePicker(parent=self.scroll_content, initial_hour=12)
         self.hour_vbox.addWidget(self.time_picker)
         self.selectors_layout.addLayout(self.hour_vbox)
 
@@ -137,30 +128,11 @@ class Ui_HourlySimulatorWindow:
 
         # Real Defaults from BASE_TEMPLATES (Hourly)
         self.template_defaults = {
-            "Average": {
-                "t2m": "14.78",
-                "sp": "941.93",
-                "tp": "0.00",
-                "u10": "-0.50",
-                "v10": "-0.80"},
-            "Heatwave": {
-                "t2m": "41.00",
-                "sp": "939.61",
-                "tp": "0.00",
-                "u10": "3.74",
-                "v10": "2.82"},
-            "Storm": {
-                "t2m": "20.49",
-                "sp": "933.40",
-                "tp": "9.64",
-                "u10": "-1.25",
-                "v10": "-0.78"},
-            "Rainy": {
-                "t2m": "5.56",
-                "sp": "936.74",
-                "tp": "0.07",
-                "u10": "2.73",
-                "v10": "2.22"}}
+            "Average": {"t2m": "14.78", "sp": "941.93", "tp": "0.00", "u10": "-0.50", "v10": "-0.80"},
+            "Heatwave": {"t2m": "41.00", "sp": "939.61", "tp": "0.00", "u10": "3.74", "v10": "2.82"},
+            "Storm": {"t2m": "20.49", "sp": "933.40", "tp": "9.64", "u10": "-1.25", "v10": "-0.78"},
+            "Rainy": {"t2m": "5.56", "sp": "936.74", "tp": "0.07", "u10": "2.73", "v10": "2.22"},
+        }
 
         # Real Limits from PHYSICAL_LIMITS
         self.param_ranges = {
@@ -168,7 +140,7 @@ class Ui_HourlySimulatorWindow:
             "Surface Pressure": (800.0, 1100.0),
             "Total Precipitation": (0.0, 55.0),
             "10 m Wind Zonal Velocity": (-69.4, 69.4),
-            "10 m Meridional Velocity": (-69.4, 69.4)
+            "10 m Meridional Velocity": (-69.4, 69.4),
         }
 
         # Parameter Inputs
@@ -178,7 +150,7 @@ class Ui_HourlySimulatorWindow:
             ("Surface Pressure", "941.93"),
             ("Total Precipitation", "0.00"),
             ("10 m Wind Zonal Velocity", "-0.50"),
-            ("10 m Meridional Velocity", "-0.80")
+            ("10 m Meridional Velocity", "-0.80"),
         ]
 
         for label_text, default_val in parameters:
@@ -193,14 +165,13 @@ class Ui_HourlySimulatorWindow:
             inp.setFixedWidth(191)
             inp.setFixedHeight(58)
             inp.setStyleSheet(
-                inp.styleSheet() +
-                "QLineEdit { font-size: 32px; border: 2px solid black; border-radius: 6px; }")
+                inp.styleSheet() + "QLineEdit { font-size: 32px; border: 2px solid black; border-radius: 6px; }"
+            )
 
             # Add validator based on real ranges
             min_val, max_val = self.param_ranges[label_text]
             validator = QtGui.QDoubleValidator(min_val, max_val, 2)
-            validator.setNotation(
-                QtGui.QDoubleValidator.Notation.StandardNotation)
+            validator.setNotation(QtGui.QDoubleValidator.Notation.StandardNotation)
             inp.setValidator(validator)
 
             row_layout.addWidget(lbl)
@@ -208,8 +179,7 @@ class Ui_HourlySimulatorWindow:
             self.params_vbox.addLayout(row_layout)
             self.param_inputs[label_text] = inp
 
-        self.main_grid.addLayout(
-            self.params_vbox, 0, 0, QtCore.Qt.AlignmentFlag.AlignTop)
+        self.main_grid.addLayout(self.params_vbox, 0, 0, QtCore.Qt.AlignmentFlag.AlignTop)
 
         # Projection Column
         self.projection_vbox = QtWidgets.QVBoxLayout()
@@ -232,18 +202,12 @@ class Ui_HourlySimulatorWindow:
         """)
         self.proj_display_layout = QtWidgets.QVBoxLayout(self.proj_display)
         self.proj_value = QtWidgets.QLabel("172,05")
-        self.proj_value.setFont(
-            QtGui.QFont(
-                "Tw Cen MT Condensed",
-                74,
-                QtGui.QFont.Weight.Bold))
+        self.proj_value.setFont(QtGui.QFont("Tw Cen MT Condensed", 74, QtGui.QFont.Weight.Bold))
         self.proj_value.setStyleSheet("color: black; border: none;")
         self.proj_value.setAlignment(QtCore.Qt.AlignmentFlag.AlignCenter)
         self.proj_display_layout.addWidget(self.proj_value)
 
-        self.projection_vbox.addWidget(
-            self.proj_display,
-            alignment=QtCore.Qt.AlignmentFlag.AlignCenter)
+        self.projection_vbox.addWidget(self.proj_display, alignment=QtCore.Qt.AlignmentFlag.AlignCenter)
 
         # Buttons - Moved up and resized to be proportional to inputs
         self.buttons_vbox = QtWidgets.QVBoxLayout()
@@ -252,9 +216,7 @@ class Ui_HourlySimulatorWindow:
 
         self.save_btn = QtWidgets.QPushButton("Save changes")
         self.save_btn.setFixedSize(280, 65)
-        self.save_btn.setCursor(
-            QtGui.QCursor(
-                QtCore.Qt.CursorShape.PointingHandCursor))
+        self.save_btn.setCursor(QtGui.QCursor(QtCore.Qt.CursorShape.PointingHandCursor))
         self.save_btn.setStyleSheet("""
             QPushButton {
                 background-color: #000180;
@@ -267,14 +229,11 @@ class Ui_HourlySimulatorWindow:
             }
             QPushButton:hover { background-color: #0000AA; }
         """)
-        self.buttons_vbox.addWidget(
-            self.save_btn,
-            alignment=QtCore.Qt.AlignmentFlag.AlignCenter)
+        self.buttons_vbox.addWidget(self.save_btn, alignment=QtCore.Qt.AlignmentFlag.AlignCenter)
 
         self.reset_btn = QtWidgets.QPushButton("Reset")
         self.reset_btn.setFixedSize(140, 65)
-        self.reset_btn.setCursor(QtGui.QCursor(
-            QtCore.Qt.CursorShape.PointingHandCursor))
+        self.reset_btn.setCursor(QtGui.QCursor(QtCore.Qt.CursorShape.PointingHandCursor))
         self.reset_btn.setStyleSheet("""
             QPushButton {
                 background-color: #800002;
@@ -287,9 +246,7 @@ class Ui_HourlySimulatorWindow:
             }
             QPushButton:hover { background-color: #A00002; }
         """)
-        self.buttons_vbox.addWidget(
-            self.reset_btn,
-            alignment=QtCore.Qt.AlignmentFlag.AlignCenter)
+        self.buttons_vbox.addWidget(self.reset_btn, alignment=QtCore.Qt.AlignmentFlag.AlignCenter)
         self.buttons_vbox.addStretch()
 
         self.projection_vbox.addLayout(self.buttons_vbox)
@@ -306,8 +263,7 @@ class Ui_HourlySimulatorWindow:
         HourlySimulatorWindow.setCentralWidget(self.centralwidget)
 
         self.menu_btn.clicked.connect(self.toggle_sidebar)
-        self.template_combo.currentTextChanged.connect(
-            self.update_params_from_template)
+        self.template_combo.currentTextChanged.connect(self.update_params_from_template)
         self.reset_btn.clicked.connect(self.reset_defaults)
 
     def toggle_sidebar(self):
@@ -318,24 +274,19 @@ class Ui_HourlySimulatorWindow:
             defs = self.template_defaults[template_name]
             # Update values and placeholders
             self.param_inputs["2m Air Temperature"].setText(defs["t2m"])
-            self.param_inputs["2m Air Temperature"].setPlaceholderText(
-                defs["t2m"])
+            self.param_inputs["2m Air Temperature"].setPlaceholderText(defs["t2m"])
 
             self.param_inputs["Surface Pressure"].setText(defs["sp"])
-            self.param_inputs["Surface Pressure"].setPlaceholderText(
-                defs["sp"])
+            self.param_inputs["Surface Pressure"].setPlaceholderText(defs["sp"])
 
             self.param_inputs["Total Precipitation"].setText(defs["tp"])
-            self.param_inputs["Total Precipitation"].setPlaceholderText(
-                defs["tp"])
+            self.param_inputs["Total Precipitation"].setPlaceholderText(defs["tp"])
 
             self.param_inputs["10 m Wind Zonal Velocity"].setText(defs["u10"])
-            self.param_inputs["10 m Wind Zonal Velocity"].setPlaceholderText(
-                defs["u10"])
+            self.param_inputs["10 m Wind Zonal Velocity"].setPlaceholderText(defs["u10"])
 
             self.param_inputs["10 m Meridional Velocity"].setText(defs["v10"])
-            self.param_inputs["10 m Meridional Velocity"].setPlaceholderText(
-                defs["v10"])
+            self.param_inputs["10 m Meridional Velocity"].setPlaceholderText(defs["v10"])
 
     def reset_defaults(self):
         """Resets inputs to current template defaults."""

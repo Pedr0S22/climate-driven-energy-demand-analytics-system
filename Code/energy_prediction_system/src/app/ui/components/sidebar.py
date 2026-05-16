@@ -21,33 +21,38 @@ class Sidebar(QtWidgets.QFrame):
         # Track if a section is expanded
         self.section_expanded = {}
 
-    def add_menu_header(self, text):
-        """Adds a clickable section header that toggles children visibility."""
+    def add_menu_header(self, text, is_toggle=True, active=False):
+        """Adds a clickable section header. If is_toggle is True, it toggles children visibility."""
         btn = QtWidgets.QPushButton(text)
         btn.setFixedHeight(50)
         font = QtGui.QFont("Tw Cen MT Condensed", 22, QtGui.QFont.Weight.Bold)
         btn.setFont(font)
         btn.setCursor(QtGui.QCursor(QtCore.Qt.CursorShape.PointingHandCursor))
 
-        btn.setStyleSheet("""
-            QPushButton {
-                background: transparent;
+        # Header styling
+        bg_color = "rgba(0, 1, 128, 0.05)" if active else "transparent"
+
+        btn.setStyleSheet(f"""
+            QPushButton {{
+                background-color: {bg_color};
                 border: none;
                 color: #000180;
                 text-align: left;
                 padding-left: 20px;
                 margin-top: 10px;
-            }
-            QPushButton:hover {
-                background-color: rgba(0, 1, 128, 0.05);
-            }
+            }}
+            QPushButton:hover {{
+                background-color: rgba(0, 1, 128, 0.08);
+            }}
         """)
 
         self.layout.addWidget(btn)
-        self.sections[text] = []
-        self.section_expanded[text] = False
 
-        btn.clicked.connect(lambda checked=False, t=text: self.toggle_section(t))
+        if is_toggle:
+            self.sections[text] = []
+            self.section_expanded[text] = False
+            btn.clicked.connect(lambda checked=False, t=text: self.toggle_section(t))
+
         return btn
 
     def add_menu_item(self, text, active=False, indent=False, header_parent=None):
