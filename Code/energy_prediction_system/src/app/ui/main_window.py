@@ -106,6 +106,9 @@ class MainWindow(QMainWindow):
         self.setWindowTitle("Energy Demand Prediction System")
         self.showMaximized()
 
+        # Sidebar visibility state persistence
+        self.sidebar_is_visible = False
+
         # O StackedWidget permite trocar de página sem abrir janelas novas
         self.stack = QStackedWidget()
         self.setCentralWidget(self.stack)
@@ -169,6 +172,10 @@ class MainWindow(QMainWindow):
         self.ui_admin.hourly_btn.clicked.connect(self.handle_nav_to_hourly)
         self.ui_admin.model_mgmt_btn.clicked.connect(lambda: self.stack.setCurrentIndex(5))
 
+        # Use toolButton for Admin Homepage
+        self.ui_admin.toolButton.clicked.disconnect()
+        self.ui_admin.toolButton.clicked.connect(self.toggle_sidebar)
+
         # Na Home: Navegação Dashboard
         self.ui_admin.daily_button.clicked.connect(self.handle_nav_to_daily)
         self.ui_admin.hourly_button.clicked.connect(self.handle_nav_to_hourly)
@@ -184,6 +191,8 @@ class MainWindow(QMainWindow):
         self.ui_daily_pred.hourly_btn.clicked.connect(self.handle_nav_to_hourly)
         self.ui_daily_pred.model_btn.clicked.connect(lambda: self.stack.setCurrentIndex(5))
         self.ui_daily_pred.params_widget.submit_btn.clicked.connect(self.handle_daily_prediction)
+        self.ui_daily_pred.menu_btn.clicked.disconnect()
+        self.ui_daily_pred.menu_btn.clicked.connect(self.toggle_sidebar)
 
         # Na Hourly Pred Admin
         self.ui_hourly_pred.logout_btn.clicked.connect(self.handle_logout)
@@ -192,6 +201,8 @@ class MainWindow(QMainWindow):
         self.ui_hourly_pred.hourly_btn.clicked.connect(self.handle_nav_to_hourly)
         self.ui_hourly_pred.model_btn.clicked.connect(lambda: self.stack.setCurrentIndex(5))
         self.ui_hourly_pred.params_widget.submit_btn.clicked.connect(self.handle_hourly_prediction)
+        self.ui_hourly_pred.menu_btn.clicked.disconnect()
+        self.ui_hourly_pred.menu_btn.clicked.connect(self.toggle_sidebar)
 
         # Na Model Management
         self.ui_model_mgmt.logout_btn.clicked.connect(self.handle_logout)
@@ -199,12 +210,18 @@ class MainWindow(QMainWindow):
         self.ui_model_mgmt.daily_btn.clicked.connect(self.handle_nav_to_daily)
         self.ui_model_mgmt.hourly_btn.clicked.connect(self.handle_nav_to_hourly)
         self.ui_model_mgmt.model_btn.clicked.connect(lambda: self.stack.setCurrentIndex(5))
+        self.ui_model_mgmt.menu_btn.clicked.disconnect()
+        self.ui_model_mgmt.menu_btn.clicked.connect(self.toggle_sidebar)
 
         # User Homepage
         self.ui_user_homepage.logout_btn.clicked.connect(self.handle_logout)
         self.ui_user_homepage.home_btn.clicked.connect(self.handle_nav_to_home)
         self.ui_user_homepage.daily_btn.clicked.connect(self.handle_nav_to_daily)
         self.ui_user_homepage.hourly_btn.clicked.connect(self.handle_nav_to_hourly)
+        self.ui_user_homepage.daily_button.clicked.connect(self.handle_nav_to_daily)
+        self.ui_user_homepage.hourly_button.clicked.connect(self.handle_nav_to_hourly)
+        self.ui_user_homepage.menu_btn.clicked.disconnect()
+        self.ui_user_homepage.menu_btn.clicked.connect(self.toggle_sidebar)
 
         # Botões com Validação
         self.ui_login.login_button.clicked.connect(self.handle_login)
@@ -335,18 +352,32 @@ class MainWindow(QMainWindow):
 
     # --- NAVIGATION HANDLERS ---
 
+    def toggle_sidebar(self):
+        self.sidebar_is_visible = not self.sidebar_is_visible
+        self._update_all_sidebars()
+
+    def _update_all_sidebars(self):
+        # Update visibility in all views that have a sidebar
+        self.ui_admin.sidebar.setVisible(self.sidebar_is_visible)
+        self.ui_daily_pred.sidebar.setVisible(self.sidebar_is_visible)
+        self.ui_hourly_pred.sidebar.setVisible(self.sidebar_is_visible)
+        self.ui_model_mgmt.sidebar.setVisible(self.sidebar_is_visible)
+        self.ui_user_homepage.sidebar.setVisible(self.sidebar_is_visible)
+
     def handle_nav_to_home(self):
         role = SessionManager.get_role()
         if role == "admin":
             self.stack.setCurrentIndex(2)
         else:
             self.stack.setCurrentIndex(6)
+        self._update_all_sidebars()
 
     def handle_nav_to_daily(self):
         self.stack.setCurrentIndex(3)
         # Ensure correct visibility in prediction view sidebar
         is_admin = SessionManager.get_role() == "admin"
         self.ui_daily_pred.model_btn.parent().setVisible(is_admin)
+        self._update_all_sidebars()
         self.handle_daily_prediction()
 
     def handle_nav_to_hourly(self):
@@ -354,6 +385,7 @@ class MainWindow(QMainWindow):
         # Ensure correct visibility in prediction view sidebar
         is_admin = SessionManager.get_role() == "admin"
         self.ui_hourly_pred.model_btn.parent().setVisible(is_admin)
+        self._update_all_sidebars()
         self.handle_hourly_prediction()
 
     def handle_daily_prediction(self):
