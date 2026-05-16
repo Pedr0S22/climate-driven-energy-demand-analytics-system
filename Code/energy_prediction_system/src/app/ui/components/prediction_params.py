@@ -20,13 +20,13 @@ class PredictionParams(QtWidgets.QFrame):
 
         # Title
         self.title = QtWidgets.QLabel("Parameters")
-        self.title.setFont(QtGui.QFont("Tw Cen MT Condensed", 24, QtGui.QFont.Weight.Bold))
+        self.title.setFont(QtGui.QFont("Tw Cen MT Condensed", 28, QtGui.QFont.Weight.Bold))
         self.title.setStyleSheet("border: none; color: #000180;")
         self.layout.addWidget(self.title)
 
         # Before Parameter
         self.before_label = QtWidgets.QLabel("Days Before:" if mode == "daily" else "Hours Before:")
-        self.before_label.setFont(QtGui.QFont("Tw Cen MT Condensed", 18))
+        self.before_label.setFont(QtGui.QFont("Tw Cen MT Condensed", 16))
         self.before_label.setStyleSheet("border: none; color: black;")
         self.layout.addWidget(self.before_label)
 
@@ -53,7 +53,7 @@ class PredictionParams(QtWidgets.QFrame):
 
         # After Parameter
         self.after_label = QtWidgets.QLabel("Days After:" if mode == "daily" else "Hours After:")
-        self.after_label.setFont(QtGui.QFont("Tw Cen MT Condensed", 18))
+        self.after_label.setFont(QtGui.QFont("Tw Cen MT Condensed", 16))
         self.after_label.setStyleSheet("border: none; color: black;")
         self.layout.addWidget(self.after_label)
 

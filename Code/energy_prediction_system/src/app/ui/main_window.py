@@ -36,6 +36,19 @@ class LoginWorker(QThread):
             self.finished.emit({"detail": "An internal error occurred. Please try again later."}, 500)
 
 
+class ProfileWorker(QThread):
+    finished = pyqtSignal(object, int)
+
+    def run(self):
+        auth_service = AuthService()
+        try:
+            data, status = auth_service.get_user_profile()
+            self.finished.emit(data, status)
+        except Exception as e:
+            logger.error(f"ProfileWorker error: {e}")
+            self.finished.emit({"detail": str(e)}, 500)
+
+
 class RegisterWorker(QThread):
     finished = pyqtSignal(object, int)
 
@@ -151,7 +164,7 @@ class MainWindow(QMainWindow):
         self.ui_admin.pushButton.clicked.connect(self.handle_logout)
 
         # Na Home: Navegação Sidebar
-        self.ui_admin.home_btn.clicked.connect(lambda: self.stack.setCurrentIndex(2))
+        self.ui_admin.home_btn.clicked.connect(self.handle_nav_to_home)
         self.ui_admin.daily_btn.clicked.connect(self.handle_nav_to_daily)
         self.ui_admin.hourly_btn.clicked.connect(self.handle_nav_to_hourly)
         self.ui_admin.model_mgmt_btn.clicked.connect(lambda: self.stack.setCurrentIndex(5))
@@ -166,7 +179,7 @@ class MainWindow(QMainWindow):
 
         # Na Daily Pred Admin
         self.ui_daily_pred.logout_btn.clicked.connect(self.handle_logout)
-        self.ui_daily_pred.home_btn.clicked.connect(lambda: self.stack.setCurrentIndex(2))
+        self.ui_daily_pred.home_btn.clicked.connect(self.handle_nav_to_home)
         self.ui_daily_pred.daily_btn.clicked.connect(self.handle_nav_to_daily)
         self.ui_daily_pred.hourly_btn.clicked.connect(self.handle_nav_to_hourly)
         self.ui_daily_pred.model_btn.clicked.connect(lambda: self.stack.setCurrentIndex(5))
@@ -174,7 +187,7 @@ class MainWindow(QMainWindow):
 
         # Na Hourly Pred Admin
         self.ui_hourly_pred.logout_btn.clicked.connect(self.handle_logout)
-        self.ui_hourly_pred.home_btn.clicked.connect(lambda: self.stack.setCurrentIndex(2))
+        self.ui_hourly_pred.home_btn.clicked.connect(self.handle_nav_to_home)
         self.ui_hourly_pred.daily_btn.clicked.connect(self.handle_nav_to_daily)
         self.ui_hourly_pred.hourly_btn.clicked.connect(self.handle_nav_to_hourly)
         self.ui_hourly_pred.model_btn.clicked.connect(lambda: self.stack.setCurrentIndex(5))
@@ -182,14 +195,14 @@ class MainWindow(QMainWindow):
 
         # Na Model Management
         self.ui_model_mgmt.logout_btn.clicked.connect(self.handle_logout)
-        self.ui_model_mgmt.home_btn.clicked.connect(lambda: self.stack.setCurrentIndex(2))
+        self.ui_model_mgmt.home_btn.clicked.connect(self.handle_nav_to_home)
         self.ui_model_mgmt.daily_btn.clicked.connect(self.handle_nav_to_daily)
         self.ui_model_mgmt.hourly_btn.clicked.connect(self.handle_nav_to_hourly)
         self.ui_model_mgmt.model_btn.clicked.connect(lambda: self.stack.setCurrentIndex(5))
 
         # User Homepage
         self.ui_user_homepage.logout_btn.clicked.connect(self.handle_logout)
-        self.ui_user_homepage.home_btn.clicked.connect(lambda: self.stack.setCurrentIndex(2))
+        self.ui_user_homepage.home_btn.clicked.connect(self.handle_nav_to_home)
         self.ui_user_homepage.daily_btn.clicked.connect(self.handle_nav_to_daily)
         self.ui_user_homepage.hourly_btn.clicked.connect(self.handle_nav_to_hourly)
 
@@ -220,10 +233,20 @@ class MainWindow(QMainWindow):
         if status_code == 200:
             role = response_data.get("role")
 
+            # Apply role-based visibility
+            is_admin = role == "admin"
+            self.ui_daily_pred.model_btn.parent().setVisible(is_admin)
+            self.ui_hourly_pred.model_btn.parent().setVisible(is_admin)
+
+            # Fetch Profile for username
+            self.profile_worker = ProfileWorker()
+            self.profile_worker.finished.connect(self._on_profile_finished)
+            self.profile_worker.start()
+
             self.ui_login.email_input.clear()
             self.ui_login.pass_input.clear()
 
-            if role == "admin":
+            if is_admin:
                 self.stack.setCurrentIndex(2)
             else:
                 self.stack.setCurrentIndex(6)
@@ -239,6 +262,13 @@ class MainWindow(QMainWindow):
         else:
             error_msg = response_data.get("detail", "Error occurred while starting session.")
             QMessageBox.critical(self, "Login Error", str(error_msg))
+
+    def _on_profile_finished(self, data, status):
+        if status == 200:
+            username = data.get("username", "User")
+            welcome_text = f"Welcome back, {username}"
+            self.ui_admin.top_bar.title_label.setText(welcome_text)
+            self.ui_user_homepage.top_bar.title_label.setText(welcome_text)
 
     def handle_register(self):
         user = self.ui_register.user_input.text().strip()
@@ -303,14 +333,27 @@ class MainWindow(QMainWindow):
         SessionManager.clear_session()
         logger.info("Logout process complete.")
 
-    # --- PREDICTION HANDLERS ---
+    # --- NAVIGATION HANDLERS ---
+
+    def handle_nav_to_home(self):
+        role = SessionManager.get_role()
+        if role == "admin":
+            self.stack.setCurrentIndex(2)
+        else:
+            self.stack.setCurrentIndex(6)
 
     def handle_nav_to_daily(self):
         self.stack.setCurrentIndex(3)
+        # Ensure correct visibility in prediction view sidebar
+        is_admin = SessionManager.get_role() == "admin"
+        self.ui_daily_pred.model_btn.parent().setVisible(is_admin)
         self.handle_daily_prediction()
 
     def handle_nav_to_hourly(self):
         self.stack.setCurrentIndex(4)
+        # Ensure correct visibility in prediction view sidebar
+        is_admin = SessionManager.get_role() == "admin"
+        self.ui_hourly_pred.model_btn.parent().setVisible(is_admin)
         self.handle_hourly_prediction()
 
     def handle_daily_prediction(self):
