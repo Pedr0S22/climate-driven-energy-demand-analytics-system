@@ -47,15 +47,10 @@ class Sidebar(QtWidgets.QFrame):
         self.sections[text] = []
         self.section_expanded[text] = False
 
-        btn.clicked.connect(lambda: self.toggle_section(text))
+        btn.clicked.connect(lambda checked=False, t=text: self.toggle_section(t))
         return btn
 
-    def add_menu_item(
-            self,
-            text,
-            active=False,
-            indent=False,
-            header_parent=None):
+    def add_menu_item(self, text, active=False, indent=False, header_parent=None):
         """Adds a navigation item. If header_parent is provided, it belongs to that section."""
         container = QtWidgets.QWidget()
         container.setFixedHeight(50)
@@ -69,8 +64,7 @@ class Sidebar(QtWidgets.QFrame):
         if active:
             indicator.setStyleSheet("background-color: #000180; border: none;")
         else:
-            indicator.setStyleSheet(
-                "background-color: transparent; border: none;")
+            indicator.setStyleSheet("background-color: transparent; border: none;")
         item_layout.addWidget(indicator)
 
         # Button
@@ -109,9 +103,12 @@ class Sidebar(QtWidgets.QFrame):
             # If this item is active, expand the parent section
             if active:
                 self.section_expanded[header_parent] = True
-
-            # Set visibility based on section state
-            container.setVisible(self.section_expanded[header_parent])
+                # Fix: When expanding via active item, update ALL sibling items visibility
+                for sibling in self.sections[header_parent]:
+                    sibling.setVisible(True)
+            else:
+                # Set visibility based on section state
+                container.setVisible(self.section_expanded[header_parent])
 
         return btn
 
