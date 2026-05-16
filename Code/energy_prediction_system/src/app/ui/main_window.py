@@ -394,7 +394,7 @@ class MainWindow(QMainWindow):
             drivers = data.get("top2_drivers", ["N/A", "N/A"])
 
             # Update Plot
-            ui.plot_widget.update_chart(timestamps, hist_load, pred_load)
+            ui.plot_widget.update_chart(timestamps, hist_load, pred_load, drivers)
 
             # Update Driver Cards
             if len(drivers) >= 2:
