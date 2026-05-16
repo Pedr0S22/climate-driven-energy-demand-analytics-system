@@ -275,7 +275,9 @@ class MainWindow(QMainWindow):
         self.ui_admin.home_btn.clicked.connect(self.handle_nav_to_home)
         self.ui_admin.daily_btn.clicked.connect(self.handle_nav_to_daily)
         self.ui_admin.hourly_btn.clicked.connect(self.handle_nav_to_hourly)
-        self.ui_admin.model_mgmt_btn.clicked.connect(lambda: self.stack.setCurrentIndex(5))
+        self.ui_admin.sim_daily_btn.clicked.connect(self.handle_nav_to_sim_daily)
+        self.ui_admin.sim_hourly_btn.clicked.connect(self.handle_nav_to_sim_hourly)
+        self.ui_admin.model_btn.clicked.connect(lambda: self.stack.setCurrentIndex(5))
 
         # Use toolButton for Admin Homepage
         self.ui_admin.toolButton.clicked.disconnect()
@@ -286,14 +288,16 @@ class MainWindow(QMainWindow):
         self.ui_admin.hourly_button.clicked.connect(self.handle_nav_to_hourly)
         self.ui_admin.model_mgmt_button.clicked.connect(lambda: self.stack.setCurrentIndex(5))
 
-        self.ui_admin.sim_daily_button.clicked.connect(lambda: self.stack.setCurrentIndex(7))
-        self.ui_admin.sim_hourly_button.clicked.connect(lambda: self.stack.setCurrentIndex(8))
+        self.ui_admin.sim_daily_button.clicked.connect(self.handle_nav_to_sim_daily)
+        self.ui_admin.sim_hourly_button.clicked.connect(self.handle_nav_to_sim_hourly)
 
         # Na Daily Pred Admin
         self.ui_daily_pred.logout_btn.clicked.connect(self.handle_logout)
         self.ui_daily_pred.home_btn.clicked.connect(self.handle_nav_to_home)
         self.ui_daily_pred.daily_btn.clicked.connect(self.handle_nav_to_daily)
         self.ui_daily_pred.hourly_btn.clicked.connect(self.handle_nav_to_hourly)
+        self.ui_daily_pred.sim_daily_btn.clicked.connect(self.handle_nav_to_sim_daily)
+        self.ui_daily_pred.sim_hourly_btn.clicked.connect(self.handle_nav_to_sim_hourly)
         self.ui_daily_pred.model_btn.clicked.connect(lambda: self.stack.setCurrentIndex(5))
         self.ui_daily_pred.params_widget.submit_btn.clicked.connect(self.handle_daily_prediction)
         self.ui_daily_pred.menu_btn.clicked.disconnect()
@@ -304,27 +308,59 @@ class MainWindow(QMainWindow):
         self.ui_hourly_pred.home_btn.clicked.connect(self.handle_nav_to_home)
         self.ui_hourly_pred.daily_btn.clicked.connect(self.handle_nav_to_daily)
         self.ui_hourly_pred.hourly_btn.clicked.connect(self.handle_nav_to_hourly)
+        self.ui_hourly_pred.sim_daily_btn.clicked.connect(self.handle_nav_to_sim_daily)
+        self.ui_hourly_pred.sim_hourly_btn.clicked.connect(self.handle_nav_to_sim_hourly)
         self.ui_hourly_pred.model_btn.clicked.connect(lambda: self.stack.setCurrentIndex(5))
         self.ui_hourly_pred.params_widget.submit_btn.clicked.connect(self.handle_hourly_prediction)
         self.ui_hourly_pred.menu_btn.clicked.disconnect()
         self.ui_hourly_pred.menu_btn.clicked.connect(self.toggle_sidebar)
 
+        # Na Daily Sim
+        self.ui_daily_sim.logout_btn.clicked.connect(self.handle_logout)
+        self.ui_daily_sim.home_btn.clicked.connect(self.handle_nav_to_home)
+        self.ui_daily_sim.daily_btn.clicked.connect(self.handle_nav_to_daily)
+        self.ui_daily_sim.hourly_btn.clicked.connect(self.handle_nav_to_hourly)
+        self.ui_daily_sim.sim_daily_btn.clicked.connect(self.handle_nav_to_sim_daily)
+        self.ui_daily_sim.sim_hourly_btn.clicked.connect(self.handle_nav_to_sim_hourly)
+        self.ui_daily_sim.model_btn.clicked.connect(lambda: self.stack.setCurrentIndex(5))
+        self.ui_daily_sim.menu_btn.clicked.disconnect()
+        self.ui_daily_sim.menu_btn.clicked.connect(self.toggle_sidebar)
+        self.ui_daily_sim.save_btn.clicked.connect(self.handle_daily_simulation)
+
+        # Na Hourly Sim
+        self.ui_hourly_sim.logout_btn.clicked.connect(self.handle_logout)
+        self.ui_hourly_sim.home_btn.clicked.connect(self.handle_nav_to_home)
+        self.ui_hourly_sim.daily_btn.clicked.connect(self.handle_nav_to_daily)
+        self.ui_hourly_sim.hourly_btn.clicked.connect(self.handle_nav_to_hourly)
+        self.ui_hourly_sim.sim_daily_btn.clicked.connect(self.handle_nav_to_sim_daily)
+        self.ui_hourly_sim.sim_hourly_btn.clicked.connect(self.handle_nav_to_sim_hourly)
+        self.ui_hourly_sim.model_btn.clicked.connect(lambda: self.stack.setCurrentIndex(5))
+        self.ui_hourly_sim.menu_btn.clicked.disconnect()
+        self.ui_hourly_sim.menu_btn.clicked.connect(self.toggle_sidebar)
+        self.ui_hourly_sim.save_btn.clicked.connect(self.handle_hourly_simulation)
+
         # Na Model Management
         self.ui_model_mgmt.logout_btn.clicked.connect(self.handle_logout)
         self.ui_model_mgmt.home_btn.clicked.connect(self.handle_nav_to_home)
-        self.ui_model_mgmt.daily_btn.clicked.connect(lambda: self.stack.setCurrentIndex(3))
-        self.ui_model_mgmt.hourly_btn.clicked.connect(lambda: self.stack.setCurrentIndex(4))
+        self.ui_model_mgmt.daily_btn.clicked.connect(self.handle_nav_to_daily)
+        self.ui_model_mgmt.hourly_btn.clicked.connect(self.handle_nav_to_hourly)
         self.ui_model_mgmt.model_btn.clicked.connect(lambda: self.stack.setCurrentIndex(5))
-        self.ui_model_mgmt.sim_daily_btn.clicked.connect(lambda: self.stack.setCurrentIndex(7))
-        self.ui_model_mgmt.sim_hourly_btn.clicked.connect(lambda: self.stack.setCurrentIndex(8))
+        self.ui_model_mgmt.sim_daily_btn.clicked.connect(self.handle_nav_to_sim_daily)
+        self.ui_model_mgmt.sim_hourly_btn.clicked.connect(self.handle_nav_to_sim_hourly)
+        self.ui_model_mgmt.menu_btn.clicked.disconnect()
+        self.ui_model_mgmt.menu_btn.clicked.connect(self.toggle_sidebar)
 
         # User Homepage
         self.ui_user_homepage.logout_btn.clicked.connect(self.handle_logout)
         self.ui_user_homepage.home_btn.clicked.connect(self.handle_nav_to_home)
         self.ui_user_homepage.daily_btn.clicked.connect(self.handle_nav_to_daily)
         self.ui_user_homepage.hourly_btn.clicked.connect(self.handle_nav_to_hourly)
+        self.ui_user_homepage.sim_daily_btn.clicked.connect(self.handle_nav_to_sim_daily)
+        self.ui_user_homepage.sim_hourly_btn.clicked.connect(self.handle_nav_to_sim_hourly)
         self.ui_user_homepage.daily_button.clicked.connect(self.handle_nav_to_daily)
         self.ui_user_homepage.hourly_button.clicked.connect(self.handle_nav_to_hourly)
+        self.ui_user_homepage.sim_daily_button.clicked.connect(self.handle_nav_to_sim_daily)
+        self.ui_user_homepage.sim_hourly_button.clicked.connect(self.handle_nav_to_sim_hourly)
         self.ui_user_homepage.menu_btn.clicked.disconnect()
         self.ui_user_homepage.menu_btn.clicked.connect(self.toggle_sidebar)
 
@@ -475,6 +511,8 @@ class MainWindow(QMainWindow):
         self.ui_hourly_pred.sidebar.setVisible(self.sidebar_is_visible)
         self.ui_model_mgmt.sidebar.setVisible(self.sidebar_is_visible)
         self.ui_user_homepage.sidebar.setVisible(self.sidebar_is_visible)
+        self.ui_daily_sim.sidebar.setVisible(self.sidebar_is_visible)
+        self.ui_hourly_sim.sidebar.setVisible(self.sidebar_is_visible)
 
     def handle_nav_to_home(self):
         role = SessionManager.get_role()
@@ -499,6 +537,18 @@ class MainWindow(QMainWindow):
         self.ui_hourly_pred.model_btn.parent().setVisible(is_admin)
         self._update_all_sidebars()
         self.handle_hourly_prediction()
+
+    def handle_nav_to_sim_daily(self):
+        self.stack.setCurrentIndex(7)
+        is_admin = SessionManager.get_role() == "admin"
+        self.ui_daily_sim.model_btn.parent().setVisible(is_admin)
+        self._update_all_sidebars()
+
+    def handle_nav_to_sim_hourly(self):
+        self.stack.setCurrentIndex(8)
+        is_admin = SessionManager.get_role() == "admin"
+        self.ui_hourly_sim.model_btn.parent().setVisible(is_admin)
+        self._update_all_sidebars()
 
     def handle_daily_prediction(self):
         hist = self.ui_daily_pred.params_widget.before_input.value()
@@ -547,3 +597,116 @@ class MainWindow(QMainWindow):
         else:
             error_msg = data.get("detail", "Failed to fetch predictions.")
             ui.plot_widget.show_error(error_msg)
+
+    def handle_daily_simulation(self):
+        ui = self.ui_daily_sim
+        template_name = ui.template_combo.currentText().lower()
+
+        date = ui.date_picker.date()
+        year = date.year()
+        month = date.month()
+        day_of_week = date.dayOfWeek() - 1
+
+        LABEL_TO_KEY = {
+            "2m Air Temperature": "t2m",
+            "Surface Pressure": "sp",
+            "Total Precipitation": "tp",
+            "10 m Wind Zonal Velocity": "u10",
+            "10 m Meridional Velocity": "v10",
+        }
+
+        overrides = {}
+        for label, inp in ui.param_inputs.items():
+            val = inp.text().strip()
+            if val:
+                try:
+                    overrides[LABEL_TO_KEY[label]] = float(val.replace(",", "."))
+                except ValueError:
+                    pass
+
+        ui.save_btn.setEnabled(False)
+        ui.save_btn.setText("Simulating...")
+        ui.proj_value.setText("...")  # Visual feedback
+
+        self.daily_sim_worker = DailySimulationWorker(template_name, year, month, day_of_week, overrides)
+        self.daily_sim_worker.finished.connect(self._on_daily_simulation_finished)
+        self.daily_sim_worker.finished.connect(self.daily_sim_worker.deleteLater)
+        self.daily_sim_worker.start()
+
+    def _on_daily_simulation_finished(self, data, status):
+        ui = self.ui_daily_sim
+        ui.save_btn.setEnabled(True)
+        ui.save_btn.setText("Run Simulation")
+
+        if status == 200:
+            load = data.get("predicted_mw")
+            if load is not None:
+                formatted_load = f"{load:,.2f}".replace(",", "X").replace(".", ",").replace("X", ".")
+                ui.proj_value.setText(formatted_load)
+            else:
+                ui.proj_value.setText("Error")
+                logger.error(f"Daily simulation returned success but no predicted_mw: {data}")
+        else:
+            ui.proj_value.setText("---,--")
+            error_msg = data.get("detail", "Failed to run daily simulation.")
+            if isinstance(error_msg, list):
+                error_msg = error_msg[0].get("msg", str(error_msg))
+            QMessageBox.warning(self, "Simulation Error", str(error_msg))
+
+    def handle_hourly_simulation(self):
+        ui = self.ui_hourly_sim
+        template_name = ui.template_combo.currentText().lower()
+
+        date = ui.date_picker.date()
+        year = date.year()
+        month = date.month()
+        day_of_week = date.dayOfWeek() - 1
+
+        time = ui.time_picker.time()
+        hour = time.hour()
+
+        LABEL_TO_KEY = {
+            "2m Air Temperature": "t2m",
+            "Surface Pressure": "sp",
+            "Total Precipitation": "tp",
+            "10 m Wind Zonal Velocity": "u10",
+            "10 m Meridional Velocity": "v10",
+        }
+
+        overrides = {}
+        for label, inp in ui.param_inputs.items():
+            val = inp.text().strip()
+            if val:
+                try:
+                    overrides[LABEL_TO_KEY[label]] = float(val.replace(",", "."))
+                except ValueError:
+                    pass
+
+        ui.save_btn.setEnabled(False)
+        ui.save_btn.setText("Simulating...")
+        ui.proj_value.setText("...")  # Visual feedback
+
+        self.hourly_sim_worker = HourlySimulationWorker(template_name, year, month, day_of_week, hour, overrides)
+        self.hourly_sim_worker.finished.connect(self._on_hourly_simulation_finished)
+        self.hourly_sim_worker.finished.connect(self.hourly_sim_worker.deleteLater)
+        self.hourly_sim_worker.start()
+
+    def _on_hourly_simulation_finished(self, data, status):
+        ui = self.ui_hourly_sim
+        ui.save_btn.setEnabled(True)
+        ui.save_btn.setText("Run Simulation")
+
+        if status == 200:
+            load = data.get("predicted_mw")
+            if load is not None:
+                formatted_load = f"{load:,.2f}".replace(",", "X").replace(".", ",").replace("X", ".")
+                ui.proj_value.setText(formatted_load)
+            else:
+                ui.proj_value.setText("Error")
+                logger.error(f"Hourly simulation returned success but no predicted_mw: {data}")
+        else:
+            ui.proj_value.setText("---,--")
+            error_msg = data.get("detail", "Failed to run hourly simulation.")
+            if isinstance(error_msg, list):
+                error_msg = error_msg[0].get("msg", str(error_msg))
+            QMessageBox.warning(self, "Simulation Error", str(error_msg))

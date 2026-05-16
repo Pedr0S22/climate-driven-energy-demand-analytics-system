@@ -76,7 +76,7 @@ class Ui_HourlySimulatorWindow:
         # Template Selector
         self.template_vbox = QtWidgets.QVBoxLayout()
         self.template_label = QtWidgets.QLabel("Template")
-        self.template_label.setFont(QtGui.QFont("Tw Cen MT Condensed", 44))
+        self.template_label.setFont(QtGui.QFont("Tw Cen MT Condensed", 28, QtGui.QFont.Weight.Bold))
         self.template_label.setStyleSheet("color: black;")
         self.template_label.setAlignment(QtCore.Qt.AlignmentFlag.AlignCenter)
         self.template_vbox.addWidget(self.template_label)
@@ -88,7 +88,7 @@ class Ui_HourlySimulatorWindow:
         # Date Selector
         self.date_vbox = QtWidgets.QVBoxLayout()
         self.date_label = QtWidgets.QLabel("Date")
-        self.date_label.setFont(QtGui.QFont("Tw Cen MT Condensed", 44))
+        self.date_label.setFont(QtGui.QFont("Tw Cen MT Condensed", 28, QtGui.QFont.Weight.Bold))
         self.date_label.setStyleSheet("color: black;")
         self.date_label.setAlignment(QtCore.Qt.AlignmentFlag.AlignCenter)
         self.date_vbox.addWidget(self.date_label)
@@ -100,7 +100,7 @@ class Ui_HourlySimulatorWindow:
         # Hour Selector
         self.hour_vbox = QtWidgets.QVBoxLayout()
         self.hour_label = QtWidgets.QLabel("Hour")
-        self.hour_label.setFont(QtGui.QFont("Tw Cen MT Condensed", 44))
+        self.hour_label.setFont(QtGui.QFont("Tw Cen MT Condensed", 28, QtGui.QFont.Weight.Bold))
         self.hour_label.setStyleSheet("color: black;")
         self.hour_label.setAlignment(QtCore.Qt.AlignmentFlag.AlignCenter)
         self.hour_vbox.addWidget(self.hour_label)
@@ -114,14 +114,14 @@ class Ui_HourlySimulatorWindow:
         # 3. MAIN SIMULATOR SECTION
         self.main_grid = QtWidgets.QGridLayout()
         self.main_grid.setColumnStretch(1, 1)
-        self.main_grid.setSpacing(40)
+        self.main_grid.setSpacing(20)
 
         # Parameters Column
         self.params_vbox = QtWidgets.QVBoxLayout()
         self.params_vbox.setSpacing(15)
 
         self.params_header = QtWidgets.QLabel("Overwrite parameters")
-        self.params_header.setFont(QtGui.QFont("Tw Cen MT Condensed", 44))
+        self.params_header.setFont(QtGui.QFont("Tw Cen MT Condensed", 28, QtGui.QFont.Weight.Bold))
         self.params_header.setStyleSheet("color: black;")
         self.params_header.setAlignment(QtCore.Qt.AlignmentFlag.AlignCenter)
         self.params_vbox.addWidget(self.params_header)
@@ -156,7 +156,7 @@ class Ui_HourlySimulatorWindow:
         for label_text, default_val in parameters:
             row_layout = QtWidgets.QHBoxLayout()
             lbl = QtWidgets.QLabel(label_text)
-            lbl.setFont(QtGui.QFont("Tw Cen MT Condensed", 44))
+            lbl.setFont(QtGui.QFont("Tw Cen MT Condensed", 28))
             lbl.setStyleSheet("color: black;")
             lbl.setFixedWidth(400)
 
@@ -185,8 +185,8 @@ class Ui_HourlySimulatorWindow:
         self.projection_vbox = QtWidgets.QVBoxLayout()
         self.projection_vbox.setSpacing(20)
 
-        self.proj_title = QtWidgets.QLabel("Projected Demand (MW)")
-        self.proj_title.setFont(QtGui.QFont("Tw Cen MT Condensed", 48))
+        self.proj_title = QtWidgets.QLabel("Projected Demand (MWh)")
+        self.proj_title.setFont(QtGui.QFont("Tw Cen MT Condensed", 28, QtGui.QFont.Weight.Bold))
         self.proj_title.setStyleSheet("color: black;")
         self.proj_title.setAlignment(QtCore.Qt.AlignmentFlag.AlignCenter)
         self.projection_vbox.addWidget(self.proj_title)
@@ -201,7 +201,7 @@ class Ui_HourlySimulatorWindow:
             }
         """)
         self.proj_display_layout = QtWidgets.QVBoxLayout(self.proj_display)
-        self.proj_value = QtWidgets.QLabel("172,05")
+        self.proj_value = QtWidgets.QLabel("---,--")
         self.proj_value.setFont(QtGui.QFont("Tw Cen MT Condensed", 74, QtGui.QFont.Weight.Bold))
         self.proj_value.setStyleSheet("color: black; border: none;")
         self.proj_value.setAlignment(QtCore.Qt.AlignmentFlag.AlignCenter)
@@ -214,7 +214,7 @@ class Ui_HourlySimulatorWindow:
         self.buttons_vbox.setSpacing(15)
         self.buttons_vbox.setContentsMargins(0, 10, 0, 0)
 
-        self.save_btn = QtWidgets.QPushButton("Save changes")
+        self.save_btn = QtWidgets.QPushButton("Run Simulation")
         self.save_btn.setFixedSize(280, 65)
         self.save_btn.setCursor(QtGui.QCursor(QtCore.Qt.CursorShape.PointingHandCursor))
         self.save_btn.setStyleSheet("""

@@ -64,18 +64,31 @@ class Ui_DailySimulatorWindow:
         self.scroll_area.setStyleSheet("border: none; background: transparent;")
         self.scroll_content = QtWidgets.QWidget()
         self.scroll_content.setStyleSheet("background: transparent;")
+
+        # Main Layout for Scroll Area
         self.content_layout = QtWidgets.QVBoxLayout(self.scroll_content)
         self.content_layout.setContentsMargins(40, 20, 40, 20)
-        self.content_layout.setSpacing(30)
+
+        # --- 1. TOP STRETCH FOR VERTICAL CENTERING ---
+        self.content_layout.addStretch()
+
+        # --- 2. HORIZONTAL LAYOUT FOR HORIZONTAL CENTERING ---
+        self.center_h_layout = QtWidgets.QHBoxLayout()
+        self.center_h_layout.addStretch()  # LEFT STRETCH
+
+        # --- 3. INNER CONTENT LAYOUT ---
+        self.inner_content_layout = QtWidgets.QVBoxLayout()
+        self.inner_content_layout.setSpacing(30)
 
         # 2. SELECTORS SECTION (Template & Date)
         self.selectors_layout = QtWidgets.QHBoxLayout()
-        self.selectors_layout.setSpacing(50)
+        self.selectors_layout.setSpacing(100)
 
         # Template Selector
         self.template_vbox = QtWidgets.QVBoxLayout()
+        self.template_vbox.setSpacing(5)
         self.template_label = QtWidgets.QLabel("Template")
-        self.template_label.setFont(QtGui.QFont("Tw Cen MT Condensed", 44))
+        self.template_label.setFont(QtGui.QFont("Tw Cen MT Condensed", 28, QtGui.QFont.Weight.Bold))
         self.template_label.setStyleSheet("color: black;")
         self.template_label.setAlignment(QtCore.Qt.AlignmentFlag.AlignCenter)
         self.template_vbox.addWidget(self.template_label)
@@ -86,8 +99,9 @@ class Ui_DailySimulatorWindow:
 
         # Date Selector
         self.date_vbox = QtWidgets.QVBoxLayout()
+        self.date_vbox.setSpacing(15)
         self.date_label = QtWidgets.QLabel("Date")
-        self.date_label.setFont(QtGui.QFont("Tw Cen MT Condensed", 44))
+        self.date_label.setFont(QtGui.QFont("Tw Cen MT Condensed", 28, QtGui.QFont.Weight.Bold))
         self.date_label.setStyleSheet("color: black;")
         self.date_label.setAlignment(QtCore.Qt.AlignmentFlag.AlignCenter)
         self.date_vbox.addWidget(self.date_label)
@@ -96,19 +110,20 @@ class Ui_DailySimulatorWindow:
         self.date_vbox.addWidget(self.date_picker)
         self.selectors_layout.addLayout(self.date_vbox)
 
-        self.content_layout.addLayout(self.selectors_layout)
+        # Add selectors to inner layout
+        self.inner_content_layout.addLayout(self.selectors_layout)
 
         # 3. MAIN SIMULATOR SECTION
         self.main_grid = QtWidgets.QGridLayout()
         self.main_grid.setColumnStretch(1, 1)
-        self.main_grid.setSpacing(40)
+        self.main_grid.setSpacing(100)
 
         # Parameters Column
         self.params_vbox = QtWidgets.QVBoxLayout()
         self.params_vbox.setSpacing(15)
 
         self.params_header = QtWidgets.QLabel("Overwrite parameters")
-        self.params_header.setFont(QtGui.QFont("Tw Cen MT Condensed", 44))
+        self.params_header.setFont(QtGui.QFont("Tw Cen MT Condensed", 28, QtGui.QFont.Weight.Bold))
         self.params_header.setStyleSheet("color: black;")
         self.params_header.setAlignment(QtCore.Qt.AlignmentFlag.AlignCenter)
         self.params_vbox.addWidget(self.params_header)
@@ -142,10 +157,12 @@ class Ui_DailySimulatorWindow:
 
         for label_text, default_val in parameters:
             row_layout = QtWidgets.QHBoxLayout()
+            row_layout.setSpacing(15)  # Distance between label and input
+
             lbl = QtWidgets.QLabel(label_text)
-            lbl.setFont(QtGui.QFont("Tw Cen MT Condensed", 44))
+            lbl.setFont(QtGui.QFont("Tw Cen MT Condensed", 28))
             lbl.setStyleSheet("color: black;")
-            lbl.setFixedWidth(400)
+            lbl.setFixedWidth(300)  # Reduced fixed width
 
             inp = StyledInput(placeholder=default_val)
             inp.setText(default_val)
@@ -163,6 +180,8 @@ class Ui_DailySimulatorWindow:
 
             row_layout.addWidget(lbl)
             row_layout.addWidget(inp)
+            row_layout.addStretch()  # Push inputs to the left side to keep them together
+
             self.params_vbox.addLayout(row_layout)
             self.param_inputs[label_text] = inp
 
@@ -172,37 +191,36 @@ class Ui_DailySimulatorWindow:
         self.projection_vbox = QtWidgets.QVBoxLayout()
         self.projection_vbox.setSpacing(20)
 
-        self.proj_title = QtWidgets.QLabel("Projected Demand (MW)")
-        self.proj_title.setFont(QtGui.QFont("Tw Cen MT Condensed", 48))
+        self.proj_title = QtWidgets.QLabel("Projected Demand (MWh)")
+        self.proj_title.setFont(QtGui.QFont("Tw Cen MT Condensed", 28, QtGui.QFont.Weight.Bold))
         self.proj_title.setStyleSheet("color: black;")
         self.proj_title.setAlignment(QtCore.Qt.AlignmentFlag.AlignCenter)
         self.projection_vbox.addWidget(self.proj_title)
 
         self.proj_display = QtWidgets.QFrame()
-        self.proj_display.setFixedSize(543, 185)
+        self.proj_display.setFixedSize(350, 150)
         self.proj_display.setStyleSheet("""
             QFrame {
                 background-color: #CAF6FF;
                 border: 4px solid black;
-                border-radius: 0px;
+                border-radius: 12px; /* Highly rounded corners */
             }
         """)
         self.proj_display_layout = QtWidgets.QVBoxLayout(self.proj_display)
-        self.proj_value = QtWidgets.QLabel("172,05")
-        self.proj_value.setFont(QtGui.QFont("Tw Cen MT Condensed", 74, QtGui.QFont.Weight.Bold))
+        self.proj_value = QtWidgets.QLabel("---,--")
+        self.proj_value.setFont(QtGui.QFont("Tw Cen MT Condensed", 50, QtGui.QFont.Weight.Bold))
         self.proj_value.setStyleSheet("color: black; border: none;")
         self.proj_value.setAlignment(QtCore.Qt.AlignmentFlag.AlignCenter)
         self.proj_display_layout.addWidget(self.proj_value)
 
         self.projection_vbox.addWidget(self.proj_display, alignment=QtCore.Qt.AlignmentFlag.AlignCenter)
 
-        # Buttons - Moved up and resized to be proportional to inputs
+        # Buttons
         self.buttons_vbox = QtWidgets.QVBoxLayout()
         self.buttons_vbox.setSpacing(15)
-        self.buttons_vbox.setContentsMargins(0, 10, 0, 0)  # Less margin to move higher
+        self.buttons_vbox.setContentsMargins(0, 10, 0, 0)
 
-        self.save_btn = QtWidgets.QPushButton("Save changes")
-        # Smaller height/width for proportion
+        self.save_btn = QtWidgets.QPushButton("Run Simulation")
         self.save_btn.setFixedSize(280, 65)
         self.save_btn.setCursor(QtGui.QCursor(QtCore.Qt.CursorShape.PointingHandCursor))
         self.save_btn.setStyleSheet("""
@@ -220,7 +238,6 @@ class Ui_DailySimulatorWindow:
         self.buttons_vbox.addWidget(self.save_btn, alignment=QtCore.Qt.AlignmentFlag.AlignCenter)
 
         self.reset_btn = QtWidgets.QPushButton("Reset")
-        # Smaller height/width for proportion
         self.reset_btn.setFixedSize(140, 65)
         self.reset_btn.setCursor(QtGui.QCursor(QtCore.Qt.CursorShape.PointingHandCursor))
         self.reset_btn.setStyleSheet("""
@@ -236,12 +253,22 @@ class Ui_DailySimulatorWindow:
             QPushButton:hover { background-color: #A00002; }
         """)
         self.buttons_vbox.addWidget(self.reset_btn, alignment=QtCore.Qt.AlignmentFlag.AlignCenter)
-        self.buttons_vbox.addStretch()  # Move stretch to bottom to push buttons up
+        self.buttons_vbox.addStretch()
 
         self.projection_vbox.addLayout(self.buttons_vbox)
         self.main_grid.addLayout(self.projection_vbox, 0, 1)
 
-        self.content_layout.addLayout(self.main_grid)
+        # Add main grid to inner layout
+        self.inner_content_layout.addLayout(self.main_grid)
+
+        # --- 4. FINISH THE SPACER SANDWICH ---
+        self.center_h_layout.addLayout(self.inner_content_layout)
+        self.center_h_layout.addStretch()  # RIGHT STRETCH
+
+        self.content_layout.addLayout(self.center_h_layout)
+
+        # --- 5. BOTTOM STRETCH FOR VERTICAL CENTERING ---
+        self.content_layout.addStretch()
 
         # Final setup
         self.scroll_area.setWidget(self.scroll_content)
@@ -261,7 +288,6 @@ class Ui_DailySimulatorWindow:
     def update_params_from_template(self, template_name):
         if template_name in self.template_defaults:
             defs = self.template_defaults[template_name]
-            # Update values and placeholders
             self.param_inputs["2m Air Temperature"].setText(defs["t2m"])
             self.param_inputs["2m Air Temperature"].setPlaceholderText(defs["t2m"])
 
@@ -314,7 +340,7 @@ class Ui_DailySimulatorWindow:
                 margin-top: 2px;
             }
             QComboBox QAbstractItemView {
-                background-color: #EAEAEF;
+                background-color: #828282;
                 border: 1px solid black;
                 selection-background-color: #000180;
                 selection-color: white;
