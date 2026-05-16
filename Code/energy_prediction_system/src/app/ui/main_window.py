@@ -286,8 +286,8 @@ class MainWindow(QMainWindow):
         self.ui_admin.hourly_button.clicked.connect(self.handle_nav_to_hourly)
         self.ui_admin.model_mgmt_button.clicked.connect(lambda: self.stack.setCurrentIndex(5))
 
-        self.ui_admin.sim_daily_button.clicked.connect(lambda: print("Go to Daily Simulation"))
-        self.ui_admin.sim_hourly_button.clicked.connect(lambda: print("Go to Hourly Simulation"))
+        self.ui_admin.sim_daily_button.clicked.connect(lambda: self.stack.setCurrentIndex(7))
+        self.ui_admin.sim_hourly_button.clicked.connect(lambda: self.stack.setCurrentIndex(8))
 
         # Na Daily Pred Admin
         self.ui_daily_pred.logout_btn.clicked.connect(self.handle_logout)
@@ -311,7 +311,7 @@ class MainWindow(QMainWindow):
 
         # Na Model Management
         self.ui_model_mgmt.logout_btn.clicked.connect(self.handle_logout)
-        self.ui_model_mgmt.home_btn.clicked.connect(self.go_home)
+        self.ui_model_mgmt.home_btn.clicked.connect(self.handle_nav_to_home)
         self.ui_model_mgmt.daily_btn.clicked.connect(lambda: self.stack.setCurrentIndex(3))
         self.ui_model_mgmt.hourly_btn.clicked.connect(lambda: self.stack.setCurrentIndex(4))
         self.ui_model_mgmt.model_btn.clicked.connect(lambda: self.stack.setCurrentIndex(5))
@@ -331,6 +331,12 @@ class MainWindow(QMainWindow):
         # Botões com Validação
         self.ui_login.login_button.clicked.connect(self.handle_login)
         self.ui_register.signup_button.clicked.connect(self.handle_register)
+
+    def _on_page_changed(self, index):
+        """Atualiza dados das páginas quando se navega para elas"""
+        logger.info(f"Page changed to index {index}")
+        if index == 5:  # Model Management
+            self.ui_model_mgmt.load_models()
 
     def handle_login(self):
         email = self.ui_login.email_input.text().strip()

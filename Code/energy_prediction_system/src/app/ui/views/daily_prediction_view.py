@@ -1,7 +1,5 @@
-from app.client.models_service import PredictionService
 from app.ui.components import DriverCard, PlotWidget, PredictionParams, Sidebar, TopBar
 from PyQt6 import QtCore, QtGui, QtWidgets
-from PyQt6.QtWidgets import QMessageBox
 
 
 class Ui_DailyPredictionAdminWindow:
@@ -56,8 +54,6 @@ class Ui_DailyPredictionAdminWindow:
         )
 
         self.model_btn = self.sidebar.add_menu_item("Model Management", active=False)
-        # To hide for normal users, you can call
-        # self.model_btn.parent().setVisible(False)
 
         self.sidebar.layout.addStretch()
         self.sidebar.setVisible(False)
@@ -114,13 +110,8 @@ class Ui_DailyPredictionAdminWindow:
         self.dashboard_grid.addWidget(self.params_title_ext, 0, 0)
 
         # Widgets Row (Row 1)
-        # Note: We need to remove the internal title from PredictionParams or
-        # adjust its top margin
         self.params_widget = PredictionParams(mode="daily")
-        # Removing internal title visibility to avoid duplication if we want
-        # perfect external alignment
         self.params_widget.title.setVisible(False)
-        self.params_widget.params_changed.connect(self.on_params_changed)
         self.dashboard_grid.addWidget(self.params_widget, 1, 0, QtCore.Qt.AlignmentFlag.AlignTop)
 
         self.plot_widget = PlotWidget()
@@ -140,47 +131,3 @@ class Ui_DailyPredictionAdminWindow:
 
     def toggle_sidebar(self):
         self.sidebar.setVisible(not self.sidebar.isVisible())
-
-    def on_params_changed(self, before, after):
-        self.prediction_worker = PredictionWorker("daily", before, after)
-        self.prediction_worker.finished.connect(self._on_prediction_loaded)
-        self.prediction_worker.finished.connect(self.prediction_worker.deleteLater)
-        self.prediction_worker.start()
-
-    def _on_prediction_loaded(self, data, status):
-        if status == 200:
-            timestamps = data.get("timestamps", [])
-            historical = data.get("historical_load", [])
-            predicted = data.get("load_predicted", [])
-            top_drivers = data.get("top2_drivers", [])
-
-            all_loads = historical + predicted
-            self.plot_widget.update_chart(timestamps, all_loads)  # ← update_chart
-
-            if len(top_drivers) >= 1:
-                self.rad_card.set_text(top_drivers[0])
-            if len(top_drivers) >= 2:
-                self.temp_card.set_text(top_drivers[1])
-        else:
-            error_msg = data.get("detail", "Unknown error")
-            QMessageBox.warning(self.MainWindow, "Prediction Error", str(error_msg))
-
-
-class PredictionWorker(QtCore.QThread):
-    """Worker para obter predições em background."""
-
-    finished = QtCore.pyqtSignal(object, int)
-
-    def __init__(self, mode, historical, predicted):
-        super().__init__()
-        self.mode = mode
-        self.historical = historical
-        self.predicted = predicted
-
-    def run(self):
-        service = PredictionService()
-        if self.mode == "daily":
-            data, status = service.get_daily_prediction(self.historical, self.predicted)
-        else:
-            data, status = service.get_hourly_prediction(self.historical, self.predicted)
-        self.finished.emit(data, status)
