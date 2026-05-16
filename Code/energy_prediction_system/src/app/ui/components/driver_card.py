@@ -4,7 +4,7 @@ from PyQt6 import QtCore, QtGui, QtWidgets
 class DriverCard(QtWidgets.QFrame):
     def __init__(self, parent=None, text=""):
         super().__init__(parent)
-        self.setFixedSize(280, 88)
+        self.setFixedSize(220, 65)
         self.setStyleSheet("background-color: #EAEAEF; border: 3px solid black; border-radius: 8px;")
 
         self.layout = QtWidgets.QHBoxLayout(self)

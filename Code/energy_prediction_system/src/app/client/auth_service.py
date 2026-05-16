@@ -65,3 +65,14 @@ class AuthService:
         except Exception as e:
             # We don't return anything as logout is mostly for auditing
             logger.error(f"Error during backend logout: {e}")
+
+    def get_user_profile(self):
+        """Fetches the authenticated user's profile."""
+        endpoint = "/auth/me"
+        try:
+            response = self.client.get(endpoint)
+            logger.info(f"Profile fetch attempt: Status {response.status_code}")
+            return response.json(), response.status_code
+        except Exception as e:
+            logger.error(f"Error fetching user profile: {repr(e)}")
+            return {"detail": "Unable to reach the server."}, 500

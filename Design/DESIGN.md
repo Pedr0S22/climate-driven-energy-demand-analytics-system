@@ -716,19 +716,45 @@ The system uses the ELK Stack to centralize performance and audit logs. The prim
 
 ## 6. Frontend UI & Dashboard Design
 
-### 6.1. Application State Management
-The application utilizes a QStackedWidget inside the MainWindow for managing views and navigation without spawning multiple OS windows.
+This section serves as a developer how-to guide for navigating and extending the frontend UI architecture, including folder structures, state management, and data visualization.
 
+### 6.1. How to Navigate the Frontend Folder Structure
+
+The frontend application follows a strict modular structure located in `Code/energy_prediction_system/src/app/`. As a developer, adhere to this paradigm when adding new features:
+
+- **`client/`**: Contains services for API communication (`api_client.py`, `auth_service.py`, `prediction_service.py`). Place all HTTP request logic and endpoint integrations here.
+- **`manager/`**: Handles application-wide state and session management (`session_manager.py`). Use this layer for storing secure credentials or global configurations.
+- **`ui/`**: Houses all user interface elements.
+  - **`views/`**: Complete screen layouts (e.g., `login_view.py`, `daily_prediction_view.py`). Each view should act as a page in the `QStackedWidget`.
+  - **`components/`**: Reusable PyQt6 widgets (e.g., `plot_widget.py`, `driver_card.py`, `sidebar.py`). Keep these decoupled from specific views to maximize reusability.
+  - **`resources/`**: Static assets like icons and images.
+  - **`main_window.py`**: The root container that orchestrates view switching.
+- **`utils/`**: Shared utility functions such as input validators (`validators.py`).
+
+### 6.2. How to Manage Application State & Navigation
+
+**State Management & Non-Blocking UI:**
 To prevent the desktop GUI from freezing during requests, the system adopts an *Asynchronous Threading Model*:
-- *QThread and Signals:* HTTP requests (FastAPI interactions) and DataFrame slicing are offloaded to background QThread instances.
+- *QThread and Signals:* When making HTTP requests via FastAPI or processing DataFrames, offload the workload to background `QThread` instances. Ensure you connect signals to update the UI once the thread completes.
+- *View Switching:* The application utilizes a `QStackedWidget` inside the `MainWindow` (`ui/main_window.py`) for managing views and navigation without spawning multiple OS windows. To add a new view, instantiate it and add it to the `QStackedWidget`, then use `.setCurrentWidget()` to navigate.
 
-### 6.2. View Layouts & Navigation
-To fulfill strict quality attributes regarding client-side credential management (*QA11*), the frontend eliminates risks associated with plain-text variables or local .env storage for authenticated session tokens.
+**Secure Credential Management (*QA11*):**
+To fulfill strict quality attributes regarding client-side credential management, the frontend eliminates risks associated with plain-text variables or local `.env` storage for authenticated session tokens.
+- *How to Store Tokens:* Utilize the `SessionManager` class implemented via the Python *keyring* subsystem. This approach interfaces directly with the host Operating System's native secure credential vaults.
+- When a user successfully authenticates, their JWT `access_token` and role are securely committed to the vault, meaning session data remains strictly encrypted at rest and invisible to other processes or application memory dumps.
 
-The frontend utilizes the SessionManager class implemented via the Python *keyring* subsystem. This approach interfaces directly with the host Operating System's native secure credential vaults. When a user successfully authenticates, their JWT access_token and role are securely committed to the vault, meaning session data remains strictly encrypted at rest and invisible to other processes or application memory dumps.
+### 6.3. How to Integrate Data Visualization (Chart Components)
 
-### 6.3. Data Visualization
-[`TODO`] - (chart Integration) (How the Python backend passes JSON data to the chart components embedded in PyQt6)
+**Data Visualization Pipeline:**
+The application uses Matplotlib integrated with PyQt6 to render dynamic charts. Here is how to implement or modify chart components:
+
+1. **Backend Payload:** The FastAPI backend returns predictive and historical load data as JSON arrays (e.g., `historical_load`, `prediction_load`, and corresponding `timestamps`).
+2. **Component Integration:** Use the `plot_widget.py` component located in `ui/components/` to render charts. This component acts as a wrapper around Matplotlib's `FigureCanvasQTAgg`.
+3. **Passing Data to the Chart:**
+   - In your specific view (e.g., `daily_prediction_view.py`), parse the JSON response from the API.
+   - Extract the timestamp strings and pass them along with the load values to the plot widget.
+   - Pass the cleaned data arrays to the plot widget's update method (e.g., calling an update function with `x_data` and `y_data`).
+4. **Styling and Updates:** Ensure the plot component clears its previous state (e.g., `ax.clear()`) before drawing new lines to prevent memory leaks and visual overlapping. Apply consistent project styling (colors, legends, grid lines) within the plot widget.
 
 ### 7. Telemetry & Observability Design
 

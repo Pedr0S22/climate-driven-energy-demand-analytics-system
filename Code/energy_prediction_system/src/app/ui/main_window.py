@@ -1,8 +1,9 @@
 import logging
 
 from app.client.auth_service import AuthService
+from app.client.prediction_service import PredictionService
 from app.manager.session_manager import SessionManager
-from app.utils.validators import validate_login_input, validate_registration_input
+from app.utils.validators import validate_login_input, validate_prediction_params, validate_registration_input
 from PyQt6.QtCore import QThread, pyqtSignal
 from PyQt6.QtWidgets import QMainWindow, QMessageBox, QStackedWidget
 
@@ -33,6 +34,19 @@ class LoginWorker(QThread):
         except Exception as e:
             logger.error(f"LoginWorker error: {e}")
             self.finished.emit({"detail": "An internal error occurred. Please try again later."}, 500)
+
+
+class ProfileWorker(QThread):
+    finished = pyqtSignal(object, int)
+
+    def run(self):
+        auth_service = AuthService()
+        try:
+            data, status = auth_service.get_user_profile()
+            self.finished.emit(data, status)
+        except Exception as e:
+            logger.error(f"ProfileWorker error: {e}")
+            self.finished.emit({"detail": str(e)}, 500)
 
 
 class RegisterWorker(QThread):
@@ -66,12 +80,34 @@ class LogoutWorker(QThread):
         self.finished.emit()
 
 
+class PredictionWorker(QThread):
+    finished = pyqtSignal(object, int, str)
+
+    def __init__(self, frequency, historical_points, predicted_points):
+        super().__init__()
+        self.frequency = frequency
+        self.historical_points = historical_points
+        self.predicted_points = predicted_points
+
+    def run(self):
+        service = PredictionService()
+        try:
+            data, status = service.get_prediction(self.frequency, self.historical_points, self.predicted_points)
+            self.finished.emit(data, status, self.frequency)
+        except Exception as e:
+            logger.error(f"PredictionWorker error: {e}")
+            self.finished.emit({"detail": str(e)}, 500, self.frequency)
+
+
 class MainWindow(QMainWindow):
     def __init__(self):
         super().__init__()
         logger.info("Initializing MainWindow...")
         self.setWindowTitle("Energy Demand Prediction System")
         self.showMaximized()
+
+        # Sidebar visibility state persistence
+        self.sidebar_is_visible = False
 
         # O StackedWidget permite trocar de página sem abrir janelas novas
         self.stack = QStackedWidget()
@@ -131,14 +167,18 @@ class MainWindow(QMainWindow):
         self.ui_admin.pushButton.clicked.connect(self.handle_logout)
 
         # Na Home: Navegação Sidebar
-        self.ui_admin.home_btn.clicked.connect(lambda: self.stack.setCurrentIndex(2))
-        self.ui_admin.daily_btn.clicked.connect(lambda: self.stack.setCurrentIndex(3))
-        self.ui_admin.hourly_btn.clicked.connect(lambda: self.stack.setCurrentIndex(4))
+        self.ui_admin.home_btn.clicked.connect(self.handle_nav_to_home)
+        self.ui_admin.daily_btn.clicked.connect(self.handle_nav_to_daily)
+        self.ui_admin.hourly_btn.clicked.connect(self.handle_nav_to_hourly)
         self.ui_admin.model_mgmt_btn.clicked.connect(lambda: self.stack.setCurrentIndex(5))
 
+        # Use toolButton for Admin Homepage
+        self.ui_admin.toolButton.clicked.disconnect()
+        self.ui_admin.toolButton.clicked.connect(self.toggle_sidebar)
+
         # Na Home: Navegação Dashboard
-        self.ui_admin.daily_button.clicked.connect(lambda: self.stack.setCurrentIndex(3))
-        self.ui_admin.hourly_button.clicked.connect(lambda: self.stack.setCurrentIndex(4))
+        self.ui_admin.daily_button.clicked.connect(self.handle_nav_to_daily)
+        self.ui_admin.hourly_button.clicked.connect(self.handle_nav_to_hourly)
         self.ui_admin.model_mgmt_button.clicked.connect(lambda: self.stack.setCurrentIndex(5))
 
         self.ui_admin.sim_daily_button.clicked.connect(lambda: print("Go to Daily Simulation"))
@@ -146,30 +186,42 @@ class MainWindow(QMainWindow):
 
         # Na Daily Pred Admin
         self.ui_daily_pred.logout_btn.clicked.connect(self.handle_logout)
-        self.ui_daily_pred.home_btn.clicked.connect(lambda: self.stack.setCurrentIndex(2))
-        self.ui_daily_pred.daily_btn.clicked.connect(lambda: self.stack.setCurrentIndex(3))
-        self.ui_daily_pred.hourly_btn.clicked.connect(lambda: self.stack.setCurrentIndex(4))
+        self.ui_daily_pred.home_btn.clicked.connect(self.handle_nav_to_home)
+        self.ui_daily_pred.daily_btn.clicked.connect(self.handle_nav_to_daily)
+        self.ui_daily_pred.hourly_btn.clicked.connect(self.handle_nav_to_hourly)
         self.ui_daily_pred.model_btn.clicked.connect(lambda: self.stack.setCurrentIndex(5))
+        self.ui_daily_pred.params_widget.submit_btn.clicked.connect(self.handle_daily_prediction)
+        self.ui_daily_pred.menu_btn.clicked.disconnect()
+        self.ui_daily_pred.menu_btn.clicked.connect(self.toggle_sidebar)
 
         # Na Hourly Pred Admin
         self.ui_hourly_pred.logout_btn.clicked.connect(self.handle_logout)
-        self.ui_hourly_pred.home_btn.clicked.connect(lambda: self.stack.setCurrentIndex(2))
-        self.ui_hourly_pred.daily_btn.clicked.connect(lambda: self.stack.setCurrentIndex(3))
-        self.ui_hourly_pred.hourly_btn.clicked.connect(lambda: self.stack.setCurrentIndex(4))
+        self.ui_hourly_pred.home_btn.clicked.connect(self.handle_nav_to_home)
+        self.ui_hourly_pred.daily_btn.clicked.connect(self.handle_nav_to_daily)
+        self.ui_hourly_pred.hourly_btn.clicked.connect(self.handle_nav_to_hourly)
         self.ui_hourly_pred.model_btn.clicked.connect(lambda: self.stack.setCurrentIndex(5))
+        self.ui_hourly_pred.params_widget.submit_btn.clicked.connect(self.handle_hourly_prediction)
+        self.ui_hourly_pred.menu_btn.clicked.disconnect()
+        self.ui_hourly_pred.menu_btn.clicked.connect(self.toggle_sidebar)
 
         # Na Model Management
         self.ui_model_mgmt.logout_btn.clicked.connect(self.handle_logout)
-        self.ui_model_mgmt.home_btn.clicked.connect(lambda: self.stack.setCurrentIndex(2))
-        self.ui_model_mgmt.daily_btn.clicked.connect(lambda: self.stack.setCurrentIndex(3))
-        self.ui_model_mgmt.hourly_btn.clicked.connect(lambda: self.stack.setCurrentIndex(4))
+        self.ui_model_mgmt.home_btn.clicked.connect(self.handle_nav_to_home)
+        self.ui_model_mgmt.daily_btn.clicked.connect(self.handle_nav_to_daily)
+        self.ui_model_mgmt.hourly_btn.clicked.connect(self.handle_nav_to_hourly)
         self.ui_model_mgmt.model_btn.clicked.connect(lambda: self.stack.setCurrentIndex(5))
+        self.ui_model_mgmt.menu_btn.clicked.disconnect()
+        self.ui_model_mgmt.menu_btn.clicked.connect(self.toggle_sidebar)
 
         # User Homepage
         self.ui_user_homepage.logout_btn.clicked.connect(self.handle_logout)
-        self.ui_user_homepage.home_btn.clicked.connect(lambda: self.stack.setCurrentIndex(2))
-        self.ui_user_homepage.daily_btn.clicked.connect(lambda: self.stack.setCurrentIndex(3))
-        self.ui_user_homepage.hourly_btn.clicked.connect(lambda: self.stack.setCurrentIndex(4))
+        self.ui_user_homepage.home_btn.clicked.connect(self.handle_nav_to_home)
+        self.ui_user_homepage.daily_btn.clicked.connect(self.handle_nav_to_daily)
+        self.ui_user_homepage.hourly_btn.clicked.connect(self.handle_nav_to_hourly)
+        self.ui_user_homepage.daily_button.clicked.connect(self.handle_nav_to_daily)
+        self.ui_user_homepage.hourly_button.clicked.connect(self.handle_nav_to_hourly)
+        self.ui_user_homepage.menu_btn.clicked.disconnect()
+        self.ui_user_homepage.menu_btn.clicked.connect(self.toggle_sidebar)
 
         # Botões com Validação
         self.ui_login.login_button.clicked.connect(self.handle_login)
@@ -198,10 +250,20 @@ class MainWindow(QMainWindow):
         if status_code == 200:
             role = response_data.get("role")
 
+            # Apply role-based visibility
+            is_admin = role == "admin"
+            self.ui_daily_pred.model_btn.parent().setVisible(is_admin)
+            self.ui_hourly_pred.model_btn.parent().setVisible(is_admin)
+
+            # Fetch Profile for username
+            self.profile_worker = ProfileWorker()
+            self.profile_worker.finished.connect(self._on_profile_finished)
+            self.profile_worker.start()
+
             self.ui_login.email_input.clear()
             self.ui_login.pass_input.clear()
 
-            if role == "admin":
+            if is_admin:
                 self.stack.setCurrentIndex(2)
             else:
                 self.stack.setCurrentIndex(6)
@@ -217,6 +279,13 @@ class MainWindow(QMainWindow):
         else:
             error_msg = response_data.get("detail", "Error occurred while starting session.")
             QMessageBox.critical(self, "Login Error", str(error_msg))
+
+    def _on_profile_finished(self, data, status):
+        if status == 200:
+            username = data.get("username", "User")
+            welcome_text = f"Welcome back, {username}"
+            self.ui_admin.top_bar.title_label.setText(welcome_text)
+            self.ui_user_homepage.top_bar.title_label.setText(welcome_text)
 
     def handle_register(self):
         user = self.ui_register.user_input.text().strip()
@@ -280,3 +349,89 @@ class MainWindow(QMainWindow):
     def _on_logout_finished(self):
         SessionManager.clear_session()
         logger.info("Logout process complete.")
+
+    # --- NAVIGATION HANDLERS ---
+
+    def toggle_sidebar(self):
+        self.sidebar_is_visible = not self.sidebar_is_visible
+        self._update_all_sidebars()
+
+    def _update_all_sidebars(self):
+        # Update visibility in all views that have a sidebar
+        self.ui_admin.sidebar.setVisible(self.sidebar_is_visible)
+        self.ui_daily_pred.sidebar.setVisible(self.sidebar_is_visible)
+        self.ui_hourly_pred.sidebar.setVisible(self.sidebar_is_visible)
+        self.ui_model_mgmt.sidebar.setVisible(self.sidebar_is_visible)
+        self.ui_user_homepage.sidebar.setVisible(self.sidebar_is_visible)
+
+    def handle_nav_to_home(self):
+        role = SessionManager.get_role()
+        if role == "admin":
+            self.stack.setCurrentIndex(2)
+        else:
+            self.stack.setCurrentIndex(6)
+        self._update_all_sidebars()
+
+    def handle_nav_to_daily(self):
+        self.stack.setCurrentIndex(3)
+        # Ensure correct visibility in prediction view sidebar
+        is_admin = SessionManager.get_role() == "admin"
+        self.ui_daily_pred.model_btn.parent().setVisible(is_admin)
+        self._update_all_sidebars()
+        self.handle_daily_prediction()
+
+    def handle_nav_to_hourly(self):
+        self.stack.setCurrentIndex(4)
+        # Ensure correct visibility in prediction view sidebar
+        is_admin = SessionManager.get_role() == "admin"
+        self.ui_hourly_pred.model_btn.parent().setVisible(is_admin)
+        self._update_all_sidebars()
+        self.handle_hourly_prediction()
+
+    def handle_daily_prediction(self):
+        hist = self.ui_daily_pred.params_widget.before_input.value()
+        pred = self.ui_daily_pred.params_widget.after_input.value()
+
+        is_valid, msg = validate_prediction_params("daily", hist, pred)
+        if not is_valid:
+            QMessageBox.warning(self, "Invalid Parameters", msg)
+            return
+
+        self._start_prediction_worker("daily", hist, pred)
+
+    def handle_hourly_prediction(self):
+        hist = self.ui_hourly_pred.params_widget.before_input.value()
+        pred = self.ui_hourly_pred.params_widget.after_input.value()
+
+        is_valid, msg = validate_prediction_params("hourly", hist, pred)
+        if not is_valid:
+            QMessageBox.warning(self, "Invalid Parameters", msg)
+            return
+
+        self._start_prediction_worker("hourly", hist, pred)
+
+    def _start_prediction_worker(self, frequency, hist, pred):
+        self.prediction_worker = PredictionWorker(frequency, hist, pred)
+        self.prediction_worker.finished.connect(self._on_prediction_finished)
+        self.prediction_worker.finished.connect(self.prediction_worker.deleteLater)
+        self.prediction_worker.start()
+
+    def _on_prediction_finished(self, data, status, frequency):
+        ui = self.ui_daily_pred if frequency == "daily" else self.ui_hourly_pred
+
+        if status == 200:
+            hist_load = data.get("historical_load")
+            pred_load = data.get("load_predicted")
+            timestamps = data.get("timestamps")
+            drivers = data.get("top2_drivers", ["N/A", "N/A"])
+
+            # Update Plot
+            ui.plot_widget.update_chart(timestamps, hist_load, pred_load, drivers)
+
+            # Update Driver Cards
+            if len(drivers) >= 2:
+                ui.rad_card.label.setText(drivers[0])
+                ui.temp_card.label.setText(drivers[1])
+        else:
+            error_msg = data.get("detail", "Failed to fetch predictions.")
+            ui.plot_widget.show_error(error_msg)

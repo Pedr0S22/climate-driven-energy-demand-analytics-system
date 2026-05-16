@@ -66,15 +66,15 @@ class Ui_DailyPredictionAdminWindow:
         self.scroll_content = QtWidgets.QWidget()
         self.scroll_content.setStyleSheet("background: transparent;")
         self.content_layout = QtWidgets.QVBoxLayout(self.scroll_content)
-        self.content_layout.setContentsMargins(40, 40, 40, 20)
-        self.content_layout.setSpacing(50)
+        self.content_layout.setContentsMargins(40, 20, 40, 20)
+        self.content_layout.setSpacing(0)
 
         # 2. KEY PREDICTION DRIVERS SECTION
         self.drivers_section = QtWidgets.QVBoxLayout()
-        self.drivers_section.setSpacing(20)
+        self.drivers_section.setSpacing(10)
 
         self.drivers_title = QtWidgets.QLabel("Key Prediction Drivers")
-        self.drivers_title.setFont(QtGui.QFont("Tw Cen MT Condensed", 42, QtGui.QFont.Weight.Bold))
+        self.drivers_title.setFont(QtGui.QFont("Tw Cen MT Condensed", 28, QtGui.QFont.Weight.Bold))
         self.drivers_title.setAlignment(QtCore.Qt.AlignmentFlag.AlignCenter)
         self.drivers_title.setStyleSheet("color: black;")
         self.drivers_section.addWidget(self.drivers_title)
@@ -82,13 +82,13 @@ class Ui_DailyPredictionAdminWindow:
         self.drivers_desc = QtWidgets.QLabel(
             "The following variables had the highest impact on the current forecast results."
         )
-        self.drivers_desc.setFont(QtGui.QFont("Tw Cen MT Condensed", 22))
+        self.drivers_desc.setFont(QtGui.QFont("Tw Cen MT Condensed", 16))
         self.drivers_desc.setAlignment(QtCore.Qt.AlignmentFlag.AlignCenter)
         self.drivers_desc.setStyleSheet("color: #262626;")
         self.drivers_section.addWidget(self.drivers_desc)
 
         self.drivers_row = QtWidgets.QHBoxLayout()
-        self.drivers_row.setSpacing(80)
+        self.drivers_row.setSpacing(40)
         self.drivers_row.addStretch()
         self.rad_card = DriverCard(text="Solar radiation")
         self.drivers_row.addWidget(self.rad_card)
@@ -101,18 +101,13 @@ class Ui_DailyPredictionAdminWindow:
         # 3. LOWER DASHBOARD SECTION
         self.dashboard_grid = QtWidgets.QGridLayout()
         self.dashboard_grid.setColumnStretch(1, 1)
-        self.dashboard_grid.setSpacing(50)
+        self.dashboard_grid.setSpacing(10)
 
         # Titles Row (Row 0)
         self.params_title_ext = QtWidgets.QLabel("Parameters")
-        self.params_title_ext.setFont(QtGui.QFont("Tw Cen MT Condensed", 36, QtGui.QFont.Weight.Bold))
+        self.params_title_ext.setFont(QtGui.QFont("Tw Cen MT Condensed", 28, QtGui.QFont.Weight.Bold))
         self.params_title_ext.setStyleSheet("color: black;")
         self.dashboard_grid.addWidget(self.params_title_ext, 0, 0)
-
-        self.proj_title = QtWidgets.QLabel("Energy Demand Projection")
-        self.proj_title.setFont(QtGui.QFont("Tw Cen MT Condensed", 36, QtGui.QFont.Weight.Bold))
-        self.proj_title.setStyleSheet("color: black;")
-        self.dashboard_grid.addWidget(self.proj_title, 0, 1)
 
         # Widgets Row (Row 1)
         # Note: We need to remove the internal title from PredictionParams or adjust its top margin
