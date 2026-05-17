@@ -1,10 +1,10 @@
-import os
 from unittest.mock import patch
 
 import pytest
 from fastapi.testclient import TestClient
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
+from sqlalchemy.pool import StaticPool
 
 from src.api.core.config import settings
 from src.api.database.session import Base, get_db
@@ -16,9 +16,12 @@ from src.api.main import app
 from src.app.client.auth_service import AuthService
 from src.app.manager.session_manager import SessionManager
 
-# --- SETUP TEST DATABASE (SQLite In-Memory) ---
-SQLALCHEMY_DATABASE_URL = "sqlite:///./test_integration.db"
-engine = create_engine(SQLALCHEMY_DATABASE_URL, connect_args={"check_same_thread": False})
+# --- SETUP TEST DATABASE ---
+engine = create_engine(
+    "sqlite://",
+    connect_args={"check_same_thread": False},
+    poolclass=StaticPool,
+)
 TestingSessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 
 
@@ -69,18 +72,6 @@ def setup_integration_env():
     # Remove dependency override
     if get_db in app.dependency_overrides:
         del app.dependency_overrides[get_db]
-
-    if os.path.exists("./test_integration.db"):
-        try:
-            os.remove("./test_integration.db")
-        except PermissionError:
-            import time
-
-            time.sleep(0.2)
-            try:
-                os.remove("./test_integration.db")
-            except:  # noqa E722 S110
-                pass
 
 
 @pytest.fixture

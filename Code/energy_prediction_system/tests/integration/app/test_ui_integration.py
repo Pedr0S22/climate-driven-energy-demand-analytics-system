@@ -12,6 +12,7 @@ sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "..", ".
 
 from sqlalchemy import create_engine
 from sqlalchemy.orm import Session, sessionmaker
+from sqlalchemy.pool import StaticPool
 
 from src.api.core.security import get_current_user
 from src.api.database.session import Base, get_db
@@ -20,8 +21,11 @@ from src.app.manager.session_manager import SessionManager
 from src.app.ui.main_window import MainWindow
 
 # --- SETUP TEST DATABASE ---
-SQLALCHEMY_DATABASE_URL = "sqlite:///./test_ui_integration.db"
-engine = create_engine(SQLALCHEMY_DATABASE_URL, connect_args={"check_same_thread": False})
+engine = create_engine(
+    "sqlite://",
+    connect_args={"check_same_thread": False},
+    poolclass=StaticPool,
+)
 TestingSessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 
 
