@@ -44,7 +44,8 @@ class TestValidators:
     # Login Validation Tests
 
     def test_validate_login_input_success(self):
-        success, message = validate_login_input("valid@email.com", "Secure@123")
+        success, message = validate_login_input(
+            "valid@email.com", "Secure@123")
         assert success is True
         assert message is None
 
@@ -68,42 +69,50 @@ class TestValidators:
     # Registration Validation Tests
 
     def test_validate_registration_success(self):
-        success, message = validate_registration_input("username", "test@test.com", "Strong@123", "Strong@123")
+        success, message = validate_registration_input(
+            "username", "test@test.com", "Strong@123", "Strong@123")
         assert success is True
         assert message is None
 
     def test_validate_registration_empty_fields(self):
-        success, message = validate_registration_input("", "test@test.com", "Pass", "")
+        success, message = validate_registration_input(
+            "", "test@test.com", "Pass", "")
         assert success is False
         assert message == "All fields are required."
 
     def test_validate_registration_email_error(self):
-        success, message = validate_registration_input("user", "wrong-email", "Strong@123", "Strong@123")
+        success, message = validate_registration_input(
+            "user", "wrong-email", "Strong@123", "Strong@123")
         assert success is False
         assert "Invalid email format" in message
 
     def test_validate_registration_password_specific_errors(self):
         # Test length
-        s, m = validate_registration_input("u", "t@t.com", "Short1!", "Short1!")
+        s, m = validate_registration_input(
+            "u", "t@t.com", "Short1!", "Short1!")
         assert s is False
         assert "between 8 and 20 characters" in m
 
         # Test uppercase
-        s, m = validate_registration_input("u", "t@t.com", "lowercase1!", "lowercase1!")
+        s, m = validate_registration_input(
+            "u", "t@t.com", "lowercase1!", "lowercase1!")
         assert s is False
         assert "uppercase letter" in m
 
         # Test number
-        s, m = validate_registration_input("u", "t@t.com", "NoNumbers!", "NoNumbers!")
+        s, m = validate_registration_input(
+            "u", "t@t.com", "NoNumbers!", "NoNumbers!")
         assert s is False
         assert "at least one number" in m
 
         # Test special char
-        s, m = validate_registration_input("u", "t@t.com", "NoSpecial1", "NoSpecial1")
+        s, m = validate_registration_input(
+            "u", "t@t.com", "NoSpecial1", "NoSpecial1")
         assert s is False
         assert "special character" in m
 
     def test_validate_registration_password_mismatch(self):
-        success, message = validate_registration_input("user", "test@test.com", "Strong@123", "Different@123")
+        success, message = validate_registration_input(
+            "user", "test@test.com", "Strong@123", "Different@123")
         assert success is False
         assert message == "Passwords do not match."

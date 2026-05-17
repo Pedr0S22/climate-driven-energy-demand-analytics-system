@@ -5,7 +5,8 @@ from unittest.mock import patch
 import numpy as np
 import pandas as pd
 import pytest
-from data_pipeline.cleaning import DataCleaner, cleaning
+
+from src.data_pipeline.cleaning import DataCleaner, cleaning
 
 # =======================================
 # FIXTURES
@@ -231,8 +232,8 @@ def setup_fake_weather_files(fake_path, df_copernicus):
         df_copernicus[cols_existentes].to_csv(fake_path / fname, index=False)
 
 
-@patch("data_pipeline.ingestion.cdsapi.Client")
-@patch("data_pipeline.ingestion.EntsoePandasClient")
+@patch("src.data_pipeline.ingestion.cdsapi.Client")
+@patch("src.data_pipeline.ingestion.EntsoePandasClient")
 def test_full_pipeline_integration_mocked(mock_entsoe, mock_cds, cleaner):
     with tempfile.TemporaryDirectory() as base_dir:
         base_path = Path(base_dir)

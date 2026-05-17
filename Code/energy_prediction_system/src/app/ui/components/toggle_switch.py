@@ -17,7 +17,8 @@ class ToggleSwitch(QtWidgets.QWidget):
         painter.setRenderHint(QtGui.QPainter.RenderHint.Antialiasing)
 
         # Background track
-        bg_color = QtGui.QColor("#2ECC71") if self._active else QtGui.QColor("#BDC3C7")
+        bg_color = QtGui.QColor(
+            "#2ECC71") if self._active else QtGui.QColor("#BDC3C7")
         painter.setBrush(bg_color)
         painter.setPen(QtCore.Qt.PenStyle.NoPen)
         painter.drawRoundedRect(0, 0, self.width(), self.height(), 15, 15)
@@ -33,6 +34,10 @@ class ToggleSwitch(QtWidgets.QWidget):
         self._circle_pos = 35 if self._active else 5
         self.update()
         self.clicked.emit(self._active)
+
+    @property
+    def active(self):
+        return self._active
 
     def is_active(self):
         return self._active

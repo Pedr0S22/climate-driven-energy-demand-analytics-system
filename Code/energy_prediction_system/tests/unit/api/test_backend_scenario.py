@@ -14,10 +14,17 @@ from src.api.services.simulation_service import SimulationService
 
 @pytest.fixture
 def admin_token(client: TestClient, db):
-    admin_in = UserCreate(username="testadmin", email="testadmin@example.com", password="admin123456")
+    admin_in = UserCreate(
+        username="testadmin",
+        email="testadmin@example.com",
+        password="admin123456")
     create_user(db, admin_in, is_admin=True)
 
-    response = client.post("/api/auth/login", data={"username": "testadmin@example.com", "password": "admin123456"})
+    response = client.post(
+        "/api/auth/login",
+        data={
+            "username": "testadmin@example.com",
+            "password": "admin123456"})
     assert response.status_code == 200
     return response.json()["access_token"]
 
@@ -26,9 +33,16 @@ def admin_token(client: TestClient, db):
 def client_token(client: TestClient):
     client.post(
         "/api/auth/register",
-        json={"username": "normalclient", "email": "normal@example.com", "password": "client123456"},
+        json={
+            "username": "normalclient",
+            "email": "normal@example.com",
+            "password": "client123456"},
     )
-    response = client.post("/api/auth/login", data={"username": "normal@example.com", "password": "client123456"})
+    response = client.post(
+        "/api/auth/login",
+        data={
+            "username": "normal@example.com",
+            "password": "client123456"})
     assert response.status_code == 200
     return response.json()["access_token"]
 
@@ -37,7 +51,8 @@ def client_token(client: TestClient):
 def active_hourly_model(db):
     from unittest.mock import MagicMock
 
-    db.query(Model).filter(Model.model_pred_type == "hourly").update({"is_active": False})
+    db.query(Model).filter(Model.model_pred_type ==
+                           "hourly").update({"is_active": False})
     model = Model(
         model_name_id=100,
         model_type="Random Forest",
@@ -99,14 +114,24 @@ class TestListModels:
     BASE_URL = "/api/models"
 
     def test_list_models_empty(self, client, client_token):
-        response = client.get(self.BASE_URL, headers={"Authorization": f"Bearer {client_token}"})
+        response = client.get(
+            self.BASE_URL, headers={
+                "Authorization": f"Bearer {client_token}"})
         assert response.status_code == 200
 
     def test_list_models_has_metrics(self, client, client_token):
-        response = client.get(self.BASE_URL, headers={"Authorization": f"Bearer {client_token}"})
+        response = client.get(
+            self.BASE_URL, headers={
+                "Authorization": f"Bearer {client_token}"})
         if response.json():
             model = response.json()[0]
-            for field in ["rmse", "r2", "mae", "top2_drivers", "model_type", "model_pred_type"]:
+            for field in [
+                "rmse",
+                "r2",
+                "mae",
+                "top2_drivers",
+                "model_type",
+                    "model_pred_type"]:
                 assert field in model
 
 
@@ -114,7 +139,10 @@ class TestActivateModel:
     BASE_URL = "/api/models"
 
     def test_activate_without_token_returns_401(self, client):
-        response = client.patch(f"{self.BASE_URL}/1/activate", json={"is_active": True})
+        response = client.patch(
+            f"{self.BASE_URL}/1/activate",
+            json={
+                "is_active": True})
         assert response.status_code == 401
 
     def test_activate_not_found(self, client, admin_token):
@@ -133,7 +161,8 @@ class TestRBAC:
     def sample_model(self, db):
         return _create_test_model(db)
 
-    def test_client_cannot_activate_model(self, client, client_token, sample_model):
+    def test_client_cannot_activate_model(
+            self, client, client_token, sample_model):
         response = client.patch(
             f"{self.BASE_URL}/{sample_model.model_name_id}/activate",
             json={"is_active": True},
@@ -186,7 +215,8 @@ class TestSimulationTemplates:
         )
         assert response.status_code == 404
 
-    def test_all_8_templates_auto_discover_dataset(self, client, client_token, active_hourly_model, db):
+    def test_all_8_templates_auto_discover_dataset(
+            self, client, client_token, active_hourly_model, db):
         """
         Verifica que os templates básicos (4 condições x 2 frequências) funcionam.
         O dataset_type agora é auto-descoberto do modelo ativo.
@@ -194,8 +224,13 @@ class TestSimulationTemplates:
         frequencies = ["daily", "hourly"]
         template_names = ["average", "rainy", "storm", "heatwave"]
 
-        # Ativar um modelo daily para garantir que o teste funcione para ambas frequencies
-        _create_test_model(db, model_pred_type="daily", is_active=True, dataset="full")
+        # Ativar um modelo daily para garantir que o teste funcione para ambas
+        # frequencies
+        _create_test_model(
+            db,
+            model_pred_type="daily",
+            is_active=True,
+            dataset="full")
 
         count = 0
         for freq in frequencies:
@@ -212,7 +247,8 @@ class TestSimulationTemplates:
                 count += 1
         assert count == 8  # 2 frequências × 4 condições
 
-    def test_template_features_validate_physical_limits(self, client, client_token):
+    def test_template_features_validate_physical_limits(
+            self, client, client_token):
         """Verifica que templates respeitam limites físicos"""
         response = client.post(
             self.TEMPLATES_URL,
@@ -230,7 +266,11 @@ class TestSimulationRun:
     HOURLY_URL = "/api/simulations/hourly"
 
     def test_run_simulation_daily_heatwave(self, client, client_token, db):
-        _create_test_model(db, model_pred_type="daily", is_active=True, dataset="full")
+        _create_test_model(
+            db,
+            model_pred_type="daily",
+            is_active=True,
+            dataset="full")
 
         # Mock engine for daily
         engine = get_inference_engine()
@@ -254,7 +294,8 @@ class TestSimulationRun:
         assert "predicted_mw" in data
         assert len(data["top_drivers"]) == 2
 
-    def test_run_simulation_hourly_storm(self, client, client_token, active_hourly_model):
+    def test_run_simulation_hourly_storm(
+            self, client, client_token, active_hourly_model):
         response = client.post(
             self.HOURLY_URL,
             json={
@@ -271,14 +312,18 @@ class TestSimulationRun:
         data = response.json()
         assert "predicted_mw" in data
 
-    def test_simulation_extreme_temp_increases_load(self, client, client_token, active_hourly_model):
+    def test_simulation_extreme_temp_increases_load(
+            self, client, client_token, active_hourly_model):
         """Temperatura extrema aumenta carga prevista"""
         from unittest.mock import MagicMock
 
         engine = get_inference_engine()
 
         mock_model = MagicMock()
-        mock_model.predict.side_effect = [np.array([40000.0]), np.array([25000.0])]  # heatwave > average
+        mock_model.predict.side_effect = [
+            np.array(
+                [40000.0]), np.array(
+                [25000.0])]  # heatwave > average
 
         mock_scaler = MagicMock()
         mock_scaler.transform.return_value = np.array([[0.5, 0.3]])
@@ -314,7 +359,8 @@ class TestSimulationRun:
         assert avg.status_code == 200
         assert hot.json()["predicted_mw"] > avg.json()["predicted_mw"]
 
-    def test_simulation_validation_error(self, client, client_token, active_hourly_model):
+    def test_simulation_validation_error(
+            self, client, client_token, active_hourly_model):
         response = client.post(
             self.HOURLY_URL,
             json={
@@ -334,16 +380,28 @@ class TestSimulationRun:
         db.commit()
         response = client.post(
             self.DAILY_URL,
-            json={"template_name": "average", "year": 2024, "month": 1, "day_of_week": 0},
-            headers={"Authorization": f"Bearer {client_token}"},
+            json={
+                "template_name": "average",
+                "year": 2024,
+                "month": 1,
+                "day_of_week": 0},
+            headers={
+                "Authorization": f"Bearer {client_token}"},
         )
         assert response.status_code == 400
 
-    def test_simulation_invalid_template(self, client, client_token, active_hourly_model):
+    def test_simulation_invalid_template(
+            self, client, client_token, active_hourly_model):
         response = client.post(
             self.HOURLY_URL,
-            json={"template_name": "tornado", "year": 2024, "month": 1, "day_of_week": 0, "hour": 12},
-            headers={"Authorization": f"Bearer {client_token}"},
+            json={
+                "template_name": "tornado",
+                "year": 2024,
+                "month": 1,
+                "day_of_week": 0,
+                "hour": 12},
+            headers={
+                "Authorization": f"Bearer {client_token}"},
         )
         assert response.status_code == 400
 
@@ -366,7 +424,8 @@ class TestPCAFlow:
         db.commit()
 
         mock_pca = MagicMock()
-        mock_pca.transform = MagicMock(return_value=np.array([[1.0, 2.0, 3.0]]))
+        mock_pca.transform = MagicMock(
+            return_value=np.array([[1.0, 2.0, 3.0]]))
 
         mock_scaler = MagicMock()
         mock_scaler.transform.return_value = np.array([[0.5, 0.3, 0.2]])
@@ -385,8 +444,12 @@ class TestPCAFlow:
             engine.load_active_model(model)
 
             result = SimulationService.run_simulation(
-                db=db, frequency="daily", template_name="average", year=2024, month=6, day_of_week=3
-            )
+                db=db,
+                frequency="daily",
+                template_name="average",
+                year=2024,
+                month=6,
+                day_of_week=3)
 
         assert result["predicted_mw"] == 35000.0
         mock_pca.transform.assert_called_once()
@@ -416,9 +479,11 @@ class TestInferenceEngine:
             assert engine2.get_model("daily") is not None
             assert engine1.get_model("daily") is engine2.get_model("daily")
 
-    def test_inference_engine_refresh_on_activation(self, client, admin_token, db):
+    def test_inference_engine_refresh_on_activation(
+            self, client, admin_token, db):
         """Engine recarrega quando modelo ativo muda"""
-        model = _create_test_model(db, model_pred_type="daily", is_active=False)
+        model = _create_test_model(
+            db, model_pred_type="daily", is_active=False)
 
         with patch.object(InferenceEngine, "load_active_model") as mock_load:
             client.patch(

@@ -2,6 +2,9 @@ from PyQt6 import QtCore, QtGui, QtWidgets
 
 
 class Sidebar(QtWidgets.QFrame):
+    # 1. Add a custom signal to broadcast toggles across the application
+    section_toggled = QtCore.pyqtSignal(str, bool)
+
     def __init__(self, parent=None):
         super().__init__(parent)
         self.setFixedWidth(300)
@@ -18,36 +21,49 @@ class Sidebar(QtWidgets.QFrame):
 
         # Dictionary to store sections and their children
         self.sections = {}
-        # Track if a section is expanded
+        # Track if a section is expanded (Default to True to keep them visible)
         self.section_expanded = {}
 
-    def add_menu_header(self, text):
-        """Adds a clickable section header that toggles children visibility."""
+    def add_menu_header(self, text, is_toggle=True, active=False):
+        """Adds a clickable section header. If is_toggle is True, it toggles children visibility."""
+        container = QtWidgets.QWidget()
+        container.setFixedHeight(60)
+        container_layout = QtWidgets.QVBoxLayout(container)
+        container_layout.setContentsMargins(0, 0, 0, 0)
+        container_layout.setSpacing(0)
+
         btn = QtWidgets.QPushButton(text)
         btn.setFixedHeight(50)
         font = QtGui.QFont("Tw Cen MT Condensed", 22, QtGui.QFont.Weight.Bold)
         btn.setFont(font)
         btn.setCursor(QtGui.QCursor(QtCore.Qt.CursorShape.PointingHandCursor))
 
-        btn.setStyleSheet("""
-            QPushButton {
-                background: transparent;
+        # Header styling
+        bg_color = "rgba(0, 1, 128, 0.05)" if active else "transparent"
+
+        btn.setStyleSheet(f"""
+            QPushButton {{
+                background-color: {bg_color};
                 border: none;
                 color: #000180;
                 text-align: left;
                 padding-left: 20px;
                 margin-top: 10px;
-            }
-            QPushButton:hover {
-                background-color: rgba(0, 1, 128, 0.05);
-            }
+            }}
+            QPushButton:hover {{
+                background-color: rgba(0, 1, 128, 0.08);
+            }}
         """)
 
-        self.layout.addWidget(btn)
-        self.sections[text] = []
-        self.section_expanded[text] = False
+        container_layout.addWidget(btn)
+        self.layout.addWidget(container)
 
-        btn.clicked.connect(lambda checked=False, t=text: self.toggle_section(t))
+        if is_toggle:
+            self.sections[text] = []
+            # Start expanded by default so users don't "lose" menu items
+            self.section_expanded[text] = True
+            btn.clicked.connect(lambda checked=False, t=text: self.toggle_section(t))
+
         return btn
 
     def add_menu_item(self, text, active=False, indent=False, header_parent=None):
@@ -100,15 +116,18 @@ class Sidebar(QtWidgets.QFrame):
         if header_parent and header_parent in self.sections:
             self.sections[header_parent].append(container)
 
-            # If this item is active, expand the parent section
+            # Expansion Logic:
+            # If item is active, force section expansion
             if active:
                 self.section_expanded[header_parent] = True
-                # Fix: When expanding via active item, update ALL sibling items visibility
+
+            # Apply current expansion state
+            container.setVisible(self.section_expanded[header_parent])
+
+            # If we just forced expansion, make sure all siblings added so far are visible
+            if active:
                 for sibling in self.sections[header_parent]:
                     sibling.setVisible(True)
-            else:
-                # Set visibility based on section state
-                container.setVisible(self.section_expanded[header_parent])
 
         return btn
 
@@ -120,5 +139,15 @@ class Sidebar(QtWidgets.QFrame):
             self.section_expanded[header_text] = is_visible
 
             # Apply visibility to all children
+            for item in self.sections[header_text]:
+                item.setVisible(is_visible)
+
+            # 2. Emit the signal so MainWindow knows to update the other sidebars
+            self.section_toggled.emit(header_text, is_visible)
+
+    def sync_section_state(self, header_text, is_visible):
+        """Called externally to force this sidebar to match the state of another."""
+        if header_text in self.sections:
+            self.section_expanded[header_text] = is_visible
             for item in self.sections[header_text]:
                 item.setVisible(is_visible)

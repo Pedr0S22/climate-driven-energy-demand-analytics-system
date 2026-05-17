@@ -1,4 +1,3 @@
-import os
 from unittest.mock import MagicMock, patch
 
 import numpy as np
@@ -6,6 +5,7 @@ import pandas as pd
 import pytest
 from sqlalchemy import create_engine, func
 from sqlalchemy.orm import sessionmaker
+from sqlalchemy.pool import StaticPool
 
 from src.api.database.session import Base
 from src.api.models.model import Model
@@ -14,8 +14,11 @@ from src.api.services.prediction_service import PredictionService
 from src.api.services.simulation_service import SimulationService
 
 # --- DB SETUP ---
-SQLALCHEMY_DATABASE_URL = "sqlite:///./test_api_services.db"
-engine = create_engine(SQLALCHEMY_DATABASE_URL, connect_args={"check_same_thread": False})
+engine = create_engine(
+    "sqlite://",
+    connect_args={"check_same_thread": False},
+    poolclass=StaticPool,
+)
 TestingSessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 
 
@@ -28,12 +31,6 @@ def db_session():
     finally:
         db.close()
         Base.metadata.drop_all(bind=engine)
-        engine.dispose()
-        if os.path.exists("./test_api_services.db"):
-            try:
-                os.remove("./test_api_services.db")
-            except:  # noqa E722 S110
-                pass
 
 
 def _next_id(db):
@@ -132,10 +129,10 @@ def test_prediction_service_autoregressive(db_session, mock_ml_assets):
     # 2. Mock CSV data
     dummy_data = pd.DataFrame(
         {
-            "datetime": pd.to_datetime(["2024-01-01", "2024-01-02"]),
-            "Load_MWh": [600000.0, 610000.0],
-            "t2m": [10.0, 11.0],
-            "L1_Load": [590000.0, 600000.0],
+            "datetime": pd.to_datetime(["2024-01-01", "2024-01-02", "2024-01-03"]),
+            "Load_MWh": [590000.0, 600000.0, 610000.0],
+            "t2m": [9.0, 10.0, 11.0],
+            "L1_Load": [580000.0, 590000.0, 600000.0],
         }
     )
 

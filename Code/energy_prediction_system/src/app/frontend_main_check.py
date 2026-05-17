@@ -7,12 +7,13 @@ src_dir = os.path.dirname(current_dir)  # src
 if src_dir not in sys.path:
     sys.path.insert(0, src_dir)
 
-from app.ui.views.daily_prediction_view import Ui_DailyPredictionAdminWindow  # noqa: E402
-from app.ui.views.hourly_prediction_view import Ui_HourlyPredictionAdminWindow  # noqa: E402
-from app.ui.views.login_view import Ui_LoginWindow  # noqa: E402
-from app.ui.views.register_view import Ui_RegisterWindow  # noqa: E402
-from app.ui.views.user_homepage import Ui_UserMainWindow  # noqa: E402
 from PyQt6.QtWidgets import QApplication, QMainWindow, QStackedWidget  # noqa: E402
+
+from src.app.ui.views.daily_prediction_view import Ui_DailyPredictionAdminWindow  # noqa: E402
+from src.app.ui.views.hourly_prediction_view import Ui_HourlyPredictionAdminWindow  # noqa: E402
+from src.app.ui.views.login_view import Ui_LoginWindow  # noqa: E402
+from src.app.ui.views.register_view import Ui_RegisterWindow  # noqa: E402
+from src.app.ui.views.user_homepage import Ui_UserMainWindow  # noqa: E402
 
 
 class TestUserMainWindow(QMainWindow):

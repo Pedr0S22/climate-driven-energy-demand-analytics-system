@@ -1,7 +1,9 @@
 import os
 
-from app.ui.components import Sidebar, TopBar
 from PyQt6 import QtCore, QtGui, QtWidgets
+
+from src.app.ui.components.sidebar import Sidebar
+from src.app.ui.components.top_bar import TopBar
 
 
 class Ui_MainWindow:
@@ -40,7 +42,7 @@ class Ui_MainWindow:
         self.sidebar = Sidebar(parent=self.container)
         self.sidebar.setFixedWidth(280)
 
-        self.home_btn = self.sidebar.add_menu_item("Home", active=True)
+        self.home_btn = self.sidebar.add_menu_header("Home", is_toggle=False, active=True)
 
         self.sidebar.add_menu_header("Predictions:")
         self.daily_btn = self.sidebar.add_menu_item("daily", active=False, indent=True, header_parent="Predictions:")
@@ -54,7 +56,7 @@ class Ui_MainWindow:
             "hourly", active=False, indent=True, header_parent="Scenario Simulation:"
         )
 
-        self.model_mgmt_btn = self.sidebar.add_menu_item("Model Management", active=False)
+        self.model_btn = self.sidebar.add_menu_header("Model Management", is_toggle=False, active=False)
 
         self.sidebar.layout.addStretch()
         self.sidebar.setVisible(False)

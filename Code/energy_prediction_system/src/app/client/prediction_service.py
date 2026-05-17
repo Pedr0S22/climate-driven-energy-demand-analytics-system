@@ -13,11 +13,15 @@ class PredictionService:
     def __init__(self):
         self.client = APIClient()
 
-    def get_prediction(self, frequency, historical_points, predicted_points):
+    def get_prediction(self, frequency, historical_points=3, predicted_points=None):
         """
         Fetches predictions from the backend.
         Returns (data, status_code).
         """
+
+        if predicted_points is None:
+            predicted_points = 7 if frequency == "daily" else 12
+
         endpoint = f"/predictions/{frequency}"
         params = {"historical_points": historical_points, "predicted_points": predicted_points}
 
@@ -27,4 +31,4 @@ class PredictionService:
             return response.json(), response.status_code
         except Exception as e:
             logger.error(f"Error in PredictionService ({frequency}): {e}")
-            return {"detail": "Connection error. Please ensure the backend is running."}, 500
+            return {"detail": "Unable to reach the server. Please ensure the backend is running."}, 500

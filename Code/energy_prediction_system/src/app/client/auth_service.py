@@ -1,8 +1,7 @@
 import logging
 
-from app.manager.session_manager import SessionManager
-
-from .api_client import APIClient
+from src.app.client.api_client import APIClient
+from src.app.manager.session_manager import SessionManager
 
 logger = logging.getLogger(__name__)
 
@@ -56,7 +55,8 @@ class AuthService:
         """Notifies the backend about the logout event."""
         endpoint = "/auth/logout"
         try:
-            # APIClient automatically injects the Bearer token from SessionManager
+            # APIClient automatically injects the Bearer token from
+            # SessionManager
             response = self.client.post(endpoint)
             if response.status_code == 200:
                 logger.info("Backend logout successful.")

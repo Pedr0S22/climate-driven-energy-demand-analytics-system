@@ -10,9 +10,9 @@ import requests
 
 # for gdrive
 try:
-    from data_pipeline.gdrive_sync import backup_project_data
+    from src.data_pipeline.gdrive_sync import backup_project_data
 except (ImportError, ModuleNotFoundError):
-    from gdrive_sync import backup_project_data
+    from data_pipeline.gdrive_sync import backup_project_data
 from dotenv import load_dotenv
 
 # for entsoe
@@ -79,7 +79,8 @@ def fetch_copernicus_data(start_date: str, end_date: str):
                 if extracted_file_names:
                     extracted_file_path = os.path.join(raw_weather_dir, extracted_file_names[0])
                     if extracted_file_path != output_csv_path:
-                        os.replace(extracted_file_path, output_csv_path)  # os.replace safely overwrites
+                        # os.replace safely overwrites
+                        os.replace(extracted_file_path, output_csv_path)
 
             # Clean up the temporary zip file
             if os.path.exists(temp_zip_path):

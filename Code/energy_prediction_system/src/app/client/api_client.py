@@ -2,7 +2,8 @@
 import logging
 
 import requests
-from app.manager.session_manager import SessionManager
+
+from src.app.manager.session_manager import SessionManager
 
 logger = logging.getLogger(__name__)
 

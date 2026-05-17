@@ -3,8 +3,9 @@ from unittest.mock import patch
 import numpy as np
 import pandas as pd
 import pytest
-from data_pipeline.cleaning import DataCleaner, cleaning
-from data_pipeline.feature_engineering import FeatureEngineer
+
+from src.data_pipeline.cleaning import DataCleaner, cleaning
+from src.data_pipeline.feature_engineering import FeatureEngineer
 
 
 class TestPipelineIntegration:

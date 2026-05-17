@@ -6,7 +6,9 @@ from pathlib import Path
 import numpy as np
 import pandas as pd
 
-logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(levelname)s - %(message)s")
+logging.basicConfig(
+    level=logging.INFO,
+    format="%(asctime)s - %(levelname)s - %(message)s")
 logger = logging.getLogger(__name__)
 
 
@@ -58,7 +60,8 @@ class DataCleaner:
                 df.loc[0, "Load_MW"] = df.loc[1, "Load_MW"]
 
         # Identify isolated vs multiple NaNs in 1-hour window
-        nan_counts = df["Load_MW"].isna().groupby(df[time_col].dt.floor("h")).transform("sum")
+        nan_counts = df["Load_MW"].isna().groupby(
+            df[time_col].dt.floor("h")).transform("sum")
 
         # Pre-calculate candidate values
         interp = df["Load_MW"].interpolate(method="linear")
@@ -103,7 +106,11 @@ class DataCleaner:
         df = df[~df.index.duplicated(keep="first")]
 
         # Continuous 15-min interval index
-        new_index = pd.date_range(start=df.index.min(), end=df.index.max(), freq="15min", name=time_col)
+        new_index = pd.date_range(
+            start=df.index.min(),
+            end=df.index.max(),
+            freq="15min",
+            name=time_col)
         df_aligned = df.reindex(new_index).reset_index()
 
         df_imputed = self.fill_nan_energy(df_aligned)
@@ -119,7 +126,8 @@ class DataCleaner:
 
         # Handle Open-Meteo wind components if present
         if "wind_speed_10m" in df.columns and "wind_direction_10m" in df.columns:
-            # u = -speed * sin(dir), v = -speed * cos(dir) (Meteorological convention)
+            # u = -speed * sin(dir), v = -speed * cos(dir) (Meteorological
+            # convention)
             rad = np.deg2rad(df["wind_direction_10m"])
             df["u10"] = -df["wind_speed_10m"] * np.sin(rad)
             df["v10"] = -df["wind_speed_10m"] * np.cos(rad)
@@ -139,7 +147,8 @@ class DataCleaner:
         Skips conversion for Open-Meteo data which is already in target units.
         """
         df = df.copy()
-        # Heuristic: Open-Meteo data contains wind speed/direction instead of components initially
+        # Heuristic: Open-Meteo data contains wind speed/direction instead of
+        # components initially
         is_open_meteo = "wind_speed_10m" in df.columns
 
         if not is_open_meteo:
@@ -159,7 +168,11 @@ class DataCleaner:
         time_col = "valid_time" if "valid_time" in df.columns else "datetime"
         df = df.set_index(time_col).sort_index()
         df = df[~df.index.duplicated(keep="first")]
-        new_index = pd.date_range(start=df.index.min(), end=df.index.max(), freq="15min", name=time_col)
+        new_index = pd.date_range(
+            start=df.index.min(),
+            end=df.index.max(),
+            freq="15min",
+            name=time_col)
         return df.reindex(new_index).reset_index()
 
     def _impute_missing_weather(self, df: pd.DataFrame) -> pd.DataFrame:
@@ -182,7 +195,8 @@ class DataCleaner:
         if not mask_nan.any():
             return series
 
-        nan_counts = mask_nan.groupby(series.index.floor("1h")).transform("sum")
+        nan_counts = mask_nan.groupby(
+            series.index.floor("1h")).transform("sum")
         mask_isolated = mask_nan & (nan_counts == 1)
         mask_multiple = mask_nan & (nan_counts > 1)
 
@@ -190,7 +204,8 @@ class DataCleaner:
 
         # Case 1: Isolated -> Linear Interpolation
         if mask_isolated.any():
-            interp = series.interpolate(method="linear", limit_direction="both")
+            interp = series.interpolate(
+                method="linear", limit_direction="both")
             result.loc[mask_isolated] = interp.loc[mask_isolated]
 
         # Case 2: Multiple -> Rule-based windows
@@ -208,13 +223,18 @@ class DataCleaner:
             elif var == "swvl1":
                 custom = self._media_custom(series, 6, 0)
             else:
-                custom = series.interpolate(method="linear", limit_direction="both")
+                custom = series.interpolate(
+                    method="linear", limit_direction="both")
 
             result.loc[mask_multiple] = custom.loc[mask_multiple]
 
         return result.ffill().bfill()
 
-    def _media_custom(self, series: pd.Series, n_prev: int, n_next: int) -> pd.Series:
+    def _media_custom(
+            self,
+            series: pd.Series,
+            n_prev: int,
+            n_next: int) -> pd.Series:
         """Matches legacy media_custom: index-window based mean."""
         s = series.copy()
         res = s.copy()
@@ -299,7 +319,10 @@ class DataCleaner:
         res = s.copy()
         nan_indices = s.index[s.isna()]
         for idx in nan_indices:
-            diff_sec = pd.Series(np.abs((valid.index - idx).total_seconds()), index=valid.index)
+            diff_sec = pd.Series(
+                np.abs(
+                    (valid.index - idx).total_seconds()),
+                index=valid.index)
             closest_indices = diff_sec.nsmallest(n).index
             res.loc[idx] = valid.loc[closest_indices].mean()
         return res
@@ -309,19 +332,30 @@ class DataCleaner:
         time_col = "valid_time" if "valid_time" in df.columns else "datetime"
         df = df.copy()
         df["hour_group"] = df[time_col].dt.floor("h")
-        cols_agg = [c for c in df.columns if c not in [time_col, "latitude", "longitude", "hour_group"]]
+        cols_agg = [
+            c for c in df.columns if c not in [
+                time_col,
+                "latitude",
+                "longitude",
+                "hour_group"]]
         df_hourly = df.groupby("hour_group")[cols_agg].mean().reset_index()
         df_hourly = df_hourly.rename(columns={"hour_group": time_col})
         return df_hourly
 
-    def create_daily_aggregation(self, df_hourly: pd.DataFrame) -> pd.DataFrame:
+    def create_daily_aggregation(
+            self, df_hourly: pd.DataFrame) -> pd.DataFrame:
         """Derives daily dataset: Sum for load, Mean for climate."""
         df = df_hourly.copy()
         df["date"] = df["datetime"].dt.date
-        agg_rules = {col: "mean" for col in df.columns if col not in ["datetime", "date", "Load_MW"]}
+        agg_rules = {
+            col: "mean" for col in df.columns if col not in [
+                "datetime", "date", "Load_MW"]}
         agg_rules["Load_MW"] = "sum"
         df_daily = df.groupby("date").agg(agg_rules).reset_index()
-        df_daily = df_daily.rename(columns={"date": "datetime", "Load_MW": "Load_MWh"})
+        df_daily = df_daily.rename(
+            columns={
+                "date": "datetime",
+                "Load_MW": "Load_MWh"})
         df_daily["datetime"] = pd.to_datetime(df_daily["datetime"], utc=True)
         return df_daily
 
@@ -339,7 +373,8 @@ def cleaning(energy_dir, weather_dir, train_data, output_dir=None):
         default_folder = root / "data" / "processed"
         prefix = "complete_train_data"
     else:
-        # Real-time/Prediction specific folder: as per requirements, saved in data/processed/
+        # Real-time/Prediction specific folder: as per requirements, saved in
+        # data/processed/
         default_folder = root / "data" / "processed"
         prefix = "realtime"
 
@@ -354,7 +389,8 @@ def cleaning(energy_dir, weather_dir, train_data, output_dir=None):
 
     # Optimization: If not training, only use realtime files to keep it fast
     if not train_data:
-        energy_files = [f for f in all_energy_files if f.name.startswith("realtime")]
+        energy_files = [
+            f for f in all_energy_files if f.name.startswith("realtime")]
         if not energy_files:  # Fallback
             energy_files = all_energy_files
     else:
@@ -363,7 +399,8 @@ def cleaning(energy_dir, weather_dir, train_data, output_dir=None):
     if not energy_files:
         raise FileNotFoundError(f"No energy files in {energy_dir}")
 
-    df_energy_raw = pd.concat([pd.read_csv(f) for f in energy_files], ignore_index=True)
+    df_energy_raw = pd.concat([pd.read_csv(f)
+                              for f in energy_files], ignore_index=True)
     df_e = cleaner.clean_energy_dataframe(df_energy_raw)
     df_e = df_e.rename(columns={df_e.columns[0]: "datetime"})
     df_e = df_e[["datetime", "Load_MW"]].drop_duplicates("datetime")
@@ -373,7 +410,8 @@ def cleaning(energy_dir, weather_dir, train_data, output_dir=None):
     all_weather_files = sorted(Path(weather_dir).glob("*.csv"))
 
     if not train_data:
-        weather_files = [f for f in all_weather_files if f.name.startswith("realtime")]
+        weather_files = [
+            f for f in all_weather_files if f.name.startswith("realtime")]
         if not weather_files:  # Fallback
             weather_files = all_weather_files
     else:
@@ -388,15 +426,19 @@ def cleaning(energy_dir, weather_dir, train_data, output_dir=None):
         df_w_clean = cleaner.clean_weather_dataframe(df_w_raw)
         time_col = "datetime" if "datetime" in df_w_clean.columns else "valid_time"
         df_w_clean = df_w_clean.rename(columns={time_col: "datetime"})
-        cols_to_keep = [c for c in df_w_clean.columns if c not in ["latitude", "longitude", "hour_group"]]
+        cols_to_keep = [
+            c for c in df_w_clean.columns if c not in [
+                "latitude", "longitude", "hour_group"]]
         weather_dfs_hourly.append(df_w_clean[cols_to_keep])
 
     # Outer join weather variables
     df_weather_combined = weather_dfs_hourly[0]
     for df in weather_dfs_hourly[1:]:
-        df_weather_combined = pd.merge(df_weather_combined, df, on="datetime", how="outer")
+        df_weather_combined = pd.merge(
+            df_weather_combined, df, on="datetime", how="outer")
 
-    df_weather_final = df_weather_combined.groupby("datetime").mean(numeric_only=True).reset_index()
+    df_weather_final = df_weather_combined.groupby(
+        "datetime").mean(numeric_only=True).reset_index()
 
     # 3. Join
     df_hourly = pd.merge(df_weather_final, df_e, on="datetime", how="inner")
@@ -404,8 +446,20 @@ def cleaning(energy_dir, weather_dir, train_data, output_dir=None):
 
     # 4. Enforce Column Order and Drop Extras
     # Training columns order for Hourly: datetime, u10, v10, d2m, t2m, sp, tp, ssrd, strd, skt, stl1, swvl1, Load_MW
-    # Training columns order for Daily: datetime, u10, v10, d2m, t2m, sp, tp, ssrd, strd, skt, stl1, swvl1, Load_MWh
-    common_weather = ["u10", "v10", "d2m", "t2m", "sp", "tp", "ssrd", "strd", "skt", "stl1", "swvl1"]
+    # Training columns order for Daily: datetime, u10, v10, d2m, t2m, sp, tp,
+    # ssrd, strd, skt, stl1, swvl1, Load_MWh
+    common_weather = [
+        "u10",
+        "v10",
+        "d2m",
+        "t2m",
+        "sp",
+        "tp",
+        "ssrd",
+        "strd",
+        "skt",
+        "stl1",
+        "swvl1"]
     hourly_order = ["datetime"] + common_weather
     daily_order = ["datetime"] + common_weather
 
@@ -433,7 +487,8 @@ def cleaning(energy_dir, weather_dir, train_data, output_dir=None):
     os.replace(tmp_hourly, hourly_file)
     os.replace(tmp_daily, daily_file)
 
-    logger.info(f"Synchronized Dataset: {df_hourly.shape[0]} rows. Saved to {output_path}")
+    logger.info(
+        f"Synchronized Dataset: {df_hourly.shape[0]} rows. Saved to {output_path}")
     return df_hourly, df_daily
 
 
@@ -441,5 +496,10 @@ if __name__ == "__main__":
     ROOT = Path(__file__).parent.parent.parent
     DATA_RAW = ROOT / "data" / "raw"
     start = time.time()
-    cleaning(energy_dir=DATA_RAW / "energy", weather_dir=DATA_RAW / "weather", train_data=True)
+    cleaning(
+        energy_dir=DATA_RAW /
+        "energy",
+        weather_dir=DATA_RAW /
+        "weather",
+        train_data=True)
     logger.info(f"Total processing time: {time.time() - start:.2f}s")

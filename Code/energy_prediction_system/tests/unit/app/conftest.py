@@ -32,9 +32,9 @@ def mock_keyring():
             raise keyring.errors.PasswordDeleteError("Not found")
 
     with (
-        patch("app.manager.session_manager.keyring.set_password", side_effect=mock_set_password),
-        patch("app.manager.session_manager.keyring.get_password", side_effect=mock_get_password),
-        patch("app.manager.session_manager.keyring.delete_password", side_effect=mock_delete_password),
+        patch("src.app.manager.session_manager.keyring.set_password", side_effect=mock_set_password),
+        patch("src.app.manager.session_manager.keyring.get_password", side_effect=mock_get_password),
+        patch("src.app.manager.session_manager.keyring.delete_password", side_effect=mock_delete_password),
     ):
         yield fake_keyring
 

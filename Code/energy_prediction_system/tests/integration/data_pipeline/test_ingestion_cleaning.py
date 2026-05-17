@@ -6,7 +6,8 @@ from unittest.mock import patch
 
 import numpy as np
 import pandas as pd
-from data_pipeline.cleaning import (
+
+from src.data_pipeline.cleaning import (
     DataCleaner,
     cleaning,
 )
@@ -148,8 +149,8 @@ def mock_copernicus_data(start_date, end_date):
     return df
 
 
-@patch("data_pipeline.ingestion.cdsapi.Client")
-@patch("data_pipeline.ingestion.EntsoePandasClient")
+@patch("src.data_pipeline.ingestion.cdsapi.Client")
+@patch("src.data_pipeline.ingestion.EntsoePandasClient")
 def test_full_pipeline_integration(mock_entsoe, mock_cds):
     (base_dir_path, raw_energy, raw_weather, energy_clean, weather_clean, start_date, end_date) = setup_dirs()
     try:
@@ -199,8 +200,8 @@ def mock_copernicus_data_15min_with_outliers_and_nan(start_date, end_date):
     return df
 
 
-@patch("data_pipeline.ingestion.cdsapi.Client")
-@patch("data_pipeline.ingestion.EntsoePandasClient")
+@patch("src.data_pipeline.ingestion.cdsapi.Client")
+@patch("src.data_pipeline.ingestion.EntsoePandasClient")
 def test_full_pipeline_integration_15min_with_outliers_and_nan(mock_entsoe, mock_cds):
     (base_dir_path, raw_energy, raw_weather, energy_clean, weather_clean, start_date, end_date) = setup_dirs()
     try:
@@ -223,8 +224,8 @@ def test_full_pipeline_integration_15min_with_outliers_and_nan(mock_entsoe, mock
         shutil.rmtree(base_dir_path, ignore_errors=True)
 
 
-@patch("data_pipeline.ingestion.cdsapi.Client")
-@patch("data_pipeline.ingestion.EntsoePandasClient")
+@patch("src.data_pipeline.ingestion.cdsapi.Client")
+@patch("src.data_pipeline.ingestion.EntsoePandasClient")
 def test_full_pipeline_integration_1h_clean(mock_entsoe, mock_cds):
     (base_dir_path, raw_energy, raw_weather, energy_clean, weather_clean, start_date, end_date) = setup_dirs()
     try:

@@ -1,7 +1,8 @@
 import numpy as np
 import pandas as pd
 import pytest
-from data_pipeline.feature_engineering import FeatureEngineer
+
+from src.data_pipeline.feature_engineering import FeatureEngineer
 
 # =======================================
 # MOCK DATA GENERATOR

@@ -39,8 +39,12 @@ class TestRealtimePipelineIntegration:
         now = pd.Timestamp.now(tz="UTC").floor("h")
         times = pd.date_range(end=now, periods=48, freq="h", tz="UTC")
 
-        energy_df = pd.DataFrame({"datetime": times, "Load_MW": np.random.uniform(20000, 30000, 48)})
-        energy_df.to_csv(mock_dirs["raw_energy"] / "realtime_energy.csv", index=False)
+        energy_df = pd.DataFrame(
+            {"datetime": times, "Load_MW": np.random.uniform(20000, 30000, 48)})
+        energy_df.to_csv(
+            mock_dirs["raw_energy"] /
+            "realtime_energy.csv",
+            index=False)
 
         weather_df = pd.DataFrame(
             {
@@ -58,25 +62,45 @@ class TestRealtimePipelineIntegration:
                 "wind_direction_10m": 180,
             }
         )
-        weather_df.to_csv(mock_dirs["raw_weather"] / "realtime_weather.csv", index=False)
+        weather_df.to_csv(
+            mock_dirs["raw_weather"] /
+            "realtime_weather.csv",
+            index=False)
 
         # 2. THE TRICK: Spoof __file__ with the CORRECT 'src.' namespace
-        fake_file_path = str(mock_dirs["root"] / "fake_dir_1" / "fake_dir_2" / "fake_pipeline.py")
+        fake_file_path = str(
+            mock_dirs["root"] /
+            "fake_dir_1" /
+            "fake_dir_2" /
+            "fake_pipeline.py")
 
-        monkeypatch.setattr("src.data_pipeline.real_time_pipeline.__file__", fake_file_path)
+        monkeypatch.setattr(
+            "src.data_pipeline.real_time_pipeline.__file__",
+            fake_file_path)
 
         try:
-            monkeypatch.setattr("src.data_pipeline.feature_engineering.__file__", fake_file_path)
-            monkeypatch.setattr("src.data_pipeline.cleaning.__file__", fake_file_path)
+            monkeypatch.setattr(
+                "src.data_pipeline.feature_engineering.__file__",
+                fake_file_path)
+            monkeypatch.setattr(
+                "src.data_pipeline.cleaning.__file__",
+                fake_file_path)
         except AttributeError:
             pass
 
         # 3. Mute APIs and Models using the correct 'src.' namespace
-        # We mock realtime_data_retrieval directly since that's what run_pipeline calls
-        monkeypatch.setattr("src.data_pipeline.real_time_pipeline.realtime_data_retrieval", lambda **kwargs: None)
+        # We mock realtime_data_retrieval directly since that's what
+        # run_pipeline calls
+        monkeypatch.setattr(
+            "src.data_pipeline.real_time_pipeline.realtime_data_retrieval",
+            lambda **kwargs: None)
 
-        # Optional: mute load_dotenv so it doesn't complain about missing env files in the mock dir
-        monkeypatch.setattr("src.data_pipeline.real_time_pipeline.load_dotenv", lambda *args, **kwargs: None)
+        # Optional: mute load_dotenv so it doesn't complain about missing env
+        # files in the mock dir
+        monkeypatch.setattr(
+            "src.data_pipeline.real_time_pipeline.load_dotenv",
+            lambda *args,
+            **kwargs: None)
 
         def mock_fe_load(self_instance, *args, **kwargs):
             # 1. Tell the pipeline to keep the generated "L1_Load" feature
@@ -90,21 +114,28 @@ class TestRealtimePipelineIntegration:
 
             # 3. Mock the PCA model
             self_instance.pca = MagicMock()
-            self_instance.pca.transform.side_effect = lambda x: np.zeros((x.shape[0], 5))
+            self_instance.pca.transform.side_effect = lambda x: np.zeros(
+                (x.shape[0], 5))
             self_instance.pca.n_components_ = 5
 
             # 4. Mock KMeans clusterer
             self_instance.kmeans = MagicMock()
-            self_instance.kmeans.predict.side_effect = lambda x: np.zeros(x.shape[0])
+            self_instance.kmeans.predict.side_effect = lambda x: np.zeros(
+                x.shape[0])
 
-        monkeypatch.setattr("src.data_pipeline.feature_engineering.FeatureEngineer.load", mock_fe_load)
-        monkeypatch.setattr("src.data_pipeline.feature_engineering.FeatureEngineer.save", lambda *args: None)
+        monkeypatch.setattr(
+            "src.data_pipeline.feature_engineering.FeatureEngineer.load",
+            mock_fe_load)
+        monkeypatch.setattr(
+            "src.data_pipeline.feature_engineering.FeatureEngineer.save",
+            lambda *args: None)
 
         # 4. Execute Pipeline
         run_pipeline()
 
         # 5. Verify Persistence
-        hourly_full = mock_dirs["feat_eng_realtime"] / "realtime_hourly_full.csv"
+        hourly_full = mock_dirs["feat_eng_realtime"] / \
+            "realtime_hourly_full.csv"
         daily_full = mock_dirs["feat_eng_realtime"] / "realtime_daily_full.csv"
 
         assert hourly_full.exists(), f"Hourly file not found at {hourly_full}"

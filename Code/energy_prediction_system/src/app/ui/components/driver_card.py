@@ -15,3 +15,7 @@ class DriverCard(QtWidgets.QFrame):
         self.label.setStyleSheet("border: none; color: black;")
         self.label.setAlignment(QtCore.Qt.AlignmentFlag.AlignCenter)
         self.layout.addWidget(self.label)
+
+    def set_text(self, text):
+        """Atualiza o texto do card."""
+        self.label.setText(text)

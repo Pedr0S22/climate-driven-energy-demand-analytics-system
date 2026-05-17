@@ -2,6 +2,8 @@ from PyQt6 import QtCore, QtGui, QtWidgets
 
 
 class PredictionParams(QtWidgets.QFrame):
+    params_changed = QtCore.pyqtSignal(int, int)
+
     def __init__(self, parent=None, mode="daily"):
         super().__init__(parent)
         self.mode = mode
@@ -95,4 +97,12 @@ class PredictionParams(QtWidgets.QFrame):
             }
             QPushButton:hover { background-color: #0000AA; }
         """)
+        self.submit_btn.clicked.connect(self.on_submit_clicked)
         self.layout.addWidget(self.submit_btn)
+
+    def on_submit_clicked(self):
+        """Chamado quando o utilizador clica em Apply Changes."""
+        before = self.before_input.value()
+        after = self.after_input.value()
+        print(f"[{self.mode}] Apply Changes: before={before}, after={after}")
+        self.params_changed.emit(before, after)

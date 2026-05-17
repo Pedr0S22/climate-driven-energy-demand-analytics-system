@@ -55,7 +55,12 @@ class FeatureEngineer:
         self.selected_features = None
         self.pca_features = None
         # Datetime is metadata; these are its categorical decompositions
-        self.categorical_cols = ["hour", "day_of_week", "month", "season", "year"]
+        self.categorical_cols = [
+            "hour",
+            "day_of_week",
+            "month",
+            "season",
+            "year"]
         if self.frequency == "daily":
             self.categorical_cols.remove("hour")
             self.target_col = "Load_MWh"
@@ -79,7 +84,10 @@ class FeatureEngineer:
             df["season"] = df["month"].apply(lambda m: (m % 12 // 3) + 1)
         return df
 
-    def extract_rolling_features(self, df: pd.DataFrame, climate_cols: list) -> pd.DataFrame:
+    def extract_rolling_features(
+            self,
+            df: pd.DataFrame,
+            climate_cols: list) -> pd.DataFrame:
         """
         Captures short-term climate inertia using rolling windows.
 
@@ -87,7 +95,8 @@ class FeatureEngineer:
         - Hourly: 24h window (1 full cycle).
         - Daily: 7-day and 30-day windows (weekly and monthly cycles).
         """
-        logger.info(f"Extracting rolling features for frequency: {self.frequency}...")
+        logger.info(
+            f"Extracting rolling features for frequency: {self.frequency}...")
         df = df.copy()
         key_vars = ["t2m", "skt", "ssrd", "tp"]
 
@@ -95,7 +104,8 @@ class FeatureEngineer:
         windows = [24] if self.frequency == "hourly" else [7, 30]
 
         with warnings.catch_warnings():
-            warnings.filterwarnings("ignore", message="All-NaN slice encountered")
+            warnings.filterwarnings(
+                "ignore", message="All-NaN slice encountered")
             for col in climate_cols:
                 if col not in df.columns:
                     continue
@@ -110,13 +120,16 @@ class FeatureEngineer:
                     if col in key_vars:
                         df[f"{col}{suffix}_median"] = rolling.median()
                         df[f"{col}{suffix}_var"] = rolling.var()
-                        df[f"{col}{suffix}_rms"] = np.sqrt((df[col] ** 2).rolling(window=win).mean())
-                        df[f"{col}{suffix}_deriv"] = df[col].diff().abs().rolling(window=win).mean()
+                        df[f"{col}{suffix}_rms"] = np.sqrt(
+                            (df[col] ** 2).rolling(window=win).mean())
+                        df[f"{col}{suffix}_deriv"] = df[col].diff(
+                        ).abs().rolling(window=win).mean()
                         df[f"{col}{suffix}_skew"] = rolling.skew()
                         df[f"{col}{suffix}_kurt"] = rolling.kurt()
 
                     if col == "t2m":
-                        df[f"{col}{suffix}_iqr"] = rolling.apply(lambda x: iqr(x) if len(x) > 1 else 0, raw=True)
+                        df[f"{col}{suffix}_iqr"] = rolling.apply(
+                            lambda x: iqr(x) if len(x) > 1 else 0, raw=True)
         return df
 
     def extract_lagged_features(self, df: pd.DataFrame) -> pd.DataFrame:
@@ -127,7 +140,8 @@ class FeatureEngineer:
         - Hourly: L1 (momentum), L24 (yesterday), L168 (last week).
         - Daily: L1 (yesterday), L7 (last week), L28 (4 weeks ago).
         """
-        logger.info(f"Extracting lagged features for frequency: {self.frequency}...")
+        logger.info(
+            f"Extracting lagged features for frequency: {self.frequency}...")
         df = df.copy()
         if self.target_col in df.columns:
             if self.frequency == "hourly":
@@ -143,7 +157,8 @@ class FeatureEngineer:
         """
         Physics-derived climate indicators.
         """
-        logger.info(f"Extracting derived features (HDD/CDD) for {self.frequency}...")
+        logger.info(
+            f"Extracting derived features (HDD/CDD) for {self.frequency}...")
         df = df.copy()
         if "t2m" in df.columns:
             t_base = 18.0  # Celsius
@@ -151,7 +166,8 @@ class FeatureEngineer:
             df["CDD"] = df["t2m"].apply(lambda x: max(0, x - t_base))
 
             if "month" in df.columns:
-                df["temp_anomaly"] = df["t2m"] - df.groupby("month")["t2m"].transform("mean")
+                df["temp_anomaly"] = df["t2m"] - \
+                    df.groupby("month")["t2m"].transform("mean")
 
             # Persistent Extremes logic
             # Hourly: 72 hours. Daily: 3 days.
@@ -161,8 +177,10 @@ class FeatureEngineer:
             df["is_extreme_heat"] = (df["t2m"] > q_high).astype(int)
             df["is_extreme_cold"] = (df["t2m"] < q_low).astype(int)
 
-            df["heatwave_flag"] = df["is_extreme_heat"].rolling(window=persist_win).min().fillna(0)
-            df["coldwave_flag"] = df["is_extreme_cold"].rolling(window=persist_win).min().fillna(0)
+            df["heatwave_flag"] = df["is_extreme_heat"].rolling(
+                window=persist_win).min().fillna(0)
+            df["coldwave_flag"] = df["is_extreme_cold"].rolling(
+                window=persist_win).min().fillna(0)
 
             df = df.drop(columns=["is_extreme_heat", "is_extreme_cold"])
         return df
@@ -205,28 +223,40 @@ class FeatureEngineer:
             return 0
 
     def fit_selection(self, df: pd.DataFrame):
-        logger.info(f"Fitting redundancy filter (Threshold: {self.threshold})...")
-        cols = [c for c in df.columns if c not in ["datetime", self.target_col]]
+        logger.info(
+            f"Fitting redundancy filter (Threshold: {self.threshold})...")
+        cols = [
+            c for c in df.columns if c not in [
+                "datetime",
+                self.target_col]]
         target = df[self.target_col].fillna(0)
 
         relevance = {}
         with warnings.catch_warnings():
-            warnings.filterwarnings("ignore", message="An input array is constant")
+            warnings.filterwarnings(
+                "ignore", message="An input array is constant")
             for col in cols:
                 if col in self.categorical_cols:
-                    relevance[col] = df.groupby(col)[self.target_col].mean().std()
+                    relevance[col] = df.groupby(
+                        col)[self.target_col].mean().std()
                 else:
-                    relevance[col] = abs(spearmanr(df[col].fillna(0), target)[0])
+                    relevance[col] = abs(
+                        spearmanr(
+                            df[col].fillna(0),
+                            target)[0])
 
         to_drop = set()
-        sorted_cols = sorted(cols, key=lambda x: relevance.get(x, 0), reverse=True)
+        sorted_cols = sorted(
+            cols, key=lambda x: relevance.get(
+                x, 0), reverse=True)
 
         with warnings.catch_warnings():
-            warnings.filterwarnings("ignore", message="An input array is constant")
+            warnings.filterwarnings(
+                "ignore", message="An input array is constant")
             for i, col_a in enumerate(sorted_cols):
                 if col_a in to_drop:
                     continue
-                for col_b in sorted_cols[i + 1 :]:
+                for col_b in sorted_cols[i + 1:]:
                     if col_b in to_drop:
                         continue
 
@@ -234,7 +264,10 @@ class FeatureEngineer:
                         score = self._calculate_lambda(df[col_a], df[col_b])
                         metric = "Lambda"
                     elif col_a not in self.categorical_cols and col_b not in self.categorical_cols:
-                        score = abs(spearmanr(df[col_a].fillna(0), df[col_b].fillna(0))[0])
+                        score = abs(
+                            spearmanr(
+                                df[col_a].fillna(0),
+                                df[col_b].fillna(0))[0])
                         metric = "Spearman"
                     else:
                         cat = col_a if col_a in self.categorical_cols else col_b
@@ -243,11 +276,13 @@ class FeatureEngineer:
                         metric = "LogReg/Assoc"
 
                     if score > self.threshold:
-                        logger.info(f"Dropped '{col_b}' (score={score:.2f} {metric} with '{col_a}')")
+                        logger.info(
+                            f"Dropped '{col_b}' (score={score:.2f} {metric} with '{col_a}')")
                         to_drop.add(col_b)
 
         self.selected_features = [c for c in cols if c not in to_drop]
-        logger.info(f"Final Selection: {len(self.selected_features)} relevant features.")
+        logger.info(
+            f"Final Selection: {len(self.selected_features)} relevant features.")
 
     def fit_pca(self, X):
         logger.info("Detecting PCA elbow...")
@@ -277,24 +312,51 @@ class FeatureEngineer:
     def save(self, suffix=""):
         if self.models_dir:
             self.models_dir.mkdir(parents=True, exist_ok=True)
-            joblib.dump(self.scaler, self.models_dir / f"scaler_{self.frequency}{suffix}.joblib")
-            joblib.dump(self.pca, self.models_dir / f"pca_{self.frequency}{suffix}.joblib")
-            joblib.dump(self.selected_features, self.models_dir / f"selected_features_{self.frequency}{suffix}.joblib")
-            joblib.dump(self.pca_features, self.models_dir / f"pca_features_{self.frequency}{suffix}.joblib")
-            logger.info(f"Transformers persisted to {self.models_dir} with suffix {self.frequency}")
+            joblib.dump(
+                self.scaler,
+                self.models_dir /
+                f"scaler_{self.frequency}{suffix}.joblib")
+            joblib.dump(
+                self.pca,
+                self.models_dir /
+                f"pca_{self.frequency}{suffix}.joblib")
+            joblib.dump(self.selected_features, self.models_dir /
+                        f"selected_features_{self.frequency}{suffix}.joblib")
+            joblib.dump(self.pca_features, self.models_dir /
+                        f"pca_features_{self.frequency}{suffix}.joblib")
+            logger.info(
+                f"Transformers persisted to {self.models_dir} with suffix {self.frequency}")
 
     def load(self, suffix=""):
         """Loads fitted transformers and feature lists for real-time inference."""
         if self.models_dir:
-            self.scaler = joblib.load(self.models_dir / f"scaler_{self.frequency}{suffix}.joblib")
-            self.pca = joblib.load(self.models_dir / f"pca_{self.frequency}{suffix}.joblib")
-            self.selected_features = joblib.load(self.models_dir / f"selected_features_{self.frequency}{suffix}.joblib")
-            self.pca_features = joblib.load(self.models_dir / f"pca_features_{self.frequency}{suffix}.joblib")
-            logger.info(f"Transformers loaded from {self.models_dir} for frequency {self.frequency}")
+            self.scaler = joblib.load(
+                self.models_dir /
+                f"scaler_{self.frequency}{suffix}.joblib")
+            self.pca = joblib.load(
+                self.models_dir /
+                f"pca_{self.frequency}{suffix}.joblib")
+            self.selected_features = joblib.load(
+                self.models_dir / f"selected_features_{self.frequency}{suffix}.joblib")
+            self.pca_features = joblib.load(
+                self.models_dir / f"pca_features_{self.frequency}{suffix}.joblib")
+            logger.info(
+                f"Transformers loaded from {self.models_dir} for frequency {self.frequency}")
 
     def run_pipeline(self, df: pd.DataFrame, fit=True):
         df = self.extract_temporal_features(df)
-        climate_vars = ["skt", "t2m", "d2m", "stl1", "ssrd", "strd", "sp", "u10", "v10", "swvl1", "tp"]
+        climate_vars = [
+            "skt",
+            "t2m",
+            "d2m",
+            "stl1",
+            "ssrd",
+            "strd",
+            "sp",
+            "u10",
+            "v10",
+            "swvl1",
+            "tp"]
         df = self.extract_rolling_features(df, climate_cols=climate_vars)
         df = self.extract_lagged_features(df)
         df = self.extract_derived_features(df)
@@ -306,13 +368,16 @@ class FeatureEngineer:
 
         # All columns except metadata are the "full feature set" for PCA
         if self.pca_features is None:
-            self.pca_features = [c for c in df.columns if c not in ["datetime", self.target_col]]
+            self.pca_features = [
+                c for c in df.columns if c not in [
+                    "datetime", self.target_col]]
 
         # Ensure all columns required for models exist in real-time data
         if not fit:
             missing = set(self.pca_features) - set(df.columns)
             if missing:
-                logger.warning(f"Missing columns in real-time data: {missing}. Filling with 0.")
+                logger.warning(
+                    f"Missing columns in real-time data: {missing}. Filling with 0.")
                 for col in missing:
                     df[col] = 0
 
@@ -323,18 +388,31 @@ class FeatureEngineer:
 
         # For 'selected' and 'pca': Use meta_cols as prefix (matches training behavior)
         # Training 'features_daily_selected.csv' and PCA have Load at index 1
-        meta_cols = ["datetime", self.target_col] if "datetime" in df.columns else []
+        meta_cols = [
+            "datetime",
+            self.target_col] if "datetime" in df.columns else []
         features_selected = df[meta_cols + self.selected_features].copy()
 
         if fit:
             self.fit_pca(df[self.pca_features])
 
-        X_pca = self.pca.transform(self.scaler.transform(df[self.pca_features].fillna(0)))
-        pca_df = pd.DataFrame(X_pca, columns=[f"PCA_{i}" for i in range(X_pca.shape[1])])
-        base_cols = [c for c in ["datetime", self.target_col] if c in df.columns]
-        features_pca = pd.concat([df[base_cols].reset_index(drop=True), pca_df], axis=1)
+        X_pca = self.pca.transform(
+            self.scaler.transform(df[self.pca_features].fillna(0)))
+        pca_df = pd.DataFrame(
+            X_pca, columns=[
+                f"PCA_{i}" for i in range(
+                    X_pca.shape[1])])
+        base_cols = [
+            c for c in [
+                "datetime",
+                self.target_col] if c in df.columns]
+        features_pca = pd.concat(
+            [df[base_cols].reset_index(drop=True), pca_df], axis=1)
 
-        return {"full": features_full.fillna(0), "selected": features_selected.fillna(0), "pca": features_pca.fillna(0)}
+        return {
+            "full": features_full.fillna(0),
+            "selected": features_selected.fillna(0),
+            "pca": features_pca.fillna(0)}
 
 
 def run_realtime_engineering(freq: str):
@@ -372,7 +450,8 @@ def run_realtime_engineering(freq: str):
             # Atomic replace (os.replace handles overwrite)
             # Use string representation for Windows compatibility
             os.replace(str(tmp_file), str(output_file))
-            logger.info(f"Successfully persisted real-time engineered {freq} {name} data to {output_file}")
+            logger.info(
+                f"Successfully persisted real-time engineered {freq} {name} data to {output_file}")
         except Exception as e:
             logger.error(f"Failed to save {out_name}: {e}")
             # Cleanup if possible
@@ -396,13 +475,17 @@ def main():
         filename = f"complete_train_data_{freq}.csv"
         input_path = DATA_PROCESSED / filename
         if not input_path.exists():
-            logger.warning(f"Input file {input_path} not found. Skipping {freq} pipeline.")
+            logger.warning(
+                f"Input file {input_path} not found. Skipping {freq} pipeline.")
             continue
 
         logger.info(f"Starting {freq} Feature Engineering Pipeline...")
         df = pd.read_csv(input_path)
 
-        fe = FeatureEngineer(threshold=0.6, models_dir=MODELS_FEAT, frequency=freq)
+        fe = FeatureEngineer(
+            threshold=0.6,
+            models_dir=MODELS_FEAT,
+            frequency=freq)
         datasets = fe.run_pipeline(df, fit=True)
         fe.save()
 
@@ -418,7 +501,8 @@ def main():
             logger.info(f"Exported '{freq}/{name}' dataset.")
 
     duration = time.time() - start_time
-    logger.info(f"Feature Engineering Pipeline execution finished in {duration:.2f} seconds.")
+    logger.info(
+        f"Feature Engineering Pipeline execution finished in {duration:.2f} seconds.")
 
 
 if __name__ == "__main__":

@@ -16,16 +16,21 @@ router = APIRouter()
 
 
 @router.post("/templates", response_model=TemplateOutput)
-def get_template(request: TemplateInput, db: Session = Depends(get_db), current_user=Depends(get_current_user)):
+def get_template(
+        request: TemplateInput,
+        db: Session = Depends(get_db),
+        current_user=Depends(get_current_user)):
     try:
         # Tenta descobrir o dataset_type pelo modelo ativo
-        active_model = SimulationService.get_active_model(db, request.frequency)
+        active_model = SimulationService.get_active_model(
+            db, request.frequency)
         dataset_type = active_model.dataset_selected if active_model else "full"
         # Se for PCA, o template base deve ser 'full'
         if dataset_type == "pca":
             dataset_type = "full"
 
-        features = SimulationService.get_template(request.frequency, request.template_name, dataset_type)
+        features = SimulationService.get_template(
+            request.frequency, request.template_name, dataset_type)
 
         return {
             "frequency": request.frequency,
@@ -34,13 +39,16 @@ def get_template(request: TemplateInput, db: Session = Depends(get_db), current_
             "features": features,
         }
     except ValueError as e:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(e)) from e
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=str(e)) from e
 
 
 @router.post("/daily", response_model=SimulationOutput)
 def run_daily_simulation(
-    request: DailySimulationInput, db: Session = Depends(get_db), current_user=Depends(get_current_user)
-):
+        request: DailySimulationInput,
+        db: Session = Depends(get_db),
+        current_user=Depends(get_current_user)):
     try:
         result = SimulationService.run_simulation(
             db=db,
@@ -58,8 +66,9 @@ def run_daily_simulation(
 
 @router.post("/hourly", response_model=SimulationOutput)
 def run_hourly_simulation(
-    request: HourlySimulationInput, db: Session = Depends(get_db), current_user=Depends(get_current_user)
-):
+        request: HourlySimulationInput,
+        db: Session = Depends(get_db),
+        current_user=Depends(get_current_user)):
     try:
         result = SimulationService.run_simulation(
             db=db,

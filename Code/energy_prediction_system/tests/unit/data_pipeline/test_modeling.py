@@ -5,14 +5,15 @@ from unittest.mock import MagicMock, patch
 import numpy as np
 import pandas as pd
 import pytest
-from data_pipeline.modeling import (
+
+from src.data_pipeline.modeling import (
     DatabaseManager,
     ModelManager,
     PipelineOrchestrator,
     StatisticalEvaluator,
 )
 
-logging.getLogger("data_pipeline.modeling").setLevel(logging.CRITICAL)
+logging.getLogger("src.data_pipeline.modeling").setLevel(logging.CRITICAL)
 
 
 class TestStatisticalEvaluator:
@@ -43,7 +44,7 @@ class TestStatisticalEvaluator:
         result = StatisticalEvaluator.test_normality(data_groups)
         assert result is False
 
-    @patch("data_pipeline.modeling.f_oneway")
+    @patch("src.data_pipeline.modeling.f_oneway")
     @patch.object(StatisticalEvaluator, "test_normality")
     def test_select_best_dataset_anova_diff_win_rmse(self, mock_normality, mock_anova):
         """Verify dataset selection using ANOVA and RMSE."""
@@ -62,7 +63,7 @@ class TestStatisticalEvaluator:
         assert best_ds == "Dataset_B"
         assert metrics["rmse"] == 5.0
 
-    @patch("data_pipeline.modeling.friedmanchisquare")
+    @patch("src.data_pipeline.modeling.friedmanchisquare")
     @patch.object(StatisticalEvaluator, "test_normality")
     def test_select_best_dataset_friedman_no_diff_win_r2(self, mock_normality, mock_friedman):
         """Verify dataset selection using Friedman and R2."""
@@ -81,7 +82,7 @@ class TestStatisticalEvaluator:
         assert best_ds == "Dataset_A"
         assert metrics["r2"] == 0.9
 
-    @patch("data_pipeline.modeling.f_oneway")
+    @patch("src.data_pipeline.modeling.f_oneway")
     @patch.object(StatisticalEvaluator, "test_normality")
     def test_select_best_dataset_win_mae(self, mock_normality, mock_anova):
         """Verify dataset selection using MAE as tie-breaker."""
@@ -98,7 +99,7 @@ class TestStatisticalEvaluator:
         assert best_ds == "Dataset_B"
         assert metrics["mae"] == 1.0
 
-    @patch("data_pipeline.modeling.f_oneway")
+    @patch("src.data_pipeline.modeling.f_oneway")
     @patch.object(StatisticalEvaluator, "test_normality")
     def test_select_best_strategy_anova_win_rmse(self, mock_normality, mock_anova):
         """Verify strategy selection using ANOVA and RMSE."""
@@ -116,7 +117,7 @@ class TestStatisticalEvaluator:
         mock_anova.assert_called_once()
         assert best_strat == "fixed_rolling"
 
-    @patch("data_pipeline.modeling.kruskal")
+    @patch("src.data_pipeline.modeling.kruskal")
     @patch.object(StatisticalEvaluator, "test_normality")
     def test_select_best_strategy_kruskal_win_r2(self, mock_normality, mock_kruskal):
         """Verify strategy selection using Kruskal-Wallis and R2."""
@@ -134,7 +135,7 @@ class TestStatisticalEvaluator:
         mock_kruskal.assert_called_once()
         assert best_strat == "nested"
 
-    @patch("data_pipeline.modeling.f_oneway")
+    @patch("src.data_pipeline.modeling.f_oneway")
     @patch.object(StatisticalEvaluator, "test_normality")
     def test_select_best_strategy_win_mae(self, mock_normality, mock_anova):
         """Verify strategy selection using MAE as tie-breaker."""
@@ -248,8 +249,8 @@ class TestModelManager:
         assert len(drivers) == 2
         assert isinstance(drivers, list)
 
-    @patch("data_pipeline.modeling.optuna.create_study")
-    @patch("data_pipeline.modeling.RandomForestRegressor")
+    @patch("src.data_pipeline.modeling.optuna.create_study")
+    @patch("src.data_pipeline.modeling.RandomForestRegressor")
     def test_train_flexible_nested(self, mock_rf_class, mock_create_study):
         """Verify flexible model training with nested cross-validation."""
         mock_study = MagicMock()
@@ -283,7 +284,7 @@ class TestModelManager:
 class TestDatabaseManager:
     """Tests for database metric logging."""
 
-    @patch("data_pipeline.modeling.psycopg2.connect")
+    @patch("src.data_pipeline.modeling.psycopg2.connect")
     def test_save_model_metrics_success(self, mock_connect):
         """Verify successful model metrics insertion."""
         mock_conn = MagicMock()
@@ -314,7 +315,7 @@ class TestDatabaseManager:
         assert isinstance(args_passed_to_execute[5], float)
         assert args_passed_to_execute[5] == 1.23
 
-    @patch("data_pipeline.modeling.psycopg2.connect")
+    @patch("src.data_pipeline.modeling.psycopg2.connect")
     def test_save_model_metrics_no_config(self, mock_connect):
         """Verify handling of missing database configuration."""
         db_manager = DatabaseManager(None)
@@ -323,7 +324,7 @@ class TestDatabaseManager:
 
         mock_connect.assert_not_called()
 
-    @patch("data_pipeline.modeling.psycopg2.connect")
+    @patch("src.data_pipeline.modeling.psycopg2.connect")
     def test_save_model_metrics_string_driver(self, mock_connect):
         """Verify handling of single driver string."""
         mock_conn = MagicMock()
@@ -339,7 +340,7 @@ class TestDatabaseManager:
         assert args_passed_to_execute[4] == "ApenasUmDriver"
 
     @patch("builtins.print")
-    @patch("data_pipeline.modeling.psycopg2.connect")
+    @patch("src.data_pipeline.modeling.psycopg2.connect")
     def test_save_model_metrics_exception_handling(self, mock_connect, mock_print):
         """Verify database exception logging."""
         mock_connect.side_effect = Exception("Erro fictício de Timeout do Servidor")
@@ -382,7 +383,7 @@ class TestPipelineOrchestrator:
         assert "full" in splits_by_strategy["expanding"]
         assert splits_by_strategy["expanding"]["pca"] == [("treino1", "teste1"), ("treino2", "teste2")]
 
-    @patch("data_pipeline.modeling.PipelineOrchestrator._precalculate_splits")
+    @patch("src.data_pipeline.modeling.PipelineOrchestrator._precalculate_splits")
     def test_run_strategy_loops(self, mock_precalc):
         """Verify training loop execution and metric extraction."""
         orchestrator = PipelineOrchestrator()
@@ -411,7 +412,7 @@ class TestPipelineOrchestrator:
         assert len(resultado["metrics"]["models"]) == 1
         assert resultado["metrics"]["drivers"][0] == ["DriverA", "DriverB"]
 
-    @patch("data_pipeline.modeling.joblib.dump")
+    @patch("src.data_pipeline.modeling.joblib.dump")
     def test_evaluate_and_save_model(self, mock_joblib_dump):
         """Verify end-to-end model evaluation and persistence."""
         orchestrator = PipelineOrchestrator()
@@ -448,7 +449,7 @@ class TestPipelineOrchestrator:
         assert args_chamados["top2_drivers"] == ["Top1", "Top2"]
         assert args_chamados["rmse"] == 2.0
 
-    @patch("data_pipeline.modeling.ModelManager")
+    @patch("src.data_pipeline.modeling.ModelManager")
     def test_run_empty_datasets(self, mock_model_manager_class):
         """Verify orchestration behavior with no input data."""
         orchestrator = PipelineOrchestrator()
@@ -461,7 +462,7 @@ class TestPipelineOrchestrator:
 
         mock_manager_instance.generate_splits.assert_not_called()
 
-    @patch("data_pipeline.modeling.ModelManager")
+    @patch("src.data_pipeline.modeling.ModelManager")
     def test_run_full_flow(self, mock_model_manager_class):
         """Verify complete pipeline orchestration flow."""
         orchestrator = PipelineOrchestrator()

@@ -18,7 +18,9 @@ from sklearn.ensemble import RandomForestRegressor
 from sklearn.linear_model import LinearRegression
 from sklearn.metrics import mean_absolute_error, mean_squared_error, r2_score
 
-logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(levelname)s - %(message)s")
+logging.basicConfig(
+    level=logging.INFO,
+    format="%(asctime)s - %(levelname)s - %(message)s")
 logger = logging.getLogger(__name__)
 optuna.logging.set_verbosity(optuna.logging.WARNING)
 warnings.filterwarnings("ignore")
@@ -60,10 +62,14 @@ class StatisticalEvaluator:
         if p_val < 0.05:
             is_diff = True
 
-        logger.info(f"    Statistical Analysis ({test_used}): p-value = {p_val:.4e}")
+        logger.info(
+            f"    Statistical Analysis ({test_used}): p-value = {p_val:.4e}")
 
         best_ds = None
-        best_metrics = {"rmse": float("inf"), "r2": float("-inf"), "mae": float("inf")}
+        best_metrics = {
+            "rmse": float("inf"),
+            "r2": float("-inf"),
+            "mae": float("inf")}
 
         for ds in datasets:
             mean_rmse = np.mean(results_dict[ds]["rmse"])
@@ -72,19 +78,27 @@ class StatisticalEvaluator:
 
             logger.info(
                 f"    - Candidate Dataset: {ds.upper()} | Mean RMSE: {mean_rmse:.4f} | "
-                f"Mean R2: {mean_r2:.4f} | Mean MAE: {mean_mae:.4f}"
-            )
+                f"Mean R2: {mean_r2:.4f} | Mean MAE: {mean_mae:.4f}")
 
             if mean_rmse < best_metrics["rmse"]:
                 best_ds = ds
-                best_metrics = {"rmse": mean_rmse, "r2": mean_r2, "mae": mean_mae}
+                best_metrics = {
+                    "rmse": mean_rmse,
+                    "r2": mean_r2,
+                    "mae": mean_mae}
             elif mean_rmse == best_metrics["rmse"]:
                 if mean_r2 > best_metrics["r2"]:
                     best_ds = ds
-                    best_metrics = {"rmse": mean_rmse, "r2": mean_r2, "mae": mean_mae}
+                    best_metrics = {
+                        "rmse": mean_rmse,
+                        "r2": mean_r2,
+                        "mae": mean_mae}
                 elif mean_r2 == best_metrics["r2"] and mean_mae < best_metrics["mae"]:
                     best_ds = ds
-                    best_metrics = {"rmse": mean_rmse, "r2": mean_r2, "mae": mean_mae}
+                    best_metrics = {
+                        "rmse": mean_rmse,
+                        "r2": mean_r2,
+                        "mae": mean_mae}
 
         if not is_diff:
             logger.info(
@@ -94,8 +108,7 @@ class StatisticalEvaluator:
         else:
             logger.info(
                 "Dataset Selection Conclusion: Statistical significance detected."
-                f"Selecting {best_ds} as the optimal dataset."
-            )
+                f"Selecting {best_ds} as the optimal dataset.")
 
         return best_ds, best_metrics
 
@@ -106,7 +119,8 @@ class StatisticalEvaluator:
         Selects best split strategy using Shapiro -> ANOVA/Kruskal-Wallis.
         """
         strategies = list(strategy_results.keys())
-        rmse_groups = {strat: strategy_results[strat]["metrics"]["rmse"] for strat in strategies}
+        rmse_groups = {
+            strat: strategy_results[strat]["metrics"]["rmse"] for strat in strategies}
 
         all_normal = StatisticalEvaluator.test_normality(rmse_groups)
         arrays = [rmse_groups[strat] for strat in strategies]
@@ -119,7 +133,10 @@ class StatisticalEvaluator:
             test_used = "Kruskal-Wallis"
 
         best_strat = None
-        best_metrics = {"rmse": float("inf"), "r2": float("-inf"), "mae": float("inf")}
+        best_metrics = {
+            "rmse": float("inf"),
+            "r2": float("-inf"),
+            "mae": float("inf")}
 
         for strat in strategies:
             mean_rmse = np.mean(strategy_results[strat]["metrics"]["rmse"])
@@ -128,17 +145,25 @@ class StatisticalEvaluator:
 
             if mean_rmse < best_metrics["rmse"]:
                 best_strat = strat
-                best_metrics = {"rmse": mean_rmse, "r2": mean_r2, "mae": mean_mae}
+                best_metrics = {
+                    "rmse": mean_rmse,
+                    "r2": mean_r2,
+                    "mae": mean_mae}
             elif mean_rmse == best_metrics["rmse"]:
                 if mean_r2 > best_metrics["r2"]:
                     best_strat = strat
-                    best_metrics = {"rmse": mean_rmse, "r2": mean_r2, "mae": mean_mae}
+                    best_metrics = {
+                        "rmse": mean_rmse,
+                        "r2": mean_r2,
+                        "mae": mean_mae}
                 elif mean_r2 == best_metrics["r2"]:
                     if mean_mae < best_metrics["mae"]:
                         best_strat = strat
-                        best_metrics = {"rmse": mean_rmse, "r2": mean_r2, "mae": mean_mae}
+                        best_metrics = {
+                            "rmse": mean_rmse, "r2": mean_r2, "mae": mean_mae}
 
-        logger.info(f"Strategy Selection: {test_used} evaluation (p={p_val:.4e}). Selected strategy: {best_strat}")
+        logger.info(
+            f"Strategy Selection: {test_used} evaluation (p={p_val:.4e}). Selected strategy: {best_strat}")
         return best_strat
 
 
@@ -155,7 +180,8 @@ class ModelManager:
     def load_all_datasets(self) -> dict:
         datasets = {}
         for ds_type in ["full", "selected", "pca"]:
-            file_path = self.data_dir / f"features_{self.frequency}_{ds_type}.csv"
+            file_path = self.data_dir / \
+                f"features_{self.frequency}_{ds_type}.csv"
             if file_path.exists():
                 df = pd.read_csv(file_path)
                 if "datetime" in df.columns:
@@ -192,11 +218,16 @@ class ModelManager:
 
             if training_start_cutoff < start_date:
                 if i < self.n_partitions:
-                    logger.warning(f"Aviso: Dados insuficientes para {self.n_partitions} folds.")
+                    logger.warning(
+                        f"Aviso: Dados insuficientes para {self.n_partitions} folds.")
                 break
 
-            train_mask = (df["datetime"] >= training_start_cutoff) & (df["datetime"] < training_end_cutoff)
-            test_mask = (df["datetime"] >= current_test_start) & (df["datetime"] < current_test_end)
+            train_mask = (
+                df["datetime"] >= training_start_cutoff) & (
+                df["datetime"] < training_end_cutoff)
+            test_mask = (
+                df["datetime"] >= current_test_start) & (
+                df["datetime"] < current_test_end)
 
             train_idx = df.index[train_mask].to_numpy()
             test_idx = df.index[test_mask].to_numpy()
@@ -210,7 +241,8 @@ class ModelManager:
 
     def _get_next_version(self, model_prefix):
         """Implements Rule 8: Versioning format LR_vx, RF_vx."""
-        existing_files = list(self.models_dir.glob(f"{model_prefix}_v*.joblib"))
+        existing_files = list(
+            self.models_dir.glob(f"{model_prefix}_v*.joblib"))
         if not existing_files:
             return 1
         versions = []
@@ -240,7 +272,11 @@ class ModelManager:
             n_estimators = trial.suggest_int("n_estimators", 20, 100)
             max_depth = trial.suggest_int("max_depth", 5, 15)
 
-            model = RandomForestRegressor(n_estimators=n_estimators, max_depth=max_depth, random_state=42, n_jobs=-1)
+            model = RandomForestRegressor(
+                n_estimators=n_estimators,
+                max_depth=max_depth,
+                random_state=42,
+                n_jobs=-1)
 
             dates = pd.to_datetime(X_train["datetime"])
             val_end = dates.max()
@@ -259,7 +295,9 @@ class ModelManager:
                         break
 
                     train_mask = dates < curr_train_end
-                    val_mask = (dates >= curr_val_start) & (dates < curr_val_end)
+                    val_mask = (
+                        dates >= curr_val_start) & (
+                        dates < curr_val_end)
 
                     X_tr = X_train[train_mask].drop(columns=["datetime"])
                     y_tr = y_train[train_mask]
@@ -300,9 +338,11 @@ class ModelManager:
         study = optuna.create_study(direction="minimize")
         study.optimize(objective, n_trials=30)
 
-        best_model = RandomForestRegressor(**study.best_params, random_state=42, n_jobs=-1)
+        best_model = RandomForestRegressor(
+            **study.best_params, random_state=42, n_jobs=-1)
 
-        X_final = X_train.drop(columns=["datetime"]) if "datetime" in X_train.columns else X_train
+        X_final = X_train.drop(
+            columns=["datetime"]) if "datetime" in X_train.columns else X_train
         best_model.fit(X_final, y_train)
 
         if hasattr(X_final, "columns"):
@@ -319,7 +359,16 @@ class DatabaseManager:
     def __init__(self, db_config):
         self.db_config = db_config
 
-    def save_model_metrics(self, model_type, model_pred_type, file_path, dataset_selected, top2_drivers, rmse, mae, r2):
+    def save_model_metrics(
+            self,
+            model_type,
+            model_pred_type,
+            file_path,
+            dataset_selected,
+            top2_drivers,
+            rmse,
+            mae,
+            r2):
         """Guarda as métricas do modelo na base de dados."""
         if not self.db_config:
             return
@@ -333,9 +382,9 @@ class DatabaseManager:
             with psycopg2.connect(**self.db_config) as conn:
                 with conn.cursor() as cur:
                     query = """
-                        INSERT INTO model 
+                        INSERT INTO model
                         (model_type, model_pred_type, model_server_relative_path, dataset_selected,
-                          top2_drivers, rmse, mae, r2) 
+                          top2_drivers, rmse, mae, r2)
                         VALUES (%s, %s, %s, %s, %s, %s, %s, %s)
                     """
                     cur.execute(
@@ -367,7 +416,8 @@ class PipelineOrchestrator:
         overall_start = time.time()
 
         for freq in ["hourly", "daily"]:
-            logger.info(f"\n{'='*60}\nINITIALIZING MODELING PIPELINE FOR: {freq.upper()}\n{'='*60}")
+            logger.info(
+                f"\n{'='*60}\nINITIALIZING MODELING PIPELINE FOR: {freq.upper()}\n{'='*60}")
             self.manager = ModelManager(frequency=freq)
             datasets = self.manager.load_all_datasets()
 
@@ -378,7 +428,8 @@ class PipelineOrchestrator:
             splits_by_strategy = self._precalculate_splits(datasets)
 
             for model_type in ["baseline", "flexible"]:
-                self._evaluate_and_save_model(model_type, freq, datasets, splits_by_strategy)
+                self._evaluate_and_save_model(
+                    model_type, freq, datasets, splits_by_strategy)
 
         total_duration = time.time() - overall_start
         logger.info(f"\nTotal execution time: {total_duration/60:.2f} minutes")
@@ -390,10 +441,16 @@ class PipelineOrchestrator:
         for strategy in ["expanding", "fixed_rolling", "nested"]:
             precalculated_splits[strategy] = {}
             for ds_name, df in datasets.items():
-                precalculated_splits[strategy][ds_name] = self.manager.generate_splits(df, strategy=strategy)
+                precalculated_splits[strategy][ds_name] = self.manager.generate_splits(
+                    df, strategy=strategy)
         return precalculated_splits
 
-    def _evaluate_and_save_model(self, model_type, freq, datasets, splits_by_strategy):
+    def _evaluate_and_save_model(
+            self,
+            model_type,
+            freq,
+            datasets,
+            splits_by_strategy):
         """Gere a avaliação de um tipo de modelo específico e o respetivo salvamento."""
         logger.info(f"\n--- Evaluating Model: {model_type.upper()} ---")
         strategy_results = {}
@@ -403,7 +460,8 @@ class PipelineOrchestrator:
             strategies_to_run = ["expanding", "fixed_rolling", "nested"]
 
         for strategy in strategies_to_run:
-            strategy_results[strategy] = self._run_strategy_loops(model_type, strategy, datasets, splits_by_strategy)
+            strategy_results[strategy] = self._run_strategy_loops(
+                model_type, strategy, datasets, splits_by_strategy)
 
         best_strat = self.evaluator.select_best_strategy(strategy_results)
 
@@ -421,8 +479,7 @@ class PipelineOrchestrator:
 
         logger.info(
             f"  => [Best Individual Fold: #{melhor_idx}] RMSE: {best_rmse:.2f} "
-            f"| R2: {best_r2:.4f} | MAE: {best_mae:.2f}"
-        )
+            f"| R2: {best_r2:.4f} | MAE: {best_mae:.2f}")
 
         prefix = "LR" if model_type == "baseline" else "RF"
         version = self.manager._get_next_version(prefix)
@@ -433,8 +490,7 @@ class PipelineOrchestrator:
 
         logger.info(
             f"WINNER for {model_type.upper()} ({freq}): Strategy='{best_strat}', "
-            f"Dataset='{best_dataset_name}', Top Drivers='{best_top2_drivers}'"
-        )
+            f"Dataset='{best_dataset_name}', Top Drivers='{best_top2_drivers}'")
         logger.info(f"Model file saved to: {save_path}")
 
         caminho_relativo = f"models/{freq}/{file_name}"
@@ -454,7 +510,9 @@ class PipelineOrchestrator:
         elk_payload = {
             "event": "model_training_completed",
             "user": "system_pipeline",
-            "timestamp": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime()),
+            "timestamp": time.strftime(
+                "%Y-%m-%dT%H:%M:%SZ",
+                time.gmtime()),
             "model_info": {
                 "name": db_model_name,
                 "frequency": freq,
@@ -462,16 +520,31 @@ class PipelineOrchestrator:
                 "dataset": best_dataset_name,
                 "path": caminho_relativo,
             },
-            "metrics": {"rmse": float(best_rmse), "mae": float(best_mae), "r2": float(best_r2)},
-            "analysis": {"top2_drivers": best_top2_drivers},
+            "metrics": {
+                "rmse": float(best_rmse),
+                "mae": float(best_mae),
+                "r2": float(best_r2)},
+            "analysis": {
+                "top2_drivers": best_top2_drivers},
             "status": "success",
         }
         logger.info(f"ELK_JSON_LOG: {json.dumps(elk_payload)}")
 
-    def _run_strategy_loops(self, model_type, strategy, datasets, splits_by_strategy):
+    def _run_strategy_loops(
+            self,
+            model_type,
+            strategy,
+            datasets,
+            splits_by_strategy):
         """Executa os loops de treino para uma estratégia específica sobre os datasets."""
         logger.info(f"  Strategy: {strategy}")
-        dataset_results = {ds: {"rmse": [], "r2": [], "mae": [], "models": [], "drivers": []} for ds in datasets.keys()}
+        dataset_results = {
+            ds: {
+                "rmse": [],
+                "r2": [],
+                "mae": [],
+                "models": [],
+                "drivers": []} for ds in datasets.keys()}
 
         for ds_name, df in datasets.items():
             X = df.drop(columns=[self.manager.target_col])
@@ -483,25 +556,30 @@ class PipelineOrchestrator:
                 X_test, y_test = X.iloc[test_idx], y.iloc[test_idx]
 
                 if model_type == "baseline":
-                    X_train_b = X_train.drop(columns=["datetime"]) if "datetime" in X_train.columns else X_train
-                    model, top_drivers = self.manager.train_baseline(X_train_b, y_train)
+                    X_train_b = X_train.drop(
+                        columns=["datetime"]) if "datetime" in X_train.columns else X_train
+                    model, top_drivers = self.manager.train_baseline(
+                        X_train_b, y_train)
                 else:
-                    model, top_drivers = self.manager.train_flexible(X_train, y_train, strategy)
+                    model, top_drivers = self.manager.train_flexible(
+                        X_train, y_train, strategy)
 
-                X_test = X_test.drop(columns=["datetime"]) if "datetime" in X_test.columns else X_test
+                X_test = X_test.drop(
+                    columns=["datetime"]) if "datetime" in X_test.columns else X_test
                 y_pred = model.predict(X_test)
 
-                dataset_results[ds_name]["rmse"].append(np.sqrt(mean_squared_error(y_test, y_pred)))
+                dataset_results[ds_name]["rmse"].append(
+                    np.sqrt(mean_squared_error(y_test, y_pred)))
                 dataset_results[ds_name]["r2"].append(r2_score(y_test, y_pred))
-                dataset_results[ds_name]["mae"].append(mean_absolute_error(y_test, y_pred))
+                dataset_results[ds_name]["mae"].append(
+                    mean_absolute_error(y_test, y_pred))
                 dataset_results[ds_name]["models"].append(model)
                 dataset_results[ds_name]["drivers"].append(top_drivers)
 
         best_ds, metrics = self.evaluator.select_best_dataset(dataset_results)
         logger.info(
             f"    [Split Metrics - {strategy.upper()} - Dataset: {best_ds.upper()}] "
-            f"Mean RMSE: {metrics['rmse']:.4f} | Mean R2: {metrics['r2']:.4f} | Mean MAE: {metrics['mae']:.4f}"
-        )
+            f"Mean RMSE: {metrics['rmse']:.4f} | Mean R2: {metrics['r2']:.4f} | Mean MAE: {metrics['mae']:.4f}")
 
         return {"dataset": best_ds, "metrics": dataset_results[best_ds]}
 

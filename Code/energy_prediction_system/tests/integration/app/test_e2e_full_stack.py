@@ -1,10 +1,10 @@
-import os
 from unittest.mock import patch
 
 import pytest
 from fastapi.testclient import TestClient
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
+from sqlalchemy.pool import StaticPool
 
 from src.api.core.config import settings
 from src.api.database.session import Base, get_db
@@ -16,9 +16,12 @@ from src.api.main import app
 from src.app.client.auth_service import AuthService
 from src.app.manager.session_manager import SessionManager
 
-# --- SETUP TEST DATABASE (SQLite In-Memory) ---
-SQLALCHEMY_DATABASE_URL = "sqlite:///./test_integration.db"
-engine = create_engine(SQLALCHEMY_DATABASE_URL, connect_args={"check_same_thread": False})
+# --- SETUP TEST DATABASE ---
+engine = create_engine(
+    "sqlite://",
+    connect_args={"check_same_thread": False},
+    poolclass=StaticPool,
+)
 TestingSessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 
 
@@ -29,9 +32,6 @@ def override_get_db():
     finally:
         db.close()
 
-
-# Apply dependency override
-app.dependency_overrides[get_db] = override_get_db
 
 # --- MOCK KEYRING FOR SESSION MANAGER ---
 fake_keyring = {}
@@ -52,6 +52,9 @@ def mock_delete_password(service, username):
 
 @pytest.fixture(autouse=True)
 def setup_integration_env():
+    # Apply dependency override
+    app.dependency_overrides[get_db] = override_get_db
+
     # Setup tables
     Base.metadata.create_all(bind=engine)
     fake_keyring.clear()
@@ -65,18 +68,10 @@ def setup_integration_env():
 
     # Teardown tables
     Base.metadata.drop_all(bind=engine)
-    engine.dispose()
-    if os.path.exists("./test_integration.db"):
-        try:
-            os.remove("./test_integration.db")
-        except PermissionError:
-            import time
 
-            time.sleep(0.2)
-            try:
-                os.remove("./test_integration.db")
-            except:  # noqa E722 S110
-                pass
+    # Remove dependency override
+    if get_db in app.dependency_overrides:
+        del app.dependency_overrides[get_db]
 
 
 @pytest.fixture
@@ -99,7 +94,8 @@ def full_stack_auth_service(api_test_client):
             def wrapper(url, **kwargs):
                 # Map http://localhost/api/xxx to /api/xxx
                 endpoint = url.replace("http://localhost", "")
-                # TestClient does not support 'timeout' argument from 'requests'
+                # TestClient does not support 'timeout' argument from
+                # 'requests'
                 kwargs.pop("timeout", None)
                 return method_func(endpoint, **kwargs)
 
@@ -146,7 +142,8 @@ def test_registration_to_login_to_protected_flow(full_stack_auth_service, api_te
 
     client = APIClient()
 
-    # We need to mock the requests.get again for this specific client instance if not using fixture
+    # We need to mock the requests.get again for this specific client instance
+    # if not using fixture
     with patch(
         "src.app.client.api_client.requests.get",
         side_effect=lambda url, **kwargs: api_test_client.get(

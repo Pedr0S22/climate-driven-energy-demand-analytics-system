@@ -46,7 +46,8 @@ class InferenceEngine:
             model_path = Path(model_record.model_server_relative_path)
             app_root = Path(__file__).resolve().parent.parent.parent.parent
 
-            # Ajuste de caminho se estiver a correr fora do container ou num root diferente
+            # Ajuste de caminho se estiver a correr fora do container ou num
+            # root diferente
             if not model_path.is_absolute():
                 potential_paths = [
                     Path.cwd() / model_path,
@@ -69,7 +70,8 @@ class InferenceEngine:
             # Prioridade 2: Pasta central models/feat-engineering/
             feat_eng_dir = app_root / "models" / "feat-engineering"
 
-            # Apenas carregar Scaler e PCA se o modelo os usar (dataset = 'pca')
+            # Apenas carregar Scaler e PCA se o modelo os usar (dataset =
+            # 'pca')
             if model_record.dataset_selected == "pca":
                 # Carregar scaler real
                 scaler_name = f"scaler_{freq}.joblib"
@@ -79,7 +81,8 @@ class InferenceEngine:
 
                 if scaler_path.exists():
                     self._scalers[freq] = joblib.load(scaler_path)
-                    logger.info(f"Scaler carregado para {freq} de {scaler_path}")
+                    logger.info(
+                        f"Scaler carregado para {freq} de {scaler_path}")
 
                 # Carregar PCA real se necessário
                 pca_name = f"pca_{freq}.joblib"
@@ -112,7 +115,8 @@ class InferenceEngine:
             if self.load_active_model(m):
                 count += 1
 
-        logger.info(f"InferenceEngine: {count} modelos carregados com sucesso na inicialização.")
+        logger.info(
+            f"InferenceEngine: {count} modelos carregados com sucesso na inicialização.")
 
     def get_model(self, frequency: str) -> Any | None:
         """Retorna o modelo carregado para a frequência"""
@@ -129,8 +133,10 @@ class InferenceEngine:
     def predict(self, frequency: str, features: Any) -> float:
         model = self.get_model(frequency)
         if model is None:
-            logger.error(f"Predição falhou: Nenhum modelo em memória para '{frequency}'")
-            raise ValueError(f"Nenhum modelo ativo carregado em memória para '{frequency}'")
+            logger.error(
+                f"Predição falhou: Nenhum modelo em memória para '{frequency}'")
+            raise ValueError(
+                f"Nenhum modelo ativo carregado em memória para '{frequency}'")
 
         scaler = self.get_scaler(frequency)
         pca = self.get_pca(frequency)
@@ -150,7 +156,10 @@ class InferenceEngine:
             return float(prediction[0])
         return float(prediction)
 
-    def _determine_feature_names(self, model: Any, scaler: Any) -> list[str] | None:
+    def _determine_feature_names(
+            self,
+            model: Any,
+            scaler: Any) -> list[str] | None:
         """Determina nomes das features esperadas (lógica original)."""
         if scaler and hasattr(scaler, "feature_names_in_"):
             return scaler.feature_names_in_.tolist()
@@ -158,7 +167,10 @@ class InferenceEngine:
             return model.feature_names_in_.tolist()
         return None
 
-    def _prepare_features(self, features: Any, feature_names: list[str] | None) -> Any:
+    def _prepare_features(
+            self,
+            features: Any,
+            feature_names: list[str] | None) -> Any:
         """Converte e alinha a entrada (lógica original)."""
         if isinstance(features, dict):
             if feature_names:
@@ -182,7 +194,9 @@ class InferenceEngine:
         if not scaler:
             return transformed
         try:
-            expected_scaler_feats = len(scaler.feature_names_in_) if hasattr(scaler, "feature_names_in_") else None
+            expected_scaler_feats = len(
+                scaler.feature_names_in_) if hasattr(
+                scaler, "feature_names_in_") else None
             actual_feats = transformed.shape[1]
 
             if expected_scaler_feats and actual_feats != expected_scaler_feats:
@@ -190,7 +204,8 @@ class InferenceEngine:
             else:
                 scaled_array = scaler.transform(transformed)
                 if hasattr(scaler, "feature_names_in_"):
-                    transformed = pd.DataFrame(scaled_array, columns=scaler.feature_names_in_)
+                    transformed = pd.DataFrame(
+                        scaled_array, columns=scaler.feature_names_in_)
                 else:
                     transformed = scaled_array
         except ValueError:
@@ -203,7 +218,10 @@ class InferenceEngine:
             return transformed
         try:
             pca_array = pca.transform(transformed)
-            transformed = pd.DataFrame(pca_array, columns=[f"PCA_{i}" for i in range(pca_array.shape[1])])
+            transformed = pd.DataFrame(
+                pca_array, columns=[
+                    f"PCA_{i}" for i in range(
+                        pca_array.shape[1])])
         except ValueError:
             pass
         return transformed

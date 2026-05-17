@@ -10,7 +10,8 @@ router = APIRouter()
 
 
 @router.get("/", response_model=list[ModelSchema])
-def list_models(db: Session = Depends(get_db), current_user=Depends(get_current_user)):
+def list_models(db: Session = Depends(get_db),
+                current_user=Depends(get_current_user)):
     return ModelService.get_all_models(db)
 
 
@@ -24,8 +25,8 @@ def activate_model(
 ):
     if not payload.is_active:
         raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST, detail="is_active must be true to activate a model"
-        )
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="is_active must be true to activate a model")
 
     updated = ModelService.activate_model(db, model_id)
     return updated

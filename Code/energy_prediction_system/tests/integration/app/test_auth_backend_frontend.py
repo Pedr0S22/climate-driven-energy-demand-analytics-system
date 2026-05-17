@@ -61,11 +61,13 @@ def test_login_integration(mock_post, auth_service):
         "token_type": "bearer",
     }
 
-    response_data, status_code = auth_service.login_user("admin@test.com", "password123")
+    response_data, status_code = auth_service.login_user(
+        "admin@test.com", "password123")
 
     # Assert correct status code and response payload
     assert status_code == 200
-    assert response_data["access_token"] == "fake" + "_" + "jwt" + "_" + "token"
+    assert response_data["access_token"] == "fake" + \
+        "_" + "jwt" + "_" + "token"
 
     # Assert session was properly set via SessionManager
     assert SessionManager.get_token() == "fake" + "_" + "jwt" + "_" + "token"
@@ -85,9 +87,12 @@ def test_register_integration(mock_post, auth_service):
     """
     # Simulate a successful backend response for registration
     mock_post.return_value.status_code = 201
-    mock_post.return_value.json.return_value = {"message": "User created successfully", "email": "newuser@test.com"}
+    mock_post.return_value.json.return_value = {
+        "message": "User created successfully",
+        "email": "newuser@test.com"}
 
-    response_data, status_code = auth_service.register_user("newuser", "newuser@test.com", "password123")
+    response_data, status_code = auth_service.register_user(
+        "newuser", "newuser@test.com", "password123")
 
     # Assert correct status code and response
     assert status_code == 201
@@ -123,9 +128,11 @@ def test_login_integration_invalid_credentials(mock_post, auth_service):
     Test UC6 Extension 5.a: Invalid login attempt (incorrect password or unrecognized email).
     """
     mock_post.return_value.status_code = 401
-    mock_post.return_value.json.return_value = {"detail": "Incorrect username or password"}
+    mock_post.return_value.json.return_value = {
+        "detail": "Incorrect username or password"}
 
-    response_data, status_code = auth_service.login_user("wrong@test.com", "wrongpass")
+    response_data, status_code = auth_service.login_user(
+        "wrong@test.com", "wrongpass")
 
     assert status_code == 401
     assert response_data["detail"] == "Incorrect username or password"
@@ -140,9 +147,11 @@ def test_register_integration_email_exists(mock_post, auth_service):
     Test UC5 Extension 5.a: Email already exists in the database.
     """
     mock_post.return_value.status_code = 409
-    mock_post.return_value.json.return_value = {"detail": "Email already registered"}
+    mock_post.return_value.json.return_value = {
+        "detail": "Email already registered"}
 
-    response_data, status_code = auth_service.register_user("existinguser", "exist@test.com", "password123")
+    response_data, status_code = auth_service.register_user(
+        "existinguser", "exist@test.com", "password123")
 
     assert status_code == 409
     assert "detail" in response_data
@@ -155,9 +164,11 @@ def test_register_integration_connection_error(mock_post, auth_service):
     """
     import requests
 
-    mock_post.side_effect = requests.exceptions.ConnectionError("Failed to connect")
+    mock_post.side_effect = requests.exceptions.ConnectionError(
+        "Failed to connect")
 
-    response_data, status_code = auth_service.register_user("user", "user@test.com", "password")
+    response_data, status_code = auth_service.register_user(
+        "user", "user@test.com", "password")
 
     assert status_code == 500
     assert "Unable to reach the server" in response_data["detail"]
@@ -170,9 +181,11 @@ def test_login_integration_connection_error(mock_post, auth_service):
     """
     import requests
 
-    mock_post.side_effect = requests.exceptions.ConnectionError("Failed to connect")
+    mock_post.side_effect = requests.exceptions.ConnectionError(
+        "Failed to connect")
 
-    response_data, status_code = auth_service.login_user("user@test.com", "password")
+    response_data, status_code = auth_service.login_user(
+        "user@test.com", "password")
 
     assert status_code == 500
     assert "Unable to connect to the server" in response_data["detail"]

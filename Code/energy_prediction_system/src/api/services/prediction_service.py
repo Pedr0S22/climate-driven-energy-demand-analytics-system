@@ -55,24 +55,37 @@ class PredictionService:
         if df.empty:
             raise ValueError("O dataset real-time está vazio.")
 
-        # 3. Extrair Valores Históricos
+        # 3. Extrair Valores Históricos e Ajuste para Frequência Diária (Bug Fix)
+        # Em 'daily', o último ponto no dataset real-time é o dia atual (incompleto).
+        # Deve ser o primeiro ponto a prever, não parte do histórico.
         target_col = "Load_MWh" if frequency == "daily" else "Load_MW"
-        hist_df = df.tail(historical_points)
+
+        if frequency == "daily" and len(df) >= 2:
+            # Removê-lo da história
+            hist_df = df.iloc[:-1].tail(historical_points)
+            # Usar a última linha (hoje) apenas como base de features para a 1ª predição
+            last_row = df.iloc[-1].to_dict()
+            # O tempo "âncora" para o loop deve ser o dia anterior
+            last_time = df.iloc[-2]["datetime"]
+        else:
+            hist_df = df.tail(historical_points)
+            last_row = df.iloc[-1].to_dict()
+            last_time = last_row["datetime"]
+
         historical_load = hist_df[target_col].tolist()
         historical_timestamps = hist_df["datetime"].tolist()
 
         # 4. Preparação para Loop Autoregressivo
-        last_row = df.iloc[-1].to_dict()
         current_features = last_row.copy()
         predictions = []
         prediction_timestamps = []
-        last_time = last_row["datetime"]
         delta = timedelta(days=1) if frequency == "daily" else timedelta(hours=1)
         engine = get_inference_engine()
 
         # 5. Loop Autoregressivo
         for i in range(predicted_points):
-            # FIX: Remove metadata and target from features before prediction to match scaler/model expected input
+            # FIX: Remove metadata and target from features before prediction
+            # to match scaler/model expected input
             predict_features = current_features.copy()
             predict_features.pop("datetime", None)
             predict_features.pop("Load_MW", None)

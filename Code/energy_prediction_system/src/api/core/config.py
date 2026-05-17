@@ -28,15 +28,18 @@ class Settings(BaseSettings):
         always take precedence over a pre-defined DATABASE_URL string in .env.
         """
         self.DATABASE_URL = (
-            f"postgresql://{self.DB_USER}:{self.DB_PASSWORD}@" f"{self.DB_HOST}:{self.DB_PORT}/{self.DB_NAME}"
-        )
+            f"postgresql://{self.DB_USER}:{self.DB_PASSWORD}@"
+            f"{self.DB_HOST}:{self.DB_PORT}/{self.DB_NAME}")
         return self
 
     # Brute Force Protection (QA13)
     MAX_FAILED_ATTEMPTS: int
     LOCKOUT_DURATION_MINUTES: int
 
-    model_config = SettingsConfigDict(env_file=".env", case_sensitive=True, extra="ignore")
+    model_config = SettingsConfigDict(
+        env_file=".env",
+        case_sensitive=True,
+        extra="ignore")
 
 
 settings = Settings()

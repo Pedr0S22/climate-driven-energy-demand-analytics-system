@@ -17,7 +17,9 @@ class ModelService:
         """Get specific model by ID"""
         model = db.query(Model).filter(Model.model_name_id == model_id).first()
         if not model:
-            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=f"Model with id {model_id} not found")
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail=f"Model with id {model_id} not found")
         return model
 
     @staticmethod
@@ -26,7 +28,9 @@ class ModelService:
 
         # Verificar se já está ativo
         if model_to_activate.is_active:
-            raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=f"Model {model_id} is already active")
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail=f"Model {model_id} is already active")
 
         try:
             # Mutex: Desativar todos os outros modelos do mesmo tipo
@@ -46,5 +50,5 @@ class ModelService:
         except Exception as e:
             db.rollback()
             raise HTTPException(
-                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=f"Error activating model: {str(e)}"
-            ) from e
+                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                detail=f"Error activating model: {str(e)}") from e

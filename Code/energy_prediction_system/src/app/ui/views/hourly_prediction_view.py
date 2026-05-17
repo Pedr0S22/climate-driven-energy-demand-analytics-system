@@ -1,5 +1,10 @@
-from app.ui.components import DriverCard, PlotWidget, PredictionParams, Sidebar, TopBar
 from PyQt6 import QtCore, QtGui, QtWidgets
+
+from src.app.ui.components.driver_card import DriverCard
+from src.app.ui.components.plot_widget import PlotWidget
+from src.app.ui.components.prediction_params import PredictionParams
+from src.app.ui.components.sidebar import Sidebar
+from src.app.ui.components.top_bar import TopBar
 
 
 class Ui_HourlyPredictionAdminWindow:
@@ -7,6 +12,7 @@ class Ui_HourlyPredictionAdminWindow:
         MainWindow.setObjectName("MainWindow")
         MainWindow.resize(1446, 1029)
         MainWindow.setStyleSheet("background-color: rgb(243, 243, 243);")
+        self.MainWindow = MainWindow
 
         self.centralwidget = QtWidgets.QWidget(parent=MainWindow)
         self.centralwidget.setObjectName("centralwidget")
@@ -37,7 +43,7 @@ class Ui_HourlyPredictionAdminWindow:
         self.sidebar = Sidebar(parent=self.container)
         self.sidebar.setFixedWidth(280)
 
-        self.home_btn = self.sidebar.add_menu_item("Home", active=False)
+        self.home_btn = self.sidebar.add_menu_header("Home", is_toggle=False, active=False)
 
         self.sidebar.add_menu_header("Predictions:")
         self.daily_btn = self.sidebar.add_menu_item("daily", active=False, indent=True, header_parent="Predictions:")
@@ -51,8 +57,7 @@ class Ui_HourlyPredictionAdminWindow:
             "hourly", active=False, indent=True, header_parent="Scenario Simulation:"
         )
 
-        self.model_btn = self.sidebar.add_menu_item("Model Management", active=False)
-        # To hide for normal users, you can call self.model_btn.parent().setVisible(False)
+        self.model_btn = self.sidebar.add_menu_header("Model Management", is_toggle=False, active=False)
 
         self.sidebar.layout.addStretch()
         self.sidebar.setVisible(False)

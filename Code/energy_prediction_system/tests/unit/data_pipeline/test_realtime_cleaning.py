@@ -1,6 +1,7 @@
 import pandas as pd
 import pytest
-from data_pipeline.cleaning import DataCleaner
+
+from src.data_pipeline.cleaning import DataCleaner
 
 
 @pytest.fixture
@@ -70,4 +71,5 @@ def test_timestamp_alignment(cleaner):
 
     # Should have 4 rows (00:00, 00:15, 00:30, 00:45)
     assert len(df_aligned) == 4
-    assert pd.isna(df_aligned.loc[2, "t2m"])  # 00:30 should be NaN before imputation
+    # 00:30 should be NaN before imputation
+    assert pd.isna(df_aligned.loc[2, "t2m"])

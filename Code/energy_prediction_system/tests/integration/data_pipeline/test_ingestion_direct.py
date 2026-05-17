@@ -5,8 +5,9 @@ from unittest.mock import MagicMock, mock_open, patch
 
 import pandas as pd
 import pytest
-from data_pipeline.cleaning import cleaning
-from data_pipeline.ingestion import (
+
+from src.data_pipeline.cleaning import cleaning
+from src.data_pipeline.ingestion import (
     data_retrieval,
     fetch_copernicus_data,
     fetch_entsoe_data,
@@ -28,7 +29,7 @@ def test_fetch_copernicus_data_success_path(tmp_path, monkeypatch):
     # Surgically mock os.path functions within the ingestion module only
     original_abspath = os.path.abspath
     monkeypatch.setattr(
-        "data_pipeline.ingestion.os.path.abspath",
+        "src.data_pipeline.ingestion.os.path.abspath",
         lambda x: str(tmp_path) if "ingestion.py" in str(x) or ".." in str(x) else original_abspath(x),
     )
 
@@ -87,7 +88,7 @@ def test_fetch_copernicus_data_success_path(tmp_path, monkeypatch):
                 return False
             return original_exists(p)
 
-        with patch("data_pipeline.ingestion.os.path.exists", side_effect=side_effect):
+        with patch("src.data_pipeline.ingestion.os.path.exists", side_effect=side_effect):
             fetch_copernicus_data("2024-01-01", "2024-01-01")
 
     # Check if the file was created
@@ -100,11 +101,11 @@ def test_fetch_entsoe_data_success_path(tmp_path, monkeypatch, mock_env):
     raw_energy_dir.mkdir(parents=True, exist_ok=True)
 
     monkeypatch.setattr(
-        "data_pipeline.ingestion.os.path.abspath",
+        "src.data_pipeline.ingestion.os.path.abspath",
         lambda x: str(tmp_path) if "ingestion.py" in str(x) or ".." in str(x) else x,
     )
 
-    with patch("data_pipeline.ingestion.EntsoePandasClient") as mock_entsoe:
+    with patch("src.data_pipeline.ingestion.EntsoePandasClient") as mock_entsoe:
         mock_client = MagicMock()
         mock_entsoe.return_value = mock_client
 
@@ -124,11 +125,11 @@ def test_fetch_realtime_energy_load_variants(tmp_path, monkeypatch, mock_env):
     raw_energy_dir.mkdir(parents=True, exist_ok=True)
 
     monkeypatch.setattr(
-        "data_pipeline.ingestion.os.path.abspath",
+        "src.data_pipeline.ingestion.os.path.abspath",
         lambda x: str(tmp_path) if "ingestion.py" in str(x) or ".." in str(x) else x,
     )
 
-    with patch("data_pipeline.ingestion.EntsoePandasClient") as mock_entsoe:
+    with patch("src.data_pipeline.ingestion.EntsoePandasClient") as mock_entsoe:
         mock_client = MagicMock()
         mock_entsoe.return_value = mock_client
 
@@ -160,7 +161,7 @@ def test_fetch_realtime_weather_success_path(tmp_path, monkeypatch):
     raw_weather_dir.mkdir(parents=True, exist_ok=True)
 
     monkeypatch.setattr(
-        "data_pipeline.ingestion.os.path.abspath",
+        "src.data_pipeline.ingestion.os.path.abspath",
         lambda x: str(tmp_path) if "ingestion.py" in str(x) or ".." in str(x) else x,
     )
 
@@ -216,19 +217,19 @@ def test_ingestion_to_cleaning_flow(tmp_path, monkeypatch, mock_env):
     processed_dir.mkdir(parents=True)
 
     monkeypatch.setattr(
-        "data_pipeline.ingestion.os.path.abspath",
+        "src.data_pipeline.ingestion.os.path.abspath",
         lambda x: str(tmp_path) if "ingestion.py" in str(x) or ".." in str(x) else x,
     )
     monkeypatch.setattr(
-        "data_pipeline.cleaning.os.path.abspath",
+        "src.data_pipeline.cleaning.os.path.abspath",
         lambda x: str(tmp_path) if "cleaning.py" in str(x) or ".." in str(x) else x,
     )
 
     # 1. Mock Ingestion
     with (
         patch("cdsapi.Client") as mock_cds,
-        patch("data_pipeline.ingestion.EntsoePandasClient") as mock_entsoe,
-        patch("data_pipeline.ingestion.backup_project_data"),
+        patch("src.data_pipeline.ingestion.EntsoePandasClient") as mock_entsoe,
+        patch("src.data_pipeline.ingestion.backup_project_data"),
     ):
         # Copernicus Mock
         mock_cds_client = MagicMock()
@@ -309,7 +310,7 @@ def test_ingestion_to_cleaning_flow(tmp_path, monkeypatch, mock_env):
 
 def test_fetch_copernicus_bad_zip_retry(tmp_path, monkeypatch):
     monkeypatch.setattr(
-        "data_pipeline.ingestion.os.path.abspath",
+        "src.data_pipeline.ingestion.os.path.abspath",
         lambda x: str(tmp_path) if "ingestion.py" in str(x) or ".." in str(x) else x,
     )
 
@@ -318,10 +319,10 @@ def test_fetch_copernicus_bad_zip_retry(tmp_path, monkeypatch):
         mock_cds.return_value = mock_client
         mock_client.retrieve.return_value.download.return_value = None
 
-        with patch("data_pipeline.ingestion.os.makedirs"):
-            with patch("data_pipeline.ingestion.os.path.exists", return_value=False):
+        with patch("src.data_pipeline.ingestion.os.makedirs"):
+            with patch("src.data_pipeline.ingestion.os.path.exists", return_value=False):
                 with patch("zipfile.ZipFile", side_effect=zipfile.BadZipFile("Bad zip")):
-                    with patch("data_pipeline.ingestion.time.sleep"):
+                    with patch("src.data_pipeline.ingestion.time.sleep"):
                         with patch("builtins.open", mock_open(read_data="Error")):
                             fetch_copernicus_data("2024-01-01", "2024-01-01")
                             assert mock_client.retrieve.call_count == 3
