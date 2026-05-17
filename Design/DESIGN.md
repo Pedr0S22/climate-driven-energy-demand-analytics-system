@@ -27,35 +27,32 @@ This document captures the low-level system design decisions, technical stack, d
 * #### 4.3. Administrator & Management Services
 * #### 4.4. Live Data Scheduler Service
 * #### 4.5. Autoregressive Prediction Engine
+* #### 4.6. Backend Documentation
 
 ### 5. Databases & Data Storage Design
 * #### 5.1. Relational Database - PostgreSQL
 * #### 5.2. File Storage System
-* #### 5.3. Log Storage ELK
 
 ### 6. Frontend UI & Dashboard Design
 * #### 6.1. Application State Management
 * #### 6.2. View Layouts & Navigation
 * #### 6.3. Data Visualization
 
-### 7. Telemetry & Observability Design
-* #### 7.1. Application Log Formatting
-* #### 7.2. Logstash Parsing Rules
 
-### 8. Deployment & Operations
-* #### 8.1. Database Management
-* #### 8.2. Docker Environment
-* #### 8.3. API Interaction Guide
+### 7. Deployment & Operations
+* #### 7.1. Database Management
+* #### 7.2. Docker Environment
+* #### 7.3. API Interaction Guide
 
 
 ## 1. Technology Stack
 
-The technology stack used in the project is described below. Also FILE X and FILE Y ....
+The technology stack used in the project is described below.
 
 ### 1.1. Backend & Machine Learning Stack
 
 * **Backend Framework:** Python with FastAPI
-* **Database Engine:** PostgreSQL; .joblib Files for ML models; ELK stack for logging.
+* **Database Engine:** PostgreSQL; .joblib Files for ML models
 * **Authentication/Security:** JWT for sessions, bcrypt for password hashing.
 * **Data Manipulation & ML:** Pandas, NumPy, SciPy, Scikit-Learn, Optuna
 * **Testing Framework:** pytest.
@@ -67,7 +64,7 @@ The technology stack used in the project is described below. Also FILE X and FIL
 
 ### 1.3. Infrastructure & Telemetry Stack
 
-* **Monitoring:** ELK + Docker
+* **Monitoring:** Docker and docker Logs
 
 
 ## 2. Microservices & Containerization
@@ -79,7 +76,7 @@ The system is built on a containerized microservices architecture to ensure high
 The project follows a **Layered Microservices** pattern:
 1.  **Gateway Layer:** Traefik handles all incoming traffic, providing routing and security.
 2.  **Application Layer:** Decoupled Frontend (PyQt6) and Backend (FastAPI).
-3.  **Persistence Layer:** PostgreSQL for relational data and ELK for observability.
+3.  **Persistence Layer:** PostgreSQL for relational data
 4.  **Batch Processing Layer:** Isolated Data Pipeline for heavy ML workloads.
 
 ### 2.2. Service Breakdown & Folder Organization
@@ -88,7 +85,7 @@ The source code is organized into a modular structure under `src/`, where each s
 *   `src/api/`: Core Backend (FastAPI). Contains the MVC logic, routers, and database models.
 *   `src/app/`: Frontend Application (PyQt6).
 *   `src/data_pipeline/`: Machine Learning modules (Ingestion, Cleaning, Feature Engineering, Modeling).
-*   `src/databases/`: Infrastructure scripts, including database initialization SQL/Bash and ELK configuration.
+*   `src/databases/`: Infrastructure scripts, including database initialization SQL/Bash.
 
 **Engineering Why:** This structure enforces clear boundaries. For example, the `data_pipeline` can be scaled or updated without affecting the availability of the `api`.
 
@@ -112,7 +109,7 @@ Traefik acts as the single point of entry on port `80`. It uses Docker labels fo
 #### 2.4.2. Network Isolation
 The architecture defines two distinct networks:
 *   `api_net`: Connects the Gateway (Traefik), the Backend (API), and the Frontend (App).
-*   `db_net`: Connects the Backend, Data Pipeline, and Databases (PostgreSQL, ELK).
+*   `db_net`: Connects the Backend, Data Pipeline, and PostgreSQL database.
 **Engineering Why:** This prevents the Frontend from directly accessing the Databases, ensuring all data requests are authenticated and validated through the Backend service.
 
 ### 2.5 How to Run the APP
@@ -286,7 +283,7 @@ The primary objective of the Training & Evaluation Module is to autonomously sel
         - **Technical Rationale:** A constrained depth prevents the model from memorizing specific training spikes, while the number of estimators provides enough variance reduction.
 
     - **Overfitting Check & Mitigation:**
-        - **Train/Validation Gap Analysis:** The system logs mean metrics across all folds. A significant gap triggers a warning in the ELK logs.
+        - **Train/Validation Gap Analysis:** The system logs mean metrics across all folds. A significant gap triggers a warning in the logs.
         - **Mitigation:** Nested validation during Optuna optimization forces the model to find parameters that work across multiple sub-folds within the training set before ever seeing the test data.
 
     - **Driver Analysis (Interpretability):**
@@ -298,36 +295,57 @@ The primary objective of the Training & Evaluation Module is to autonomously sel
         - Implements Rule 8: Models are saved as `[LR|RF]_vx.joblib`.
         - Database entries link the file path with the exact `rmse`, `mae`, and `r2` metrics from the winning fold, enabling rollback to previous versions if performance degrades in production.
 
-### 2.5. Real-Time Data Pipeline Design
+### 3.5. Real-Time Data Pipeline Design
 
 The Real-Time Data Pipeline is a high-availability version of the main pipeline, optimized for low-latency inference while maintaining strict mathematical parity with the training environment.
 
 *   **Orchestration:** Driven by `real_time_pipeline.py`, which coordinates the retrieval, cleaning, and multi-resolution feature engineering of live data.
 *   **Target:** Reads from live APIs, outputs to `/data/processed/feat-engineering/real-time/`.
 
-#### 2.5.1. Real-Time Ingestion Strategy (31-Day Window)
-To satisfy the requirements of high-dimensional feature engineering, the real-time ingestion fetch window is set to **31 days** (configurable via `REAL_TIME_DAYS`).
+#### 3.5.1. Real-Time Ingestion Strategy (35-Day Window)
+To satisfy the requirements of high-dimensional feature engineering, the real-time ingestion fetch window is set to **35 days** (configurable via `REAL_TIME_DAYS`).
 *   **Engineering Why:**
     *   **Rolling Windows:** The `rolling_30` feature requires 30 days of prior history to calculate a valid mean/std for the current day.
     *   **Lagged Features:** The `L28_Load` feature requires data from exactly 28 days ago.
-    *   **PCA Stability:** Without a 31-day buffer, these features would be filled with zeros (`NaN` fill), causing the PCA projection to "tilt" and produce values inconsistent with the training set, leading to inaccurate predictions.
+    *   **PCA Stability:** Without a 35-day buffer, these features would be filled with zeros (`NaN` fill), causing the PCA projection to "tilt" and produce values inconsistent with the training set, leading to inaccurate predictions.
 
-#### 2.5.2. Technical Mechanisms:
+#### 3.5.2. Technical Mechanisms:
 *   **Resolution Alignment:** ENTSO-E queries use the `Europe/Madrid` timezone and normalized day boundaries. This ensures the API returns standard hourly data for Spain, matching the training data resolution without requiring manual resampling.
 *   **Multi-Dataset Generation:** For every frequency (Hourly/Daily), the real-time pipeline generates three distinct files:
     1.  `realtime_[freq]_full.csv`: All engineered features.
     2.  `realtime_[freq]_selected.csv`: Features filtered by the 0.6 association threshold.
     3.  `realtime_[freq]_pca.csv`: Data projected into the pre-fitted PCA space.
-*   **Robust File Persistence (Windows-Safe):** 
+*   **Robust File Persistence (Windows-Safe):**
     *   Implements an **Atomic Write** pattern using `.tmp` files.
     *   Explicitly handles Windows file-locking issues by catching `PermissionError` and logging descriptive diagnostics.
     *   Uses `os.replace` with string-path conversion to ensure cross-platform compatibility and prevent file corruption during high-frequency updates.
 *   **Security:** Cloud synchronization (`gdrive_sync.py`) is explicitly disabled for real-time retrieval to protect API throughput and prevent uncleaned live data from polluting the research backup.
 
 
-### 4. Core Backend Services Design
+## 4. Core Backend Services Design
 
-The backend is developed using **Python with FastAPI**, following a strict **Model-View-Controller (MVC)** architectural pattern to ensure modularity, testability, and scalability.
+The backend is developed using **Python with FastAPI**, following a strict **Model-View-Controller (MVC)** architectural pattern to ensure modularity, testability, and scalability. Below it's the API structure:
+
+```
+src/
+├── api/
+│   ├── main.py              # Entrance Point File
+│   │
+│   ├── routers/             # Controller/Router Layer
+│   │   │
+│   │   └── endpoints/       # Sub-routes endpoints
+│   │
+│   ├── services/            # Business Logic 
+│   │
+│   ├── models/              # Data Models (PostgreSQL BD)
+│   │
+│   ├── schemas/             # DTOs (Data Transfer Objects)
+│   │
+│   ├── core/                # Global Configs
+│   │
+└   └── database/            # DB connection
+
+```
 
 *   **Model Layer:** Utilizes **SQLAlchemy** for database ORM mapping (Relational Model) and **Pydantic** for data validation and serialization (DTOs).
 *   **View Layer (Routers):** Located in `src/api/routers/`, these modules define the RESTful endpoints, handle HTTP status codes, and manage request/response documentation via OpenAPI.
@@ -545,7 +563,7 @@ The Prediction Engine implements a recursive forecasting strategy to provide mul
     *   **Sync Logic:** Since Open-Meteo provides data in target units (Celsius, mm, hPa), the pipeline explicitly skips the Kelvin-to-Celsius and Pa-to-hPa conversions used for historical ERA5 data.
     *   **Unit Mapping:** Precipitation from Open-Meteo (mm) is automatically converted to meters (m) to match the ERA5 training scale (1000x difference).
 
-### 4.6. Prediction API Contract
+#### 4.5.1. Prediction API Contract
 
 *   **Get Prediction: `GET /api/predictions/[hourly|daily]`**
     *   **Query Params:** `historical_points` (context size), `predicted_points` (horizon size).
@@ -568,6 +586,10 @@ The Prediction Engine implements a recursive forecasting strategy to provide mul
         }
         ```
 
+### 4.6. Backend Documentation
+FastAPI provides interactive Swagger documentation at:
+- **Swagger UI:** `http://localhost:8000/api/docs` (or without port for local development)
+- **ReDoc:** `http://localhost:8000/api/redoc`(or without port for local development)
 
 ## 5. Databases & Data Storage Design
 
@@ -632,9 +654,9 @@ Logs the history of prediction requests made by users.
 | `users_id` | BigInt | FK | User who made the request. |
 | `request_type` | VARCHAR(512) | NOT NULL | Specifies the request type (e.g., 'normal' or 'advanced'). |
 
-#### Prediction Results
+#### 5.1.1. Prediction Results
 
-Predictive results are strictly separated by their temporal granularity into `predictions_daily` and `predictions_hourly`. This prevents null fields in the database and allows highly optimized queries based on the requested time horizon, using composite primary keys to ensure a 1:N relationship with the origin request.
+Predictive results are strictly separated by their temporal granularity into `predictions_daily` and `predictions_hourly`. This prevents null fields in the database and allows highly optimized queries based on the requested time horizon, using composite primary keys to ensure a 1:N relationship with the origin request. This is not used at this phase of the project.
 
 **Table `predictions_daily`**
 Stores predictions with daily granularity.
@@ -658,27 +680,28 @@ Stores predictions with hourly granularity.
 | `historical_load`| JSONB | Nullable | Dynamic length historical load series used for inference. |
 | `prediction_load`| JSONB | Nullable | Dynamic length predicted load series generated by the model. |
 
-#### Architectural Rationale and Key Decisions
+### 5.2 Architectural Rationale and Key Decisions
 
-##### Partial Unique Index for Model Management
+#### 5.2.1 Partial Unique Index for Model Management
 To ensure system stability, the database enforces that only one model of each `model_type` can be active at any given time. This is implemented via a **Partial Unique Index**. This approach allows an unlimited number of historical models to exist while guaranteeing that the inference service never encounters ambiguity when selecting the "Live" model for a specific algorithm or frequency.
 
-##### JSONB for Variable Length Series
+#### 5.2.2 JSONB for Variable Length Series
 Predictions often involve dynamic window lengths (e.g., 7-day history vs 24-hour history). Using PostgreSQL's `JSONB` type for `historical_load` and `prediction_load` allows the system to store these arbitrary-length vectors natively within the prediction record. This prevents complex joins with secondary time-series tables and ensures that the exact input/output "snapshot" used during a specific request is perfectly preserved for audit and visualization.
 
-##### Role-Based Access Control via Table Inheritance
+#### 5.2.3 Role-Based Access Control via Table Inheritance
 Instead of relying on a single, monolithic `users` table with sparse, nullable columns to accommodate different roles, the database employs a strict "Table-per-Type" inheritance pattern. The `users` table acts as the base entity containing universally required attributes (e.g., authentication credentials, login attempts). Role-specific tables (`admin` and `client`) reference this base table using their primary key as a foreign key. This guarantees zero null-column bloat and makes the system highly extensible if new roles are needed in the future. Furthermore, the aggressive implementation of `ON DELETE CASCADE` across these constraints offloads lifecycle management to the database engine. If a core user account is purged, all associated roles, prediction requests, and generated time-series data are instantaneously and safely destroyed, eliminating the risk of orphaned records.
 
-##### Temporal Segregation of Predictive Data
+### 5.2.4 Temporal Segregation of Predictive Data
 Machine learning models inherently produce varying resolutions of time-series data. Storing these disparate granularities in a single `predictions` table would necessitate compromised data types (e.g., forcing daily dates into timestamp columns, or leaving columns null) and complex query filtering. By physically segregating `predictions_daily` (using the strict `DATE` type) and `predictions_hourly` (using `TIMESTAMP`), the schema enforces strict data consistency at the column level. The use of composite primary keys (`request_id` coupled with either `date_day` or `date_hour`) elegantly satisfies the 1:N relationship requirement. This allows a single transaction in the `request` table to fan out into hundreds of highly indexed, resolution-specific prediction rows, optimizing the database for fast retrieval by front-end dashboards.
 
-##### Server-Side Cryptography for Database Seeding
+### 5.2.5 Server-Side Cryptography for Database Seeding
 Standard practices often expose plaintext passwords during initial database migrations, setup scripts, or CI/CD pipelines. To mitigate this security vulnerability, the architecture leverages PostgreSQL's native `pgcrypto` extension. By shifting the cryptographic workload to the database engine itself, passwords can be hashed and salted dynamically during the `INSERT` operation. This ensures that raw credentials are never stored in SQL dump files, migration logs, or application source code, adhering to strict zero-trust security principles from the moment the database is initialized.
-### 5.2. File Storage System
+
+### 5.3. File Storage System
 
 The system implements a structured, hierarchical file storage strategy to manage large datasets and binary artifacts. It follows the "Medallion Architecture" principles (Raw -> Processed -> Feature Engineered) to ensure data lineage and reproducibility.
 
-#### 5.2.1. Data Directory Hierarchy
+#### 5.3.1. Data Directory Hierarchy
 All data is stored relative to the application root in the `data/` directory.
 
 - **`/data/raw/` (Immutable Layer):**
@@ -691,7 +714,7 @@ All data is stored relative to the application root in the `data/` directory.
 - **`/data/real-time/` (Ephemeral Layer):**
     - Stores transient payloads from the Live Data Scheduler used for immediate inference.
 
-#### 5.2.2. Model & Transformer Binaries (`/models/`)
+#### 5.3.2. Model & Transformer Binaries (`/models/`)
 Machine learning artifacts are persisted using the `joblib` format for efficient serialization of large NumPy arrays (Random Forest).
 
 - **Model Naming Convention:** `[ModelType]_v[Version].joblib` (e.g., `RF_v1.joblib`).
@@ -701,17 +724,10 @@ Machine learning artifacts are persisted using the `joblib` format for efficient
     - `models/hourly/`: Binaries for hourly resolution.
     - `models/feat-engineering/`: Central repository for `scaler` and `pca` objects.
 
-#### 5.2.3. Persistence & Path Resolution
+#### 5.3.3. Persistence & Path Resolution
 - **Format:** All tabular data must be stored as **CSV** with UTF-8 encoding. All ML artifacts must be stored as **Joblib** (preferred over Pickle for security and performance).
 - **Resolution:** The system uses `pathlib.Path` for all internal resolutions. Relative paths stored in the database (e.g., `models/daily/LR_v1.joblib`) are resolved against the `APP_ROOT` at runtime by the `InferenceEngine`.
 - **Integrity:** Every model binary must have a corresponding entry in the `model` table, ensuring that the file system and the relational metadata remain synchronized.
-
-### 5.3. Log Storage ELK
-
-The system uses the ELK Stack to centralize performance and audit logs. The primary index used is `energy-demand-logs-*`.
-
-*   **Model Training Logs:** Every pipeline run pushes a structured JSON payload containing the full metric suite and driver analysis.
-*   **Audit Trail:** Logs include the `user` and `timestamp` for every model update.
 
 
 ## 6. Frontend UI & Dashboard Design
@@ -738,7 +754,7 @@ To prevent the desktop GUI from freezing during requests, the system adopts an *
 - *QThread and Signals:* When making HTTP requests via FastAPI or processing DataFrames, offload the workload to background `QThread` instances. Ensure you connect signals to update the UI once the thread completes.
 - *View Switching:* The application utilizes a `QStackedWidget` inside the `MainWindow` (`ui/main_window.py`) for managing views and navigation without spawning multiple OS windows. To add a new view, instantiate it and add it to the `QStackedWidget`, then use `.setCurrentWidget()` to navigate.
 
-**Secure Credential Management (*QA11*):**
+**Secure Credential Management:**
 To fulfill strict quality attributes regarding client-side credential management, the frontend eliminates risks associated with plain-text variables or local `.env` storage for authenticated session tokens.
 - *How to Store Tokens:* Utilize the `SessionManager` class implemented via the Python *keyring* subsystem. This approach interfaces directly with the host Operating System's native secure credential vaults.
 - When a user successfully authenticates, their JWT `access_token` and role are securely committed to the vault, meaning session data remains strictly encrypted at rest and invisible to other processes or application memory dumps.
@@ -756,67 +772,25 @@ The application uses Matplotlib integrated with PyQt6 to render dynamic charts. 
    - Pass the cleaned data arrays to the plot widget's update method (e.g., calling an update function with `x_data` and `y_data`).
 4. **Styling and Updates:** Ensure the plot component clears its previous state (e.g., `ax.clear()`) before drawing new lines to prevent memory leaks and visual overlapping. Apply consistent project styling (colors, legends, grid lines) within the plot widget.
 
-### 7. Telemetry & Observability Design
+## 7. Deployment & Operations
 
-### 7.1. Application Log Formatting
-
-To enable automated ingestion by Logstash, the pipeline utilizes a standardized structured logging format.
-
-**Structured Log Payload (JSON):**
-```json
-{
-  "event": "model_training_completed",
-  "user": "system_pipeline",
-  "timestamp": "ISO-8601-String",
-  "model_info": {
-    "name": "Random Forest",
-    "frequency": "hourly",
-    "version": 2,
-    "dataset": "pca"
-  },
-  "metrics": {
-    "rmse": 0.12,
-    "mae": 0.08,
-    "r2": 0.94
-  },
-  "analysis": {
-    "top2_drivers": ["t2m_rolling_mean", "L24"]
-  },
-  "status": "success"
-}
-```
-
-### 7.2. Logstash Parsing Rules
-
-Logstash is configured with a `grok` filter that identifies the `ELK_JSON_LOG:` prefix. Once identified, the `json` filter parses the payload directly into Elasticsearch fields, allowing Kibana to build real-time dashboards of model accuracy over time without manual data entry.
-
-## 8. Deployment & Operations
-
-### 8.1. Database Management
+### 7.1. Database Management
 
 The PostgreSQL database is managed via Docker Compose. It is configured to run on port `5433` to avoid conflicts with local PostgreSQL instances.
 
-- **Start Database:**
-  ```bash
-  docker-compose -f Code/energy_prediction_system/src/databases/docker-compose.db.yml up -d
-  ```
-- **Stop Database:**
-  ```bash
-  docker-compose -f Code/energy_prediction_system/src/databases/docker-compose.db.yml down
-  ```
-- **Initialization:**
-  The database automatically initializes using scripts in `Code/energy_prediction_system/src/databases/init-scripts/`:
+**Initialization:**
+  The database automatically initializes using scripts in `Code/energy_prediction_system/src/databases/init-scripts/` (for the first time):
   - `01-create-tables.sql`: Defines the schema.
   - `02-insert-data.sql`: Seeds the database with initial admin and client users.
 
-### 8.2. Docker Environment
+### 7.2. Docker Environment
 
-The system uses Docker for containerizing the database and potentially other services (ELK stack, Backend).
+The system uses Docker for containerizing the database and other such as backend.
 
 - **Prerequisites:** Docker Desktop must be installed and running.
 - **Service Isolation:** Currently, the database is isolated in its own compose file to allow for flexible development (running the backend locally or in a container).
 
-### 8.3. API Interaction Guide
+### 7.3. API Interaction Guide
 
 Once the backend is running (`python Code/energy_prediction_system/src/api/main.py`), you can interact with the API.
 
@@ -829,8 +803,3 @@ Once the backend is running (`python Code/energy_prediction_system/src/api/main.
 - **User Info:** `GET /api/auth/me` (Requires Token)
 - **Admin Check:** `GET /api/auth/admin-only` (Requires Admin Role)
 - **Predictions:** `GET /api/predictions/daily` and `GET /api/predictions/hourly`.
-
-#### Documentation
-FastAPI provides interactive Swagger documentation at:
-- **Swagger UI:** `http://localhost:8000/api/docs` (or without port for local development)
-- **ReDoc:** `http://localhost:8000/api/redoc`(or without port for local development)

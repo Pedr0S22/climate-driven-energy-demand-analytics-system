@@ -92,6 +92,21 @@ The system utilizes a hybrid architectural approach to ensure both scientific re
 ### Prerequisites
 - Docker & Docker Compose installed.
 - `.env`, `credentials.json` and `token.json` files with ENTSO-E and Copernicus API keys (placed in `Code/energy_prediction_system/`).
+- Make sure you have also have all requirements installed locality to run frontend, navigating to project root `Code/energy_prediction_system/`:
+    ```bash
+    cd Code/energy_prediction_system
+    ```
+    Installing dependencies:
+
+    ```bash
+    pip install -r requirements.txt
+    ```
+
+    If you intend to run or modify tests, install the development dependencies instead:
+
+    ```bash
+    pip install -r requirements-dev.txt
+    ```
 
 ### Setup
 1.  **Clone the repository:**
@@ -99,16 +114,16 @@ The system utilizes a hybrid architectural approach to ensure both scientific re
     git clone https://gitlab.com/dei-uc/piacd2026/pl1g1.git
     cd pl1g1
     ```
-2.  **How to Run the APP:**
-    Navigate to the application root `Code/energy_prediction_system/`:
+2.  **How to Run the Backend:**
+    Navigate to the Backend root `Code/energy_prediction_system/`:
     ```bash
     cd Code/energy_prediction_system
     ```
-    - **Run full application with modifications:**
+    - **Run Backend**
       ```bash
       docker compose up --build -d
       ```
-    - **Run app without modifications:**
+    - **Run app after first build:**
       ```bash
       docker compose up -d
       ```
@@ -116,6 +131,17 @@ The system utilizes a hybrid architectural approach to ensure both scientific re
     To run the normal training pipeline with models:
     ```bash
     docker compose --profile tools run pipeline
+    ```
+4. After this process, execute the `main.py` entry point from within the `Code/energy_prediction_system/src/app/` folder.
+
+    1. Navigate to the frontend application root `Code/energy_prediction_system/src/app/`:
+    ```bash
+    cd Code/energy_prediction_system/src/app
+    ```
+
+    2. Run Frontend in the terminal:
+    ```bash
+    python main.py
     ```
 
 ## User Guide & Workflow
