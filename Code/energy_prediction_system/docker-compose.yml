@@ -50,49 +50,6 @@ services:
       retries: 5
       start_period: 10s
 
-  elasticsearch:
-    image: docker.elastic.co/elasticsearch/elasticsearch:8.10.2
-    container_name: energy_elastic
-    restart: always
-    environment:
-      - discovery.type=single-node
-      - xpack.security.enabled=false
-      - "ES_JAVA_OPTS=-Xms512m -Xmx512m"
-    networks:
-      - db_net
-    volumes:
-      - elastic_data:/usr/share/elasticsearch/data
-    healthcheck:
-      test: ["CMD-SHELL", "curl -s http://localhost:9200/_cluster/health | grep -q 'status.*green\\|yellow'"]
-      interval: 15s
-      timeout: 10s
-      retries: 5
-
-  logstash:
-    image: docker.elastic.co/logstash/logstash:8.10.2
-    container_name: energy_logstash
-    restart: always
-    volumes:
-      - ./src/databases/elk/logstash.conf:/usr/share/logstash/pipeline/logstash.conf:ro
-    networks:
-      - db_net
-    depends_on:
-      elasticsearch:
-        condition: service_healthy
-
-  kibana:
-    image: docker.elastic.co/kibana/kibana:8.10.2
-    container_name: energy_kibana
-    restart: always
-    ports:
-      - "5601:5601"
-    networks:
-      - api_net
-      - db_net
-    depends_on:
-      elasticsearch:
-        condition: service_healthy
-
   # --- CAMADA 2: BACKEND (API) ---
   api:
     build: 
@@ -104,7 +61,6 @@ services:
     environment:
       - DB_HOST=db_server
       - DB_PORT=5432
-      - LOGSTASH_HOST=logstash
       - PYTHONPATH=/app
     networks:
       - db_net
@@ -115,8 +71,7 @@ services:
     depends_on:
       db_server:
         condition: service_healthy
-      elasticsearch:
-        condition: service_healthy
+
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:8000/api/health"]
       interval: 30s
@@ -193,4 +148,3 @@ networks:
 
 volumes:
   postgres_data:
-  elastic_data:
