@@ -1,23 +1,22 @@
-# QUALITY ATTRIBUTES DEFINITION - V2.2
+# QUALITY ATTRIBUTES DEFINITION - V2.3
 
 This file contains all QAs for the development of this project.
 
 # Performance
 
-## QA1: Data Pipeline Execution Tracking
+## QA1: Full Application Execution Tracking
 
 * **Source of stimulus:** System Operator and/or Automated Pipeline.
 
-* **Stimulus:** The initiation of data processing workflows (data ingestion, cleaning, feature engineering, and model/evaluation modules).
+* **Stimulus:** The initiation of data processing, frontend and backend workflows, including, data ingestion, cleaning, feature engineering and model/evaluation modules.
 
-* **Environment:** Normal operating conditions during a routine data update or model training cycle.
+* **Environment:** Normal/Abnormal operating conditions during full app operations.
 
-* **Artifact:** The Data Pipeline and Logging Component.
+* **Artifact:** The Data Pipeline, Frontend, Backend and Logging Component.
 
-* **Response:** The system executes the requested components and systematically records the start and end times, calculating total execution time for each phase, and writes this data to the system logs.
+* **Response:** The system executes the requested components and systematically records the start and end times, calculating total execution time for each phase for data ingestion module, and writes this data to the system logs.
 
-* **Response measure:** Execution times for 100% of the key components are successfully logged with a timestamp precision of at most 1s.
-
+* **Response measure:** Execution times for 100% of all components are successfully logged with a timestamp precision of at most 1s.
 
 
 
@@ -213,7 +212,7 @@ This file contains all QAs for the development of this project.
 
 * **Source of stimulus:** Malicious Actor or Automated Bot.
 
-* **Stimulus:** Repeatedly submits invalid login credentials or validation-failing payloads, that is, more than 3 failed attempts within 1 minute.
+* **Stimulus:** Repeatedly submits invalid login credentials, that is, more than 3 failed attempts within 1 minute.
 
 * **Environment:** Public-facing production environment under active targeted attack.
 
