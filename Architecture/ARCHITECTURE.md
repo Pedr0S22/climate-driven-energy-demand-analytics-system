@@ -1,4 +1,4 @@
-# Architecture: Climate-Driven Energy Demand Analytics System | V1.7
+# Architecture: Climate-Driven Energy Demand Analytics System | V1.8
 
 This document outlines the high-level system architecture, data flow, security boundaries, and quality attributes of the Climate-Driven Energy Demand Analytics System project.
 
@@ -22,21 +22,15 @@ flowchart TD
     
     subgraph BackendLayer [Backend Services Layer]
         direction RL
-        PredictionService[Prediction Service <br> /src/api/]
+        PredictionService[Prediction Services <br> /src/api/]
         AuthService[Authentication Service <br> /src/api/]
+        ModelManagementService[Model Management Service <br> /src/api/]
     end
 
     %% Database
     subgraph DatabaseLayer [Databases]
         direction RL
-        ModelDB[(Model Params & Specs DB <br> PostgreSQL)]
-        UserDB[(User DB <br> PostgreSQL)]
-    end
-
-    %% ELK Stack Logging
-    subgraph LoggingLayer [Monitoring & Logging]
-        direction RL
-        ELK[(ELK Stack: <br> Admin Monitoring App logs)]
+        BD[(Model, User, Requests Data DB <br> PostgreSQL)]
     end
 
     %% Connections
@@ -45,13 +39,10 @@ flowchart TD
     BackendLayer -- HTTP Response --> InterfaceLayer
     
     %% Backend to Database Connections
-    AuthService <-->|Register/validation| UserDB
-    ModelDB -->|Loads Model| PredictionService
-    PredictionService -->|ADMIN Model Choice| ModelDB
-    
-    %% Logging Connections
-    BackendLayer -->|App Logs| ELK
-    DataPipeline -->|Data Pipeline Logs| ELK
+    AuthService <-->|Register/Login| BD
+    BD -->|Loads Model| PredictionService
+    PredictionService -->| Models | BD
+    ModelManagementService -->|ADMIN Model Choice| BD
     
     %% Data Science Pipe-Filter Architecture
 
@@ -62,7 +53,7 @@ flowchart TD
         OpenMeteo[Open-Meteo API <br> Forecast Data]
     end
     
-    subgraph DataPipeline [Data Pipeline <br> /src/data_pipeline/]
+    subgraph DataPipeline [Train RealTime Pipeline]
         direction RL
         Ingestion[Data Ingestion Layer]
         RawEnergy[(Raw Energy Data <br> /data/raw/energy/)]
@@ -87,7 +78,8 @@ flowchart TD
     ProcStorage --> FeatEng
     FeatEng --> FeatStorage
     FeatStorage --> Trainer
-    Trainer --> ModelDB
+    Trainer --> |Models Trained| BD
+    FeatStorage --> |Real Time Prediction Data| PredictionService
     
 ```
 
@@ -142,21 +134,15 @@ Bridges the gap between static historical data and real-time prediction requirem
 * **Production Model Promotion:** Admins evaluate RMSE/MAE/R2 metrics and toggle which model is "active." The Prediction Service hot-reloads the active binary without downtime.
 * **System Observability:** Elevated access to Kibana dashboards for traffic and health monitoring.
 
-## 5. Centralized Logging & Monitoring (ELK Stack)
-All components stream telemetry to a centralized Elasticsearch instance:
-* **Pipeline Logs:** Ingestion health, cleaning warnings, and training metrics.
-* **Application Logs:** Request/response cycles, authentication events, and latency tracking.
-* **Audit Trail:** Comprehensive logging of model activations and security events.
-
-## 6. Scalability & Vision
+## 5. Scalability & Vision
 The architecture is designed to scale beyond its current national scope (Spain):
 *   **Regional Scaling:** The data structures support transitioning from national-level to regional or city-specific demand centers by adjusting geographical bounding boxes in the Ingestion Layer.
 *   **European Expansion:** Leveraging standardized international APIs (ENTSO-E, Copernicus) allows the same Pipe-Filter logic to be applied to other European nations with minimal configuration changes.
 
-## 7. Quality Attributes Implementation
+## 6. Quality Attributes Implementation
 Check [Quality Attributes Definition](../Requirements/QUALITY_ATTRIBUTES.md) for full response measures.
 
-* **Performance:** Prediction latency < 1.0s; 100% execution tracking in ELK.
+* **Performance:** Prediction latency < 1.0s; 100% execution tracking.
 * **Reliability:** 35-day buffer for feature parity; auto-recovery from backend crashes via Docker restart policies.
 * **Security:** 0 hardcoded secrets (Environment Variables); standard JWT authentication; 4-attempt lockout protection.
 * **Maintainability:** >70% automated test coverage; strict branch protection and CI verification.

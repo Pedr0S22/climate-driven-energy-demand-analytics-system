@@ -67,13 +67,13 @@ Land Hourly data from 1950 to present" dataset found at [https://cds.climate.cop
 
     * 3b3. The system ensures the missing data does not cause an uncontrolled crash.
 
-    * 3b4. The system logs the anomaly to ELK and terminates cleanly .
+    * 3b4. The system logs the anomaly and terminates cleanly .
 
 4. a) API connection failure or authentication error with Copernicus:
 
     * 4a1. The system detects that the Copernicus Climate Data Store is unreachable or authentication fails.
 
-    * 4a2. The system properly logs the ingestion failure to ELK.
+    * 4a2. The system properly logs the ingestion failure.
 
     * 4a3. The system results in a clean termination of the ingestion script.
 
@@ -85,7 +85,7 @@ Land Hourly data from 1950 to present" dataset found at [https://cds.climate.cop
 
     * 4b3. The system ensures the missing data does not cause an uncontrolled crash.
 
-    * 4b4. The system logs the anomaly to ELK and terminates cleanly.
+    * 4b4. The system logs the anomaly and terminates cleanly.
 
 ## UC2: Data Cleaning and Alignment
 
@@ -116,7 +116,7 @@ Land Hourly data from 1950 to present" dataset found at [https://cds.climate.cop
 8. The system merges both datasets into a single dataset
 9. The system aggregates daily dataset using the sum of load_MW for 24h and uses a simple aveage for continous variables.
 10. The system saves the processed datasets (daily and hourly) in the `/data/processed/` folder.
-11. The system logs all events and the execution time to ELK.
+11. The system logs all events and the execution time.
 
 
 **Extensions:**
@@ -258,7 +258,7 @@ User goal.
 5.  The system performs **residual analysis** to identify potential overfitting.
 6.  The system automatically selects the best-performing model for each tested algorithm (e.g., the best Random Forest and the best Linear Regression) for both daily and hourly resolutions based on the validation metrics.
 7.  The system detects the top-2 drivers for the regression predictions.
-8.  The system persists the winning models, the evaluation metrics and top-2 feature drivers and logs the training event, including the username and a timestamp to ELK.
+8.  The system persists the winning models, the evaluation metrics and top-2 feature drivers and logs the training event, including the username and a timestamp.
 
 
 **Extensions**
@@ -311,7 +311,7 @@ User goal.
 
 7. The system stores the new email, username, and the hashed password in the database.
 
-8. The system logs the successful account creation, recording the timestamp and the new user's email and username to ELK.
+8. The system logs the successful account creation, recording the timestamp and the new user's email.
 
 9. The system informs the user of a successful registration and redirects them to the authentication/login flow.
 
@@ -368,7 +368,7 @@ User goal.
 
 5. The system queries the database to validate the user, hashing the provided password and comparing it against the stored cryptographic hash.
 
-6. The system logs the successful authentication attempt, recording the timestamp and the user's email and username to ELK.
+6. The system logs the successful authentication attempt, recording the timestamp and the user's email.
 
 7. The system grants the user access to the app's protected functionalities based on their role.
 
@@ -384,7 +384,7 @@ User goal.
 
     * 4a1. The system catches the invalid input during validation.
 
-    * 4a2. The system logs the failed authentication attempt due to invalid input, recording the timestamp and the attempted email to ELK.
+    * 4a2. The system logs the failed authentication attempt due to invalid input, recording the timestamp.
 
     * 4a3. The system denies access and prompts the user again for their credentials.
 
@@ -394,7 +394,7 @@ User goal.
 
     * 5a2. The system gracefully rejects the request, ensuring no stack traces or internal implementation details are exposed to the user.
 
-    * 5a3. The system logs the failed authentication attempt, recording the timestamp, the attempted email, and the username (considering the email was found in the database) to ELK.
+    * 5a3. The system logs the failed authentication attempt, recording the timestamp.
     
     * 5a4. The system denies access and prompts the user again for their credentials.
 
@@ -423,7 +423,7 @@ User goal.
 1.  The user requests a daily prediction using the system's default parameters (3 historical days and 7 forecast days).
 2. The system retrieves the corresponding historical energy and climate data from the processed data directory.
 3.  The system utilizes the active daily model to calculate the demand prediction and dynamically identifies the top 2 variables (drivers) most heavily influencing this specific forecast.
-4.  The system logs the action, including the username, timestamp, and input parameters to ELK.
+4.  The system logs the action, including the username and timestamp.
 5.  The system delivers the calculated prediction result to the user, including the forecast values and the top 2 drivers, via the dashboard described in UC10.
 
 **Extensions**
@@ -438,7 +438,7 @@ User goal.
 
     * 3a1. The system catches the execution error.
 
-    * 3a2. The system logs the failure details to ELK.
+    * 3a2. The system logs the failure details.
 
     * 3a3. The system displays a generic error message to the user stating the prediction service is currently unavailable.
 
@@ -446,7 +446,7 @@ User goal.
 
     * 3b1. The system catches the execution error.
 
-    * 3b2. The system logs the failure details to ELK.
+    * 3b2. The system logs the failure details.
 
     * 3b3. The system displays the error in a pop-up described in UC10 (extension 8).
 
@@ -477,7 +477,7 @@ User goal.
 1.  The user requests an hourly prediction using the system's default parameters (3 historical hours and 12 forecast hours).
 2. The system retrieves the corresponding historical energy and climate data from the processed data directory.
 3.  The system utilizes the active hourly model to calculate the demand prediction and dynamically identifies the top 2 variables (drivers) most heavily influencing this specific forecast.
-4.  The system logs the action, including the username, timestamp, and input parameters to ELK.
+4.  The system logs the action.
 5.  The system delivers the calculated prediction result to the user, including the forecast values and the top 2 drivers, via the dashboard described in UC11.
 
 **Extensions**
@@ -492,7 +492,7 @@ User goal.
 
     * 3a1. The system catches the execution error.
 
-    * 3a2. The system logs the failure details to ELK.
+    * 3a2. The system logs the failure details.
 
     * 3a3. The system displays a generic error message to the user stating the prediction service is currently unavailable.
 
@@ -500,7 +500,7 @@ User goal.
 
     * 3b1. The system catches the execution error.
 
-    * 3b2. The system logs the failure details to ELK.
+    * 3b2. The system logs the failure details.
 
     * 3b3. The system displays the error in a pop-up described in UC11 (extension 8).
 
@@ -553,7 +553,7 @@ User goal.
 
 10. The system displays a success confirmation pop-up message to the Administrator and the visual active models modifications.
 
-11. The System logs every event into ELK.
+11. The System logs every event.
 
 **Extensions:**
 
@@ -606,7 +606,7 @@ Allow the user to access a dashboard to view the time series of the daily electr
 6. The user adjusts the parameters for the chart, changing the historical context (between 1 to 5 days) and the forecast horizon (between 1 to 14 days).
 7. The user asks for a new prediction based on the new parameters.
 8. The system retrieves the recalculated prediction and smoothly updates the chart and top 2 drivers.
-9. The System logs every event into ELK.
+9. The System logs every event.
 
 
 **Extensions:**
@@ -649,7 +649,7 @@ Allow the user to access a dashboard to view the time series of the hourly elect
 6. The user adjusts the parameters for the chart, changing the historical context (between 3 to 5 hours) and the forecast horizon (between 1 to 24 hours).
 7. The user asks for a new prediction based on the new parameters.
 8. The system retrieves the recalculated prediction and smoothly updates the chart and top 2 drivers.
-9. The System logs every event into ELK.
+9. The System logs every event.
 
 
 **Extensions:**
@@ -662,54 +662,8 @@ Allow the user to access a dashboard to view the time series of the hourly elect
 
 
 
-## UC12: App Logging
 
-**Primary Actor:** Administrator
-
-**Scope/Goal**: To allow the Administrator to securely monitor, search, and analyze system and application logs through a centralized dashboard powered by the ELK (Elasticsearch, Logstash, Kibana) stack, enabling troubleshooting, auditing, and system health checks.
-
-**Level:** User Goal
-
-**Stakeholders and Interests:**
-
-* **Administrator / DevOps:** Wants a powerful, searchable interface to debug errors, track user activity, and monitor system performance without needing direct server access.
-
-* **Security/System:** Requires reliable capture, indexing, and visualization of application events to maintain a secure and trackable audit trail.
-
-**Preconditions:**
-
-1. The user has successfully authenticated into the application and has an "Admin" role.
-
-2. The ELK stack infrastructure is active, properly configured, and successfully ingesting logs from the application and backend data pipelines.
-
-**Main Success Scenario:**
-
-1. The Administrator requests access to the App Logging interface.
-
-2. The system verifies the user's admin privileges.
-
-3. The system generates a secure, authenticated session or token for the ELK environment.
-
-4. The system redirects the Administrator to the Kibana dashboard.
-
-5. The Administrator interacts directly with the Kibana interface to input search queries, time ranges, and filters.
-
-6. Kibana retrieves and displays the matching log entries and visualizations.
-
-**Extensions:**
-
-4. a) The ELK stack service is unreachable during redirection:
-
-    - 4a1. The system detects a timeout or connection refusal when attempting to route to Kibana.
-
-    - 4a2. The system aborts the redirection.
-
-    - 4a3. The system displays an error message within the app notifying the Administrator that the logging service is temporarily offline.
-
-**Note:** Kibana natively displays its own "No results found" state.
-
-
-## UC13: Scenario Simulation
+## UC12: Scenario Simulation
 
 **Primary Actor:** User
 
@@ -755,15 +709,15 @@ Allow the user to access a dashboard to view the time series of the hourly elect
 
 8) a. Validation Failure (Invalid Inputs):
     * 8a1. The system detects inputs that are physically impossible or logically inconsistent.
-    * 8a2. The system logs the failure details to ELK.
+    * 8a2. The system logs the failure details.
     * 8a3. The system denies the simulation, highlights the offending fields, and prompts the user for correction.
 
 9. a. The system catches an error during the model's inference phase:
-    * 9a1. The system logs the failure details to ELK.
+    * 9a1. The system logs the failure details.
     * 9a2. The system displays a pop-up error message to the user.
 
 
-## UC14: User Logout
+## UC13: User Logout
 
 **Primary Actor:** User or Admin
 
@@ -784,7 +738,7 @@ Allow the user to access a dashboard to view the time series of the hourly elect
 
 1.  The user requests to log out of the application via the user interface (e.g., clicking a "Logout" button).
 2.  The system invalidates the user's active session and securely clears any locally stored authentication tokens (e.g., JWT).
-3.  The system logs the logout event, recording the timestamp, the user's email, and username to ELK.
+3.  The system logs the logout event, recording the timestamp, the user's email, and username.
 4.  The system redirects the user to the login/authentication screen.
 
 **Extensions:**
@@ -792,11 +746,11 @@ Allow the user to access a dashboard to view the time series of the hourly elect
 2. a. The system fails to communicate with the backend to invalidate the token (if applicable):
     *   2a1. The system catches the network or server error.
     *   2a2. The system forces a local logout by discarding the token on the client side.
-    *   2a3. The system proceeds to Step 3, logging the local logout and the backend communication failure to ELK.
+    *   2a3. The system proceeds to Step 3, logging the local logout and the backend communication failure.
 
 
 
-## UC15: Scenario Simulation Presentation
+## UC14: Scenario Simulation Presentation
 
 **Primary Actor:** User
 
@@ -815,7 +769,7 @@ The visualization layer for the Scenario Simulation module. The goal is to clear
 
 1. **Authentication:** The user must be successfully authenticated in the system.
 
-2. **Simulation Execution:** The backend must have successfully completed a scenario simulation (UC13) and generated a valid data payload.
+2. **Simulation Execution:** The backend must have successfully completed a scenario simulation (UC12) and generated a valid data payload.
 
 **Main Success Scenario:**
 
@@ -835,7 +789,7 @@ The visualization layer for the Scenario Simulation module. The goal is to clear
 
     * The Meteorological Parameters (Temperature, Pressure, Precipitation, Wind).
 
-7. The system provides an interactive "Adjust Scenario" button, allowing the user to tweak their previously chosen parameters and seamlessly trigger a new simulation run (routing back to UC13).
+7. The system provides an interactive "Adjust Scenario" button, allowing the user to tweak their previously chosen parameters and seamlessly trigger a new simulation run (routing back to UC23).
 
 **Extensions:**
 

@@ -15,7 +15,7 @@ Below there is a short presentation on what are the UCs, their numeration and ho
 ### Application
 - UC5 - User registration
 - UC6 - User authentication
-- UC14 - User logout
+- UC13 - User logout
 
     ### Options
 
@@ -25,12 +25,11 @@ Below there is a short presentation on what are the UCs, their numeration and ho
     - UC8 - Hourly prediction generation
         - UC11 - Hourly prediction dashboard
 
-    - UC13 - Scenario simulation
-        - UC15 - Scenario Simulation Presentation
+    - UC12 - Scenario simulation
+        - UC14 - Scenario Simulation Presentation
 
         ### Admin Only Options
         - UC9 - Admin model management
-        - UC12 - App logging
 
 
 # Quality Attributes

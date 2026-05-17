@@ -6,7 +6,6 @@
 [![PyQt6](https://img.shields.io/badge/PyQt6-6.4.0-blue.svg)](https://www.riverbankcomputing.com/software/pyqt/)
 [![scikit-learn](https://img.shields.io/badge/scikit--learn-1.8.0-orange.svg)](https://scikit-learn.org/)
 [![PostgreSQL](https://img.shields.io/badge/PostgreSQL-15-blue.svg)](https://www.postgresql.org/)
-[![ELK Stack](https://img.shields.io/badge/ELK--Stack-8.x-red.svg)](https://www.elastic.co/elastic-stack)
 
 ## Description & Value Proposition
 
@@ -48,7 +47,7 @@ The system utilizes a hybrid architectural approach to ensure both scientific re
 
 1.  **Pipe-Filter Architecture (Data Pipeline):** Ensures a linear, reproducible flow for the ML lifecycle: Ingestion → Raw Storage → Cleaning → Processed Storage → Feature Engineering → Model Training.
 2.  **Layered Architecture (Application):** A decoupled 4-tier stack (User, Interface, Backend Services, Databases) that isolates heavy data science workloads from real-time user requests.
-3.  **Client-Server Architecture:** A PyQt6-based frontend communicating via RESTful APIs (FastAPI) with a PostgreSQL/ELK backend.
+3.  **Client-Server Architecture:** A PyQt6-based frontend communicating via RESTful APIs (FastAPI) with a PostgreSQL backend.
 
 ## Key Features
 
@@ -57,7 +56,6 @@ The system utilizes a hybrid architectural approach to ensure both scientific re
 - **Scenario Simulator:** A sandbox environment where analysts can manually override weather parameters (e.g., "What if we have a 45°C heatwave tomorrow?") to see the predicted impact on the grid instantly.
 - **Interactive Visualization Dashboards:** A custom PyQt6 desktop environment with integrated D3.js and Plotly charts, featuring real-time hover tooltips and automated driver identification.
 - **Admin Model Management:** A robust governance interface allowing administrators to evaluate new model iterations (RMSE, MAE, R²) and promote them to production with zero downtime.
-- **System Observability (ELK):** Integrated ELK Stack (Elasticsearch, Logstash, Kibana) for real-time monitoring of pipeline health, model performance, and user audit trails.
 
 ## Data & Methodology
 

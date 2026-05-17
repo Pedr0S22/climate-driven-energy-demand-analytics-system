@@ -785,9 +785,9 @@ The PostgreSQL database is managed via Docker Compose. It is configured to run o
 
 ### 7.2. Docker Environment
 
-The system uses Docker for containerizing the database and other such as backend.
+The system uses Docker for containerizing the database, data pipeline and backend.
 
-- **Prerequisites:** Docker Desktop must be installed and running.
+- **Prerequisites:** Docker (Desktop) must be installed and running.
 - **Service Isolation:** Currently, the database is isolated in its own compose file to allow for flexible development (running the backend locally or in a container).
 
 ### 7.3. API Interaction Guide
