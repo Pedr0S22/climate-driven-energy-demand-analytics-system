@@ -1,12 +1,13 @@
 import logging
 
-from app.client.auth_service import AuthService
-from app.client.prediction_service import PredictionService
-from app.client.simulation_service import SimulationService
-from app.manager.session_manager import SessionManager
-from app.utils.validators import validate_login_input, validate_prediction_params, validate_registration_input
 from PyQt6.QtCore import QThread, pyqtSignal
 from PyQt6.QtWidgets import QMainWindow, QMessageBox, QStackedWidget
+
+from src.app.client.auth_service import AuthService
+from src.app.client.prediction_service import PredictionService
+from src.app.client.simulation_service import SimulationService
+from src.app.manager.session_manager import SessionManager
+from src.app.utils.validators import validate_login_input, validate_prediction_params, validate_registration_input
 
 from .views.admin_homepage import Ui_MainWindow as Ui_AdminHome
 from .views.daily_prediction_view import Ui_DailyPredictionAdminWindow

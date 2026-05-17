@@ -2,7 +2,8 @@
 import logging
 
 import requests
-from app.manager.session_manager import SessionManager
+
+from src.app.manager.session_manager import SessionManager
 
 logger = logging.getLogger(__name__)
 
@@ -30,11 +31,7 @@ class APIClient:
         url = f"{self.base_url}{endpoint}"
         logger.info(f"GET Request to: {url}")
         try:
-            return requests.get(
-                url,
-                params=params,
-                headers=self._get_headers(),
-                timeout=10)
+            return requests.get(url, params=params, headers=self._get_headers(), timeout=10)
         except Exception as e:
             logger.error(f"GET Request failed: {e}")
             raise
@@ -47,12 +44,7 @@ class APIClient:
         url = f"{self.base_url}{endpoint}"
         logger.info(f"POST Request to: {url}")
         try:
-            return requests.post(
-                url,
-                data=data,
-                json=json,
-                headers=self._get_headers(),
-                timeout=10)
+            return requests.post(url, data=data, json=json, headers=self._get_headers(), timeout=10)
         except Exception as e:
             logger.error(f"POST Request failed: {e}")
             raise
@@ -62,11 +54,7 @@ class APIClient:
         url = f"{self.base_url}{endpoint}"
         logger.info(f"PUT Request to: {url}")
         try:
-            return requests.put(
-                url,
-                json=json,
-                headers=self._get_headers(),
-                timeout=10)
+            return requests.put(url, json=json, headers=self._get_headers(), timeout=10)
         except Exception as e:
             logger.error(f"PUT Request failed: {e}")
             raise
@@ -76,11 +64,7 @@ class APIClient:
         url = f"{self.base_url}{endpoint}"
         logger.info(f"PATCH Request to: {url}")
         try:
-            return requests.patch(
-                url,
-                json=json,
-                headers=self._get_headers(),
-                timeout=10)
+            return requests.patch(url, json=json, headers=self._get_headers(), timeout=10)
         except Exception as e:
             logger.error(f"PATCH Request failed: {e}")
             raise
@@ -90,8 +74,7 @@ class APIClient:
         url = f"{self.base_url}{endpoint}"
         logger.info(f"DELETE Request to: {url}")
         try:
-            return requests.delete(
-                url, headers=self._get_headers(), timeout=10)
+            return requests.delete(url, headers=self._get_headers(), timeout=10)
         except Exception as e:
             logger.error(f"DELETE Request failed: {e}")
             raise

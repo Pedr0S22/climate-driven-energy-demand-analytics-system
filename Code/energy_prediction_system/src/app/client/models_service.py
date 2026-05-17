@@ -1,7 +1,7 @@
-# app/client/models_service.py
+# src/app/client/models_service.py
 import logging
 
-from app.client.api_client import APIClient
+from src.app.client.api_client import APIClient
 
 logger = logging.getLogger(__name__)
 

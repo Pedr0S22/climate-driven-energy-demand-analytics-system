@@ -6,7 +6,8 @@ from unittest.mock import patch
 
 import numpy as np
 import pandas as pd
-from data_pipeline.cleaning import (
+
+from src.data_pipeline.cleaning import (
     DataCleaner,
     cleaning,
 )
@@ -16,49 +17,47 @@ def setup_fake_weather_files(fake_path, df_copernicus):
     fake_path = Path(fake_path)
     fake_path.mkdir(parents=True, exist_ok=True)
 
-    file_map = {"era5_timeseries_2020-01-01_to_2025-12-31.csv": ["valid_time",
-                                                                 "u10",
-                                                                 "v10",
-                                                                 "latitude",
-                                                                 "longitude"],
-                "reanalysis-era5-land-timeseries-sfc-2m-temperatureauafbxo0.csv": ["valid_time",
-                                                                                   "d2m",
-                                                                                   "t2m",
-                                                                                   "latitude",
-                                                                                   "longitude",
-                                                                                   ],
-                "reanalysis-era5-land-timeseries-sfc-skin-temperaturercarv5g8.csv": ["valid_time",
-                                                                                     "skt",
-                                                                                     "latitude",
-                                                                                     "longitude",
-                                                                                     ],
-                "reanalysis-era5-land-timeseries-sfc-radiation-heathoyt7mym.csv": ["valid_time",
-                                                                                   "ssrd",
-                                                                                   "strd",
-                                                                                   "latitude",
-                                                                                   "longitude",
-                                                                                   ],
-                "reanalysis-era5-land-timeseries-sfc-pressure-precipitationtwpvvkbd.csv": ["valid_time",
-                                                                                           "sp",
-                                                                                           "tp",
-                                                                                           "latitude",
-                                                                                           "longitude",
-                                                                                           ],
-                "reanalysis-era5-land-timeseries-sfc-soil-temperatureokgb55eq.csv": ["valid_time",
-                                                                                     "stl1",
-                                                                                     "latitude",
-                                                                                     "longitude",
-                                                                                     ],
-                "reanalysis-era5-land-timeseries-sfc-soil-waterp9pn16zx.csv": ["valid_time",
-                                                                               "swvl1",
-                                                                               "latitude",
-                                                                               "longitude"],
-                }
+    file_map = {
+        "era5_timeseries_2020-01-01_to_2025-12-31.csv": ["valid_time", "u10", "v10", "latitude", "longitude"],
+        "reanalysis-era5-land-timeseries-sfc-2m-temperatureauafbxo0.csv": [
+            "valid_time",
+            "d2m",
+            "t2m",
+            "latitude",
+            "longitude",
+        ],
+        "reanalysis-era5-land-timeseries-sfc-skin-temperaturercarv5g8.csv": [
+            "valid_time",
+            "skt",
+            "latitude",
+            "longitude",
+        ],
+        "reanalysis-era5-land-timeseries-sfc-radiation-heathoyt7mym.csv": [
+            "valid_time",
+            "ssrd",
+            "strd",
+            "latitude",
+            "longitude",
+        ],
+        "reanalysis-era5-land-timeseries-sfc-pressure-precipitationtwpvvkbd.csv": [
+            "valid_time",
+            "sp",
+            "tp",
+            "latitude",
+            "longitude",
+        ],
+        "reanalysis-era5-land-timeseries-sfc-soil-temperatureokgb55eq.csv": [
+            "valid_time",
+            "stl1",
+            "latitude",
+            "longitude",
+        ],
+        "reanalysis-era5-land-timeseries-sfc-soil-waterp9pn16zx.csv": ["valid_time", "swvl1", "latitude", "longitude"],
+    }
 
     for fname, cols in file_map.items():
         cols_existentes = [c for c in cols if c in df_copernicus.columns]
-        df_copernicus[cols_existentes].to_csv(
-            os.path.join(fake_path, fname), index=False)
+        df_copernicus[cols_existentes].to_csv(os.path.join(fake_path, fname), index=False)
 
 
 def clean_folder_energy(cleaner, input_dir, output_dir):
@@ -117,15 +116,8 @@ def mock_entsoe_data(start_date, end_date):
     df = pd.DataFrame(
         {
             "Load_MW": abs(
-                5000 +
-                1000 *
-                np.cos(
-                    0.01 *
-                    index.astype("int64") //
-                    1e9) +
-                100 *
-                np.random.randn(
-                    len(index))).round(2),
+                5000 + 1000 * np.cos(0.01 * index.astype("int64") // 1e9) + 100 * np.random.randn(len(index))
+            ).round(2),
         },
         index=index,
     )
@@ -157,11 +149,10 @@ def mock_copernicus_data(start_date, end_date):
     return df
 
 
-@patch("data_pipeline.ingestion.cdsapi.Client")
-@patch("data_pipeline.ingestion.EntsoePandasClient")
+@patch("src.data_pipeline.ingestion.cdsapi.Client")
+@patch("src.data_pipeline.ingestion.EntsoePandasClient")
 def test_full_pipeline_integration(mock_entsoe, mock_cds):
-    (base_dir_path, raw_energy, raw_weather, energy_clean,
-     weather_clean, start_date, end_date) = setup_dirs()
+    (base_dir_path, raw_energy, raw_weather, energy_clean, weather_clean, start_date, end_date) = setup_dirs()
     try:
         cleaner = DataCleaner()
         df_entsoe = mock_entsoe_data(start_date, end_date)
@@ -172,19 +163,14 @@ def test_full_pipeline_integration(mock_entsoe, mock_cds):
         clean_folder_energy(cleaner, raw_energy, energy_clean)
         clean_folder_weather(cleaner, raw_weather, weather_clean)
 
-        res = cleaning(
-            energy_dir=energy_clean,
-            weather_dir=weather_clean,
-            train_data=True,
-            output_dir=base_dir_path)
+        res = cleaning(energy_dir=energy_clean, weather_dir=weather_clean, train_data=True, output_dir=base_dir_path)
         df_final = res[0] if isinstance(res, tuple) else res
 
         assert df_final is not None
         assert len(df_final) > 0
         assert "datetime" in df_final.columns
         assert "Load_MW" in df_final.columns
-        assert any(var in df_final.columns for var in [
-                   "t2m", "ssrd", "tp", "u10", "v10"])
+        assert any(var in df_final.columns for var in ["t2m", "ssrd", "tp", "u10", "v10"])
     finally:
         shutil.rmtree(base_dir_path, ignore_errors=True)
 
@@ -214,51 +200,39 @@ def mock_copernicus_data_15min_with_outliers_and_nan(start_date, end_date):
     return df
 
 
-@patch("data_pipeline.ingestion.cdsapi.Client")
-@patch("data_pipeline.ingestion.EntsoePandasClient")
-def test_full_pipeline_integration_15min_with_outliers_and_nan(
-        mock_entsoe,
-        mock_cds):
-    (base_dir_path, raw_energy, raw_weather, energy_clean,
-     weather_clean, start_date, end_date) = setup_dirs()
+@patch("src.data_pipeline.ingestion.cdsapi.Client")
+@patch("src.data_pipeline.ingestion.EntsoePandasClient")
+def test_full_pipeline_integration_15min_with_outliers_and_nan(mock_entsoe, mock_cds):
+    (base_dir_path, raw_energy, raw_weather, energy_clean, weather_clean, start_date, end_date) = setup_dirs()
     try:
         cleaner = DataCleaner()
-        df_entsoe = mock_entsoe_data_15min_with_nan_and_without_out(
-            start_date, end_date)
+        df_entsoe = mock_entsoe_data_15min_with_nan_and_without_out(start_date, end_date)
         df_entsoe.to_csv(raw_energy / "entsoe_nan.csv", index=False)
-        df_copernicus = mock_copernicus_data_15min_with_outliers_and_nan(
-            start_date, end_date)
+        df_copernicus = mock_copernicus_data_15min_with_outliers_and_nan(start_date, end_date)
         setup_fake_weather_files(raw_weather, df_copernicus)
 
         clean_folder_energy(cleaner, raw_energy, energy_clean)
         clean_folder_weather(cleaner, raw_weather, weather_clean)
 
-        res = cleaning(
-            energy_dir=energy_clean,
-            weather_dir=weather_clean,
-            train_data=True,
-            output_dir=base_dir_path)
+        res = cleaning(energy_dir=energy_clean, weather_dir=weather_clean, train_data=True, output_dir=base_dir_path)
         df_final = res[0] if isinstance(res, tuple) else res
 
         assert df_final is not None
         assert len(df_final) > 0
-        assert any(var in df_final.columns for var in [
-                   "t2m", "ssrd", "tp", "u10", "v10"])
+        assert any(var in df_final.columns for var in ["t2m", "ssrd", "tp", "u10", "v10"])
     finally:
         shutil.rmtree(base_dir_path, ignore_errors=True)
 
 
-@patch("data_pipeline.ingestion.cdsapi.Client")
-@patch("data_pipeline.ingestion.EntsoePandasClient")
+@patch("src.data_pipeline.ingestion.cdsapi.Client")
+@patch("src.data_pipeline.ingestion.EntsoePandasClient")
 def test_full_pipeline_integration_1h_clean(mock_entsoe, mock_cds):
-    (base_dir_path, raw_energy, raw_weather, energy_clean,
-     weather_clean, start_date, end_date) = setup_dirs()
+    (base_dir_path, raw_energy, raw_weather, energy_clean, weather_clean, start_date, end_date) = setup_dirs()
     try:
         cleaner = DataCleaner()
         # Create 1h data
         times = pd.date_range(start_date, periods=48, freq="1h", tz="UTC")
-        df_e = pd.DataFrame(
-            {"Unnamed: 0": times, "Load_MW": np.random.uniform(20000, 30000, 48)})
+        df_e = pd.DataFrame({"Unnamed: 0": times, "Load_MW": np.random.uniform(20000, 30000, 48)})
         df_e.to_csv(raw_energy / "energy_1h.csv", index=False)
 
         df_w = pd.DataFrame(
@@ -283,11 +257,7 @@ def test_full_pipeline_integration_1h_clean(mock_entsoe, mock_cds):
         clean_folder_energy(cleaner, raw_energy, energy_clean)
         clean_folder_weather(cleaner, raw_weather, weather_clean)
 
-        res = cleaning(
-            energy_dir=energy_clean,
-            weather_dir=weather_clean,
-            train_data=True,
-            output_dir=base_dir_path)
+        res = cleaning(energy_dir=energy_clean, weather_dir=weather_clean, train_data=True, output_dir=base_dir_path)
         df_final = res[0] if isinstance(res, tuple) else res
 
         assert df_final is not None

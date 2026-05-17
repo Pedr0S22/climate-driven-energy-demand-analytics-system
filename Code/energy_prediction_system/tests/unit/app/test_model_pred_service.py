@@ -2,12 +2,12 @@ from unittest.mock import patch
 
 import pytest
 
-from app.client.models_service import ModelsService
-from app.ui.views.model_management_view import (
+from src.app.client.models_service import ModelsService
+from src.app.client.prediction_service import PredictionService
+from src.app.ui.views.model_management_view import (
     ActivateModelWorker,
     LoadModelsWorker,
 )
-from app.client.models_service import PredictionService
 
 
 @pytest.fixture
@@ -107,8 +107,7 @@ class TestModelsServiceGetAllModels:
         """Testa erro 500 do servidor"""
         with patch.object(models_service.client, "get") as mock_get:
             mock_get.return_value.status_code = 500
-            mock_get.return_value.json.return_value = {
-                "detail": "Internal Server Error"}
+            mock_get.return_value.json.return_value = {"detail": "Internal Server Error"}
 
             data, status = models_service.get_all_models()
 
@@ -119,8 +118,7 @@ class TestModelsServiceGetAllModels:
         """Testa erro 401 - não autenticado"""
         with patch.object(models_service.client, "get") as mock_get:
             mock_get.return_value.status_code = 401
-            mock_get.return_value.json.return_value = {
-                "detail": "Not authenticated"}
+            mock_get.return_value.json.return_value = {"detail": "Not authenticated"}
 
             data, status = models_service.get_all_models()
 
@@ -131,8 +129,7 @@ class TestModelsServiceGetAllModels:
         """Testa erro 403 - sem permissões"""
         with patch.object(models_service.client, "get") as mock_get:
             mock_get.return_value.status_code = 403
-            mock_get.return_value.json.return_value = {
-                "detail": "Admin privileges required"}
+            mock_get.return_value.json.return_value = {"detail": "Admin privileges required"}
 
             data, status = models_service.get_all_models()
 
@@ -175,8 +172,7 @@ class TestModelsServiceActivateModel:
         """Testa modelo não encontrado (404)"""
         with patch.object(models_service.client, "patch") as mock_patch:
             mock_patch.return_value.status_code = 404
-            mock_patch.return_value.json.return_value = {
-                "detail": "Model with id 999 not found"}
+            mock_patch.return_value.json.return_value = {"detail": "Model with id 999 not found"}
 
             data, status = models_service.activate_model(999)
 
@@ -187,8 +183,7 @@ class TestModelsServiceActivateModel:
         """Testa modelo já ativo (400)"""
         with patch.object(models_service.client, "patch") as mock_patch:
             mock_patch.return_value.status_code = 400
-            mock_patch.return_value.json.return_value = {
-                "detail": "Model 1 is already active"}
+            mock_patch.return_value.json.return_value = {"detail": "Model 1 is already active"}
 
             data, status = models_service.activate_model(1)
 
@@ -199,8 +194,7 @@ class TestModelsServiceActivateModel:
         """Testa sem permissões (403)"""
         with patch.object(models_service.client, "patch") as mock_patch:
             mock_patch.return_value.status_code = 403
-            mock_patch.return_value.json.return_value = {
-                "detail": "Admin privileges required"}
+            mock_patch.return_value.json.return_value = {"detail": "Admin privileges required"}
 
             data, status = models_service.activate_model(1)
             assert status == 403
@@ -210,8 +204,7 @@ class TestModelsServiceActivateModel:
         """Testa erro do servidor (500)"""
         with patch.object(models_service.client, "patch") as mock_patch:
             mock_patch.return_value.status_code = 500
-            mock_patch.return_value.json.return_value = {
-                "detail": "Error activating model"}
+            mock_patch.return_value.json.return_value = {"detail": "Error activating model"}
 
             data, status = models_service.activate_model(1)
 
@@ -234,12 +227,9 @@ class TestLoadModelsWorker:
 
     def test_load_models_worker_success(self, qtbot, sample_models_list):
         """Testa worker que carrega modelos com sucesso"""
-        with patch(
-            "app.ui.views.model_management_view.ModelsService"
-        ) as mock_service_class:
+        with patch("src.app.ui.views.model_management_view.ModelsService") as mock_service_class:
             mock_instance = mock_service_class.return_value
-            mock_instance.get_all_models.return_value = (
-                sample_models_list, 200)
+            mock_instance.get_all_models.return_value = (sample_models_list, 200)
 
             worker = LoadModelsWorker()
 
@@ -253,9 +243,7 @@ class TestLoadModelsWorker:
 
     def test_load_models_worker_empty_list(self, qtbot):
         """Testa worker que retorna lista vazia"""
-        with patch(
-            "app.ui.views.model_management_view.ModelsService"
-        ) as mock_service_class:
+        with patch("src.app.ui.views.model_management_view.ModelsService") as mock_service_class:
             mock_instance = mock_service_class.return_value
             mock_instance.get_all_models.return_value = ([], 200)
 
@@ -270,9 +258,7 @@ class TestLoadModelsWorker:
 
     def test_load_models_worker_server_error(self, qtbot):
         """Testa worker com erro do servidor"""
-        with patch(
-            "app.ui.views.model_management_view.ModelsService"
-        ) as mock_service_class:
+        with patch("src.app.ui.views.model_management_view.ModelsService") as mock_service_class:
             mock_instance = mock_service_class.return_value
             mock_instance.get_all_models.return_value = (
                 {"detail": "Internal Server Error"},
@@ -290,12 +276,9 @@ class TestLoadModelsWorker:
 
     def test_load_models_worker_exception(self, qtbot):
         """Testa worker com exceção inesperada"""
-        with patch(
-            "app.ui.views.model_management_view.ModelsService"
-        ) as mock_service_class:
+        with patch("src.app.ui.views.model_management_view.ModelsService") as mock_service_class:
             mock_instance = mock_service_class.return_value
-            mock_instance.get_all_models.side_effect = Exception(
-                "Network failure")
+            mock_instance.get_all_models.side_effect = Exception("Network failure")
 
             worker = LoadModelsWorker()
 
@@ -318,9 +301,7 @@ class TestActivateModelWorker:
             "model_pred_type": "daily",
             "is_active": True,
         }
-        with patch(
-            "app.ui.views.model_management_view.ModelsService"
-        ) as mock_service_class:
+        with patch("src.app.ui.views.model_management_view.ModelsService") as mock_service_class:
             mock_instance = mock_service_class.return_value
             mock_instance.activate_model.return_value = (response, 200)
 
@@ -336,9 +317,7 @@ class TestActivateModelWorker:
 
     def test_activate_model_worker_not_found(self, qtbot):
         """Testa worker com modelo não encontrado"""
-        with patch(
-            "app.ui.views.model_management_view.ModelsService"
-        ) as mock_service_class:
+        with patch("src.app.ui.views.model_management_view.ModelsService") as mock_service_class:
             mock_instance = mock_service_class.return_value
             mock_instance.activate_model.return_value = (
                 {"detail": "Model with id 999 not found"},
@@ -356,9 +335,7 @@ class TestActivateModelWorker:
 
     def test_activate_model_worker_server_error(self, qtbot):
         """Testa worker com erro do servidor"""
-        with patch(
-            "app.ui.views.model_management_view.ModelsService"
-        ) as mock_service_class:
+        with patch("src.app.ui.views.model_management_view.ModelsService") as mock_service_class:
             mock_instance = mock_service_class.return_value
             mock_instance.activate_model.return_value = (
                 {"detail": "Internal Server Error"},
@@ -376,12 +353,9 @@ class TestActivateModelWorker:
 
     def test_activate_model_worker_exception(self, qtbot):
         """Testa worker com exceção inesperada"""
-        with patch(
-            "app.ui.views.model_management_view.ModelsService"
-        ) as mock_service_class:
+        with patch("src.app.ui.views.model_management_view.ModelsService") as mock_service_class:
             mock_instance = mock_service_class.return_value
-            mock_instance.activate_model.side_effect = Exception(
-                "Timeout Error")
+            mock_instance.activate_model.side_effect = Exception("Timeout Error")
 
             worker = ActivateModelWorker(1)
 
@@ -399,7 +373,7 @@ def prediction_service():
 
 
 class TestPredictionServiceDaily:
-    """Testes para get_daily_prediction()"""
+    """Testes para get_prediction() daily"""
 
     def test_get_daily_success(self, prediction_service):
         expected = {
@@ -413,7 +387,7 @@ class TestPredictionServiceDaily:
             mock_get.return_value.status_code = 200
             mock_get.return_value.json.return_value = expected
 
-            data, status = prediction_service.get_daily_prediction(3, 3)
+            data, status = prediction_service.get_prediction("daily", 3, 3)
 
             assert status == 200
             assert data["status"] == 200
@@ -426,11 +400,10 @@ class TestPredictionServiceDaily:
             mock_get.return_value.status_code = 200
             mock_get.return_value.json.return_value = {}
 
-            prediction_service.get_daily_prediction()
+            prediction_service.get_prediction("daily")
 
             call_kwargs = mock_get.call_args[1]
-            assert call_kwargs["params"] == {
-                "historical_points": 3, "predicted_points": 7}
+            assert call_kwargs["params"] == {"historical_points": 3, "predicted_points": 7}
 
     def test_get_daily_with_custom_params(self, prediction_service):
         """Testa que parâmetros customizados são enviados"""
@@ -438,20 +411,17 @@ class TestPredictionServiceDaily:
             mock_get.return_value.status_code = 200
             mock_get.return_value.json.return_value = {}
 
-            prediction_service.get_daily_prediction(
-                historical_points=5, predicted_points=14)
+            prediction_service.get_prediction("daily", historical_points=5, predicted_points=14)
 
             call_kwargs = mock_get.call_args[1]
-            assert call_kwargs["params"] == {
-                "historical_points": 5, "predicted_points": 14}
+            assert call_kwargs["params"] == {"historical_points": 5, "predicted_points": 14}
 
     def test_get_daily_server_error(self, prediction_service):
         with patch.object(prediction_service.client, "get") as mock_get:
             mock_get.return_value.status_code = 500
-            mock_get.return_value.json.return_value = {
-                "detail": "Server error"}
+            mock_get.return_value.json.return_value = {"detail": "Server error"}
 
-            data, status = prediction_service.get_daily_prediction()
+            data, status = prediction_service.get_prediction("daily")
 
             assert status == 500
 
@@ -459,14 +429,14 @@ class TestPredictionServiceDaily:
         with patch.object(prediction_service.client, "get") as mock_get:
             mock_get.side_effect = Exception("Timeout")
 
-            data, status = prediction_service.get_daily_prediction()
+            data, status = prediction_service.get_prediction("daily")
 
             assert status == 500
             assert "Unable to reach the server" in data["detail"]
 
 
 class TestPredictionServiceHourly:
-    """Testes para get_hourly_prediction()"""
+    """Testes para get_prediction() hourly"""
 
     def test_get_hourly_success(self, prediction_service):
         expected = {
@@ -480,7 +450,7 @@ class TestPredictionServiceHourly:
             mock_get.return_value.status_code = 200
             mock_get.return_value.json.return_value = expected
 
-            data, status = prediction_service.get_hourly_prediction(3, 2)
+            data, status = prediction_service.get_prediction("hourly", 3, 2)
 
             assert status == 200
             assert len(data["historical_load"]) == 3
@@ -492,17 +462,16 @@ class TestPredictionServiceHourly:
             mock_get.return_value.status_code = 200
             mock_get.return_value.json.return_value = {}
 
-            prediction_service.get_hourly_prediction()
+            prediction_service.get_prediction("hourly")
 
             call_kwargs = mock_get.call_args[1]
-            assert call_kwargs["params"] == {
-                "historical_points": 3, "predicted_points": 12}
+            assert call_kwargs["params"] == {"historical_points": 3, "predicted_points": 12}
 
     def test_get_hourly_server_error(self, prediction_service):
         with patch.object(prediction_service.client, "get") as mock_get:
             mock_get.return_value.status_code = 500
             mock_get.return_value.json.return_value = {"detail": "Error"}
 
-            data, status = prediction_service.get_hourly_prediction()
+            data, status = prediction_service.get_prediction("hourly")
 
             assert status == 500

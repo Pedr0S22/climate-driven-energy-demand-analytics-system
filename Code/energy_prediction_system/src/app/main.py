@@ -11,14 +11,15 @@ logging.basicConfig(
 logger = logging.getLogger(__name__)
 
 current_dir = os.path.dirname(os.path.abspath(__file__))  # src/app
-src_dir = os.path.dirname(current_dir)  # src
+project_root = os.path.dirname(os.path.dirname(current_dir))  # project root
 
-# adicionar a pasta src ao caminho de procura do Python
-if src_dir not in sys.path:
-    sys.path.insert(0, src_dir)
+# adicionar a pasta raiz ao caminho de procura do Python para permitir imports com 'src.'
+if project_root not in sys.path:
+    sys.path.insert(0, project_root)
 
-from app.ui.main_window import MainWindow  # noqa: E402
 from PyQt6.QtWidgets import QApplication  # noqa: E402
+
+from src.app.ui.main_window import MainWindow  # noqa: E402
 
 
 def main():

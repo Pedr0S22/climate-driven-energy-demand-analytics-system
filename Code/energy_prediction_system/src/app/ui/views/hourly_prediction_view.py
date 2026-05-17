@@ -1,5 +1,10 @@
-from app.ui.components import DriverCard, PlotWidget, PredictionParams, Sidebar, TopBar
 from PyQt6 import QtCore, QtGui, QtWidgets
+
+from src.app.ui.components.driver_card import DriverCard
+from src.app.ui.components.plot_widget import PlotWidget
+from src.app.ui.components.prediction_params import PredictionParams
+from src.app.ui.components.sidebar import Sidebar
+from src.app.ui.components.top_bar import TopBar
 
 
 class Ui_HourlyPredictionAdminWindow:

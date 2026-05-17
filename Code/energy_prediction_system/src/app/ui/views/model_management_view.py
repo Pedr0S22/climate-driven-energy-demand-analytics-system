@@ -1,10 +1,13 @@
 import logging
 
-from app.client.models_service import ModelsService
-from app.manager.session_manager import SessionManager
-from app.ui.components import Sidebar, ToggleSwitch, TopBar
 from PyQt6 import QtCore, QtGui, QtWidgets
 from PyQt6.QtWidgets import QGraphicsDropShadowEffect, QMessageBox
+
+from src.app.client.models_service import ModelsService
+from src.app.manager.session_manager import SessionManager
+from src.app.ui.components.sidebar import Sidebar
+from src.app.ui.components.toggle_switch import ToggleSwitch
+from src.app.ui.components.top_bar import TopBar
 
 logger = logging.getLogger(__name__)
 

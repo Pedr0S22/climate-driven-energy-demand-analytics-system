@@ -2,18 +2,15 @@ from datetime import datetime
 from unittest.mock import patch
 
 import pytest
-from data_pipeline.real_time_pipeline import run_pipeline, scheduler
+
+from src.data_pipeline.real_time_pipeline import run_pipeline, scheduler
 
 
-@patch("data_pipeline.real_time_pipeline.realtime_data_retrieval")
-@patch("data_pipeline.real_time_pipeline.cleaning")
-@patch("data_pipeline.real_time_pipeline.run_realtime_engineering")
-@patch("data_pipeline.real_time_pipeline.load_dotenv")
-def test_run_pipeline_orchestration(
-        mock_load_dotenv,
-        mock_run_eng,
-        mock_cleaning,
-        mock_retrieval):
+@patch("src.data_pipeline.real_time_pipeline.realtime_data_retrieval")
+@patch("src.data_pipeline.real_time_pipeline.cleaning")
+@patch("src.data_pipeline.real_time_pipeline.run_realtime_engineering")
+@patch("src.data_pipeline.real_time_pipeline.load_dotenv")
+def test_run_pipeline_orchestration(mock_load_dotenv, mock_run_eng, mock_cleaning, mock_retrieval):
     """Verify that run_pipeline calls the expected sequence of steps."""
     run_pipeline()
 
@@ -28,9 +25,9 @@ def test_scheduler_trigger_calculation():
     # We can mock datetime.now() and time.sleep() to verify the wait
     # calculation.
 
-    with patch("data_pipeline.real_time_pipeline.datetime") as mock_dt:
-        with patch("data_pipeline.real_time_pipeline.time.sleep") as mock_sleep:
-            with patch("data_pipeline.real_time_pipeline.run_pipeline") as mock_run:  # noqa F841
+    with patch("src.data_pipeline.real_time_pipeline.datetime") as mock_dt:
+        with patch("src.data_pipeline.real_time_pipeline.time.sleep") as mock_sleep:
+            with patch("src.data_pipeline.real_time_pipeline.run_pipeline") as mock_run:  # noqa F841
                 # Scenario 1: It is 10:00:00 -> Next should be 10:01:00
                 mock_dt.now.return_value = datetime(2026, 5, 13, 10, 0, 0)
 

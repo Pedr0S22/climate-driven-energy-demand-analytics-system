@@ -1,7 +1,8 @@
 import numpy as np
 import pandas as pd
 import pytest
-from data_pipeline.feature_engineering import FeatureEngineer
+
+from src.data_pipeline.feature_engineering import FeatureEngineer
 
 # =======================================
 # MOCK DATA GENERATOR
@@ -42,17 +43,11 @@ class TestFeatureEngineer:
 
     @pytest.fixture
     def fe_hourly(self, tmp_path):
-        return FeatureEngineer(
-            threshold=0.6,
-            models_dir=tmp_path,
-            frequency="hourly")
+        return FeatureEngineer(threshold=0.6, models_dir=tmp_path, frequency="hourly")
 
     @pytest.fixture
     def fe_daily(self, tmp_path):
-        return FeatureEngineer(
-            threshold=0.6,
-            models_dir=tmp_path,
-            frequency="daily")
+        return FeatureEngineer(threshold=0.6, models_dir=tmp_path, frequency="daily")
 
     def test_extract_temporal_features_hourly(self, fe_hourly):
         df = create_mock_df(10, freq="h")

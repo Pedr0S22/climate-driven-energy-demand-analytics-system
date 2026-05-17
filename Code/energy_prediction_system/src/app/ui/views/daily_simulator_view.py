@@ -1,5 +1,9 @@
-from app.ui.components import DatePicker, Sidebar, StyledInput, TopBar
 from PyQt6 import QtCore, QtGui, QtWidgets
+
+from src.app.ui.components.date_picker import DatePicker
+from src.app.ui.components.sidebar import Sidebar
+from src.app.ui.components.styled_input import StyledInput
+from src.app.ui.components.top_bar import TopBar
 
 
 class Ui_DailySimulatorWindow:

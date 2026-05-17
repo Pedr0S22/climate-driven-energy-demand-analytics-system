@@ -7,12 +7,13 @@ src_dir = os.path.dirname(current_dir)  # src
 if src_dir not in sys.path:
     sys.path.insert(0, src_dir)
 
-from app.ui.views.daily_prediction_view import Ui_DailyPredictionAdminWindow  # noqa: E402
-from app.ui.views.hourly_prediction_view import Ui_HourlyPredictionAdminWindow  # noqa: E402
-from app.ui.views.login_view import Ui_LoginWindow  # noqa: E402
-from app.ui.views.register_view import Ui_RegisterWindow  # noqa: E402
-from app.ui.views.user_homepage import Ui_UserMainWindow  # noqa: E402
 from PyQt6.QtWidgets import QApplication, QMainWindow, QStackedWidget  # noqa: E402
+
+from src.app.ui.views.daily_prediction_view import Ui_DailyPredictionAdminWindow  # noqa: E402
+from src.app.ui.views.hourly_prediction_view import Ui_HourlyPredictionAdminWindow  # noqa: E402
+from src.app.ui.views.login_view import Ui_LoginWindow  # noqa: E402
+from src.app.ui.views.register_view import Ui_RegisterWindow  # noqa: E402
+from src.app.ui.views.user_homepage import Ui_UserMainWindow  # noqa: E402
 
 
 class TestUserMainWindow(QMainWindow):
@@ -64,54 +65,36 @@ class TestUserMainWindow(QMainWindow):
         # --- LIGAÇÕES DE NAVEGAÇÃO ---
 
         # No Login (0)
-        self.ui_login.login_button.clicked.connect(
-            lambda: self.stack.setCurrentIndex(2))  # Para Home
-        self.ui_login.register_link.clicked.connect(
-            lambda: self.stack.setCurrentIndex(1))  # Para Registo
+        self.ui_login.login_button.clicked.connect(lambda: self.stack.setCurrentIndex(2))  # Para Home
+        self.ui_login.register_link.clicked.connect(lambda: self.stack.setCurrentIndex(1))  # Para Registo
 
         # No Registo (1)
-        self.ui_register.login_link.clicked.connect(
-            lambda: self.stack.setCurrentIndex(0))  # Volta para Login
-        self.ui_register.signup_button.clicked.connect(
-            lambda: self.stack.setCurrentIndex(0))  # Simula sucesso -> Login
+        self.ui_register.login_link.clicked.connect(lambda: self.stack.setCurrentIndex(0))  # Volta para Login
+        self.ui_register.signup_button.clicked.connect(lambda: self.stack.setCurrentIndex(0))  # Simula sucesso -> Login
 
         # Logout em todas as páginas -> Volta para Login (0)
-        self.ui_home.logout_btn.clicked.connect(
-            lambda: self.stack.setCurrentIndex(0))
-        self.ui_daily.logout_btn.clicked.connect(
-            lambda: self.stack.setCurrentIndex(0))
-        self.ui_hourly.logout_btn.clicked.connect(
-            lambda: self.stack.setCurrentIndex(0))
+        self.ui_home.logout_btn.clicked.connect(lambda: self.stack.setCurrentIndex(0))
+        self.ui_daily.logout_btn.clicked.connect(lambda: self.stack.setCurrentIndex(0))
+        self.ui_hourly.logout_btn.clicked.connect(lambda: self.stack.setCurrentIndex(0))
 
         # Home Sidebar (Página 2)
-        self.ui_home.home_btn.clicked.connect(
-            lambda: self.stack.setCurrentIndex(2))
-        self.ui_home.daily_btn.clicked.connect(
-            lambda: self.stack.setCurrentIndex(3))
-        self.ui_home.hourly_btn.clicked.connect(
-            lambda: self.stack.setCurrentIndex(4))
+        self.ui_home.home_btn.clicked.connect(lambda: self.stack.setCurrentIndex(2))
+        self.ui_home.daily_btn.clicked.connect(lambda: self.stack.setCurrentIndex(3))
+        self.ui_home.hourly_btn.clicked.connect(lambda: self.stack.setCurrentIndex(4))
 
         # Home Dashboard
-        self.ui_home.daily_button.clicked.connect(
-            lambda: self.stack.setCurrentIndex(3))
-        self.ui_home.hourly_button.clicked.connect(
-            lambda: self.stack.setCurrentIndex(4))
+        self.ui_home.daily_button.clicked.connect(lambda: self.stack.setCurrentIndex(3))
+        self.ui_home.hourly_button.clicked.connect(lambda: self.stack.setCurrentIndex(4))
 
         # Daily Page Sidebar (Página 3)
-        self.ui_daily.home_btn.clicked.connect(
-            lambda: self.stack.setCurrentIndex(2))
-        self.ui_daily.daily_btn.clicked.connect(
-            lambda: self.stack.setCurrentIndex(3))
-        self.ui_daily.hourly_btn.clicked.connect(
-            lambda: self.stack.setCurrentIndex(4))
+        self.ui_daily.home_btn.clicked.connect(lambda: self.stack.setCurrentIndex(2))
+        self.ui_daily.daily_btn.clicked.connect(lambda: self.stack.setCurrentIndex(3))
+        self.ui_daily.hourly_btn.clicked.connect(lambda: self.stack.setCurrentIndex(4))
 
         # Hourly Page Sidebar (Página 4)
-        self.ui_hourly.home_btn.clicked.connect(
-            lambda: self.stack.setCurrentIndex(2))
-        self.ui_hourly.daily_btn.clicked.connect(
-            lambda: self.stack.setCurrentIndex(3))
-        self.ui_hourly.hourly_btn.clicked.connect(
-            lambda: self.stack.setCurrentIndex(4))
+        self.ui_hourly.home_btn.clicked.connect(lambda: self.stack.setCurrentIndex(2))
+        self.ui_hourly.daily_btn.clicked.connect(lambda: self.stack.setCurrentIndex(3))
+        self.ui_hourly.hourly_btn.clicked.connect(lambda: self.stack.setCurrentIndex(4))
 
 
 def main():

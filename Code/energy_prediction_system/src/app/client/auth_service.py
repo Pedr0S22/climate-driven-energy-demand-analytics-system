@@ -1,8 +1,7 @@
 import logging
 
-from app.manager.session_manager import SessionManager
-
-from .api_client import APIClient
+from src.app.client.api_client import APIClient
+from src.app.manager.session_manager import SessionManager
 
 logger = logging.getLogger(__name__)
 

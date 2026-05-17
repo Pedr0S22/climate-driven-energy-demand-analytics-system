@@ -18,14 +18,8 @@ from src.app.manager.session_manager import SessionManager
 
 # --- SETUP TEST DATABASE (SQLite In-Memory) ---
 SQLALCHEMY_DATABASE_URL = "sqlite:///./test_integration.db"
-engine = create_engine(
-    SQLALCHEMY_DATABASE_URL,
-    connect_args={
-        "check_same_thread": False})
-TestingSessionLocal = sessionmaker(
-    autocommit=False,
-    autoflush=False,
-    bind=engine)
+engine = create_engine(SQLALCHEMY_DATABASE_URL, connect_args={"check_same_thread": False})
+TestingSessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 
 
 def override_get_db():
@@ -35,9 +29,6 @@ def override_get_db():
     finally:
         db.close()
 
-
-# Apply dependency override
-app.dependency_overrides[get_db] = override_get_db
 
 # --- MOCK KEYRING FOR SESSION MANAGER ---
 fake_keyring = {}
@@ -58,6 +49,9 @@ def mock_delete_password(service, username):
 
 @pytest.fixture(autouse=True)
 def setup_integration_env():
+    # Apply dependency override
+    app.dependency_overrides[get_db] = override_get_db
+
     # Setup tables
     Base.metadata.create_all(bind=engine)
     fake_keyring.clear()
@@ -71,7 +65,11 @@ def setup_integration_env():
 
     # Teardown tables
     Base.metadata.drop_all(bind=engine)
-    engine.dispose()
+
+    # Remove dependency override
+    if get_db in app.dependency_overrides:
+        del app.dependency_overrides[get_db]
+
     if os.path.exists("./test_integration.db"):
         try:
             os.remove("./test_integration.db")
@@ -122,8 +120,7 @@ def full_stack_auth_service(api_test_client):
 # --- TESTS ---
 
 
-def test_registration_to_login_to_protected_flow(
-        full_stack_auth_service, api_test_client):
+def test_registration_to_login_to_protected_flow(full_stack_auth_service, api_test_client):
     """
     Test 1: Full E2E flow from Registration to Login to accessing a Protected Endpoint.
     This exercises src/api/routers/endpoints/users.py and src/api/services/auth.py
@@ -131,16 +128,14 @@ def test_registration_to_login_to_protected_flow(
     # 1. Register a new user
     user_email = "integration@test.com"  # noqa S105
     user_pass = "StrongPass123!"  # noqa S105
-    reg_data, status = full_stack_auth_service.register_user(
-        "int_user", user_email, user_pass)
+    reg_data, status = full_stack_auth_service.register_user("int_user", user_email, user_pass)
 
     assert status == 201
     assert reg_data["status"] == 201
     assert "User registered successfully" in reg_data["message"]
 
     # 2. Login with the new user
-    login_data, status = full_stack_auth_service.login_user(
-        user_email, user_pass)
+    login_data, status = full_stack_auth_service.login_user(user_email, user_pass)
 
     assert status == 200
     assert "access_token" in login_data
@@ -171,15 +166,13 @@ def test_registration_to_login_to_protected_flow(
         assert me_data["role"] == "client"
 
 
-def test_admin_only_access_denied_for_client(
-        full_stack_auth_service, api_test_client):
+def test_admin_only_access_denied_for_client(full_stack_auth_service, api_test_client):
     """
     Verify that a regular client cannot access admin-only endpoints.
     Exercises src/api/core/security.py (require_role)
     """
     # 1. Register and Login as regular client
-    full_stack_auth_service.register_user(
-        "regular", "client@test.com", "Pass123!")
+    full_stack_auth_service.register_user("regular", "client@test.com", "Pass123!")
     full_stack_auth_service.login_user("client@test.com", "Pass123!")
 
     # 2. Try to access admin-only endpoint
@@ -194,12 +187,10 @@ def test_admin_only_access_denied_for_client(
     ):
         response = client.get("/auth/admin-only")
         assert response.status_code == 403
-        assert "Forbidden" in response.json(
-        )["message"] or response.status_code == 403
+        assert "Forbidden" in response.json()["message"] or response.status_code == 403
 
 
-def test_brute_force_protection_integration(
-        full_stack_auth_service, api_test_client):
+def test_brute_force_protection_integration(full_stack_auth_service, api_test_client):
     """
     Test UC6 extension: Brute force protection logic in src/api/services/auth.py
     """
@@ -213,21 +204,18 @@ def test_brute_force_protection_integration(
         full_stack_auth_service.login_user(user_email, "WrongPass")
 
     # Next attempt should be forbidden (locked)
-    login_data, status = full_stack_auth_service.login_user(
-        user_email, "Pass123!")
+    login_data, status = full_stack_auth_service.login_user(user_email, "Pass123!")
     assert status == 403
     assert "locked" in login_data["message"].lower()
 
 
-def test_logout_clears_server_session_and_local(
-        full_stack_auth_service, api_test_client):
+def test_logout_clears_server_session_and_local(full_stack_auth_service, api_test_client):
     """
     Test the full logout integration.
     """
     # 1. Login
     user_email = "logout@test.com"
-    full_stack_auth_service.register_user(
-        "logout_user", user_email, "Pass123!")
+    full_stack_auth_service.register_user("logout_user", user_email, "Pass123!")
     full_stack_auth_service.login_user(user_email, "Pass123!")
 
     assert SessionManager.get_token() is not None

@@ -15,14 +15,8 @@ from src.api.services.simulation_service import SimulationService
 
 # --- DB SETUP ---
 SQLALCHEMY_DATABASE_URL = "sqlite:///./test_api_services.db"
-engine = create_engine(
-    SQLALCHEMY_DATABASE_URL,
-    connect_args={
-        "check_same_thread": False})
-TestingSessionLocal = sessionmaker(
-    autocommit=False,
-    autoflush=False,
-    bind=engine)
+engine = create_engine(SQLALCHEMY_DATABASE_URL, connect_args={"check_same_thread": False})
+TestingSessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 
 
 @pytest.fixture
@@ -138,10 +132,10 @@ def test_prediction_service_autoregressive(db_session, mock_ml_assets):
     # 2. Mock CSV data
     dummy_data = pd.DataFrame(
         {
-            "datetime": pd.to_datetime(["2024-01-01", "2024-01-02"]),
-            "Load_MWh": [600000.0, 610000.0],
-            "t2m": [10.0, 11.0],
-            "L1_Load": [590000.0, 600000.0],
+            "datetime": pd.to_datetime(["2024-01-01", "2024-01-02", "2024-01-03"]),
+            "Load_MWh": [590000.0, 600000.0, 610000.0],
+            "t2m": [9.0, 10.0, 11.0],
+            "L1_Load": [580000.0, 590000.0, 600000.0],
         }
     )
 
@@ -153,8 +147,7 @@ def test_prediction_service_autoregressive(db_session, mock_ml_assets):
         patch("src.api.services.prediction_service.pd.read_csv", return_value=dummy_data),
         patch("src.api.services.prediction_service.Path.exists", return_value=True),
     ):
-        result = PredictionService.get_realtime_prediction(
-            db_session, "daily", 2, 3)
+        result = PredictionService.get_realtime_prediction(db_session, "daily", 2, 3)
 
         assert result["status"] == 200
         assert len(result["load_predicted"]) == 3
@@ -184,15 +177,14 @@ def test_simulation_service_scenarios(db_session, mock_ml_assets):
     ie.load_active_model(m_record)
 
     # 1. Run standard simulation
-    sim_result = SimulationService.run_simulation(
-        db_session, "hourly", "average", 2024, 5, 2, hour=12)
+    sim_result = SimulationService.run_simulation(db_session, "hourly", "average", 2024, 5, 2, hour=12)
     assert "predicted_mw" in sim_result
     assert sim_result["predicted_mw"] == 50000.0
 
     # 2. Run with valid overrides
     sim_result_ov = SimulationService.run_simulation(
-        db_session, "hourly", "heatwave", 2024, 7, 3, hour=15, overrides={
-            "t2m": 45.0, "tp": 0.0})
+        db_session, "hourly", "heatwave", 2024, 7, 3, hour=15, overrides={"t2m": 45.0, "tp": 0.0}
+    )
     assert sim_result_ov["predicted_mw"] == 50000.0
 
     # 3. Test invalid overrides (Restriction)
