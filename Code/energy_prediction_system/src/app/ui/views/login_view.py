@@ -87,22 +87,6 @@ class Ui_LoginWindow:
         self.forms_container.addWidget(self.pass_label)
         self.forms_container.addWidget(self.pass_input)
 
-        # Forgot Password
-        self.forgot_btn = QtWidgets.QPushButton("I forgot my password")
-        self.forgot_btn.setCursor(QtGui.QCursor(QtCore.Qt.CursorShape.PointingHandCursor))
-        self.forgot_btn.setStyleSheet("""
-            QPushButton {
-                background: transparent;
-                border: none;
-                color: rgb(0, 1, 128);
-                text-decoration: underline;
-                text-align: left;
-                font-family: 'Tw Cen MT';
-                font-size: 14pt;
-            }
-            QPushButton:hover { color: #3498db; }
-        """)
-        self.forms_container.addWidget(self.forgot_btn)
 
         self.forms_wrapper.addLayout(self.forms_container)
         self.forms_wrapper.addStretch()

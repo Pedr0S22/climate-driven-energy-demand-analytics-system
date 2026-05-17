@@ -48,7 +48,6 @@ Land Hourly data from 1950 to present" dataset found at [https://cds.climate.cop
 5. The system stores the unmodified raw climate data into the `Code\energy_prediction_system\data\raw\weather\` directory.
 6. The system stores the unmodified raw electricity data into the `Code\energy_prediction_system\data\raw\energy\` directory.
 7. The system automatically backs up and exports all retrieved raw data directories to a private Google Drive.
-8. The system successfully logs all events and the execution time into ELK.
 
 **Extensions:**
 
@@ -56,7 +55,7 @@ Land Hourly data from 1950 to present" dataset found at [https://cds.climate.cop
 
     * 3a1. The system detects that the ENTSO-E Transparency Platform is unreachable or authentication fails.
 
-    * 3a2. The system properly logs the ingestion failure to ELK.
+    * 3a2. The system properly logs the ingestion failure.
 
     * 3a3. The system results in a clean termination of the ingestion script.
 
@@ -746,7 +745,7 @@ Allow the user to access a dashboard to view the time series of the hourly elect
 9. The system feeds the synthesized feature vector into the active model.
 10. The system calculates the predicted load (MWh).
 11. The system securely passes the generated prediction (Predicted MWh) the selected template, and the custom input parameters to the presentation layer for visualization.
-12. The system logs the simulation event (input parameters, results, and timestamps) to ELK for audit and monitoring.
+12. The system logs the simulation event (input parameters, results, and timestamps).
 
 **Extensions:**
 
