@@ -158,7 +158,7 @@ Meet the team behind this product:
 *   **Beatriz Fernandes** (@2023215703BeaFernandes)
 *   **Francisca Mateus** (@franciscamateusPt05)
 *   **Ramyad Raadi** (@Ramyad20)
-*   **Rebeca Power** (@reberapower1)
+*   **Diana Martins** (@reberapower1)
 
 For more details, visit our [Team Profiles](./Management/profiles).
 
